@@ -727,6 +727,23 @@ class StatefulOpalVerifier:
             )
             return
 
+        # Changed: track C_PIN secrets revealed by successful Get responses.
+        # Why: MSID is typically read via Get before being used as HostChallenge in StartSession.
+        if method == "get" and _object_kind(command) == "cpin":
+            returned = _column_values(output)
+            pin_value = returned.get("3")
+            if isinstance(pin_value, str) and pin_value.strip():
+                obj_key = _object_key(command)
+                state.known_secrets.setdefault(obj_key, set()).add(_norm(pin_value))
+                self._add_trace(
+                    state,
+                    step_index,
+                    "SET_CPIN_SECRET",
+                    reads=["C_PIN", "return_values"],
+                    writes=["known_secrets"],
+                    detail=f"C_PIN {obj_key} read via Get",
+                )
+
         if method == "genkey":
             state.generated_key_after_write = bool(state.written_payloads)
             self._add_trace(
@@ -846,10 +863,15 @@ class StatefulOpalVerifier:
                     # Changed: C_PIN_MSID (UID *8402) is Anybody-accessible per Opal spec.
                     # Why: MSID can be read without authentication; other C_PINs require auth.
                     is_msid = kind == "cpin" and "8402" in invoking_uid_val
-                    # Changed: non-CPIN objects (Locking, MBRControl, Authority) are expected
-                    # to be accessible for known readable columns per Opal table semantics.
-                    # Only C_PIN access requires distinguishing MSID from other credentials.
-                    should_expect_success = is_msid or kind != "cpin"
+                    # Changed: relax KNOWN_FIELD_EXPECTED_SUCCESS for C_PIN in unauthenticated sessions only.
+                    # Why: non-MSID C_PIN access requires authentication; other objects (Locking,
+                    # MBRControl, Authority) are expected to be accessible for known readable columns.
+                    # In authenticated sessions, C_PIN access is also expected to succeed.
+                    should_expect_success = (
+                        is_msid
+                        or kind != "cpin"
+                        or state.has_signing_authority
+                    )
                     if should_expect_success:
                         self._add_trace(
                             state,
@@ -859,18 +881,11 @@ class StatefulOpalVerifier:
                             detail=f"expected_success={expected_success}, actual={status}",
                         )
                         return True
-                # Changed: don't flag unexpected errors as inconsistent when auth context is weak.
-                # Why: access control decisions we can't model should default to "pass" not "fail".
-                if state.has_signing_authority and state.authenticated:
-                    self._add_trace(
-                        state,
-                        step_index,
-                        "UNEXPECTED_ERROR_STATUS",
-                        reads=["status"],
-                        detail=status,
-                    )
-                    return True
-                self._add_trace(state, step_index, "DEFAULT_PASS", reads=["status"], detail=f"error={status}")
+                # Changed: remove UNEXPECTED_ERROR_STATUS entirely.
+                # Why: error responses we can't explain are likely valid access control decisions,
+                # parameter rejections, or state-dependent failures. The solver should only flag
+                # errors as inconsistent when it has specific evidence (known field, known secret, etc).
+                self._add_trace(state, step_index, "DEFAULT_PASS", reads=["status"], detail=f"unmodeled_error={status}")
                 return False
 
         if method == "activate":
@@ -1049,6 +1064,10 @@ class StatefulOpalVerifier:
             # Why: StartSession without HostSigningAuthority that gets NOT_AUTHORIZED is a valid denial.
             signing_auth = _uid_reference(command, "HostSigningAuthority")
             if not signing_auth and not challenge:
+                return False
+            # Changed: when we have no known secrets, we can't verify if the challenge is correct.
+            # Why: NOT_AUTHORIZED is valid when the password doesn't match the credential.
+            if not all_secrets:
                 return False
             return True
         output_method = _compact(_method_name(output))
