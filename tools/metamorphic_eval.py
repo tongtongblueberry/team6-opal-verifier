@@ -293,6 +293,63 @@ def set_schema_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return cases
 
 
+def end_session_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: cover EndSession as a possible final method.
+    # Why: public traces contain EndSession only as intermediate steps, so final-branch coverage missed it.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, step in final_step_with_method(steps, "EndSession"):
+            prefix = copy.deepcopy(steps[: index + 1])
+            valid_close = copy.deepcopy(prefix)
+            valid_close[-1]["output"] = {"return_values": {"required": {}, "optional": {}}, "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:endsession_success:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="EndSession closes an active session and returns an empty result.",
+                    steps=valid_close,
+                )
+            )
+
+            nonempty_close = copy.deepcopy(prefix)
+            nonempty_close[-1]["output"] = {"return_values": [{"unexpected": 1}], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:endsession_nonempty_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful EndSession should not return payload data.",
+                    steps=nonempty_close,
+                )
+            )
+
+            no_session_success = copy.deepcopy(step)
+            no_session_success["output"] = {"return_values": {}, "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:endsession_no_session_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="EndSession without an active session should not succeed.",
+                    steps=[no_session_success],
+                )
+            )
+
+            no_session_rejected = copy.deepcopy(step)
+            no_session_rejected["output"] = {"return_values": {}, "status_codes": "NOT_AUTHORIZED"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:endsession_no_session_rejected:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="EndSession without an active session can be correctly rejected.",
+                    steps=[no_session_rejected],
+                )
+            )
+    return cases
+
+
 def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return (
         genkey_cases(public)
@@ -300,6 +357,7 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
         + data_command_cases(public)
         + pin_auth_cases(public)
         + set_schema_cases(public)
+        + end_session_cases(public)
     )
 
 

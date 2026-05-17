@@ -30,6 +30,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
     "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
     "ACTIVATE_TARGET": ["Activate SP UID"],
+    "ENDSESSION_PAYLOAD": ["EndSession close session empty result list"],
     "SET_PAYLOAD": ["Set method empty result list RowValues duplicate column INVALID_PARAMETER"],
     "READ_PAYLOAD": ["Read LBA result GenKey"],
     "SET_OBJECT_FIELDS": ["Set Values table column object"],
@@ -580,7 +581,7 @@ class StatefulOpalVerifier:
             )
             return inconsistent
 
-        if method in {"get", "set", "activate", "genkey", "read", "write"}:
+        if method in {"get", "set", "activate", "genkey", "read", "write", "endsession"}:
             expected_error = self._expected_error_for_state(
                 state,
                 command,
@@ -615,6 +616,17 @@ class StatefulOpalVerifier:
                 "ACTIVATE_TARGET",
                 reads=["invoking_name", "invoking_uid"],
                 detail=f"uid={invoking_uid}, inconsistent={inconsistent}",
+            )
+            return inconsistent
+
+        if method == "endsession" and status == self.success_status:
+            inconsistent = self._empty_result_inconsistent(output)
+            self._add_trace(
+                state,
+                step_index,
+                "ENDSESSION_PAYLOAD",
+                reads=["active_sessions", "return_values"],
+                detail=f"inconsistent={inconsistent}",
             )
             return inconsistent
 
@@ -675,7 +687,7 @@ class StatefulOpalVerifier:
     ) -> str:
         data_command = _is_data_command(command)
         if (
-            method in {"get", "set", "activate", "genkey", "read", "write"}
+            method in {"get", "set", "activate", "genkey", "read", "write", "endsession"}
             and not data_command
             and not state.active_sessions
         ):
