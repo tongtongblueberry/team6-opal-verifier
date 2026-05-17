@@ -17,7 +17,19 @@ if str(ROOT) not in sys.path:
     # Why: diagnostics run from the repository checkout on the course server.
     sys.path.insert(0, str(ROOT))
 
-from src.solver import StatefulOpalVerifier, _column_values, _compact, _contains_text, _invoking_uid, _method_name
+from src.solver import (
+    BOOLEAN_OBJECT_COLUMNS,
+    READABLE_OBJECT_COLUMNS,
+    WRITABLE_OBJECT_COLUMNS,
+    StatefulOpalVerifier,
+    _column_values,
+    _compact,
+    _contains_text,
+    _invoking_uid,
+    _method_name,
+    _object_kind,
+    _requested_columns,
+)
 
 
 Json = dict[str, Any]
@@ -596,6 +608,134 @@ def activate_payload_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]
     return cases
 
 
+def _set_command_values(step: Json, values: dict[str, Any]) -> None:
+    # Changed: centralize Set Values mutation for known-field synthetic cases.
+    # Why: public JSON uses nested method/args/optional shapes, and tests should edit one location.
+    command = step.setdefault("input", {})
+    optional = command.setdefault("method", {}).setdefault("args", {}).setdefault("optional", {})
+    optional["Values"] = [values]
+
+
+def _success_get_output(columns: set[str]) -> Json:
+    # Changed: generate a minimal successful Get response for requested table columns.
+    # Why: known-field access checks need positive controls as well as error mutations.
+    return {"return_values": [{column: 0 for column in sorted(columns)}], "status_codes": "SUCCESS"}
+
+
+def known_field_status_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add table-field status mutations for known Opal object columns.
+    # Why: low-confidence public failures were correct but explained only as generic unexpected errors.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, step in enumerate(steps):
+            command = step.get("input", {}) if isinstance(step, dict) else {}
+            method = _method_name(command).lower()
+            kind = _object_kind(command)
+            if not kind:
+                continue
+
+            if method == "get":
+                requested = _requested_columns(command)
+                if not requested or not requested.issubset(READABLE_OBJECT_COLUMNS.get(kind, set())):
+                    continue
+                success = copy.deepcopy(steps[: index + 1])
+                success[-1]["output"] = _success_get_output(requested)
+                cases.append(
+                    SyntheticCase(
+                        name=f"{source}:known_{kind}_get_success:{index}",
+                        expected="pass",
+                        source=source,
+                        reason="Known readable object fields should support a successful Get.",
+                        steps=success,
+                    )
+                )
+                for status in ("NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL"):
+                    error = copy.deepcopy(steps[: index + 1])
+                    error[-1]["output"] = {"return_values": {}, "status_codes": status}
+                    cases.append(
+                        SyntheticCase(
+                            name=f"{source}:known_{kind}_get_{status.lower()}:{index}",
+                            expected="fail",
+                            source=source,
+                            reason="A known readable object-field Get should not end in an error status.",
+                            steps=error,
+                        )
+                    )
+
+            if method == "set":
+                fields = set(_column_values(command))
+                if not fields or not fields.issubset(WRITABLE_OBJECT_COLUMNS.get(kind, set())):
+                    continue
+                success = copy.deepcopy(steps[: index + 1])
+                success[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+                cases.append(
+                    SyntheticCase(
+                        name=f"{source}:known_{kind}_set_success:{index}",
+                        expected="pass",
+                        source=source,
+                        reason="Known writable object fields should support a successful Set.",
+                        steps=success,
+                    )
+                )
+                for status in ("NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL"):
+                    error = copy.deepcopy(steps[: index + 1])
+                    error[-1]["output"] = {"return_values": {}, "status_codes": status}
+                    cases.append(
+                        SyntheticCase(
+                            name=f"{source}:known_{kind}_set_{status.lower()}:{index}",
+                            expected="fail",
+                            source=source,
+                            reason="A known writable object-field Set should not end in an error status.",
+                            steps=error,
+                        )
+                    )
+    return cases
+
+
+def known_field_invalid_value_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add invalid boolean field value mutations for known Opal object tables.
+    # Why: invalid table-field values should be explained by INVALID_PARAMETER, not learned labels.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, step in enumerate(steps):
+            command = step.get("input", {}) if isinstance(step, dict) else {}
+            if _method_name(command).lower() != "set":
+                continue
+            kind = _object_kind(command)
+            boolean_columns = BOOLEAN_OBJECT_COLUMNS.get(kind, set())
+            target_columns = set(_column_values(command)).intersection(boolean_columns)
+            if not target_columns:
+                continue
+            target_column = sorted(target_columns)[0]
+
+            invalid_rejected = copy.deepcopy(steps[: index + 1])
+            _set_command_values(invalid_rejected[-1], {target_column: 2})
+            invalid_rejected[-1]["output"] = {"return_values": {}, "status_codes": "INVALID_PARAMETER"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:known_{kind}_invalid_bool_rejected:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="Invalid known boolean field values should be INVALID_PARAMETER.",
+                    steps=invalid_rejected,
+                )
+            )
+
+            invalid_success = copy.deepcopy(steps[: index + 1])
+            _set_command_values(invalid_success[-1], {target_column: 2})
+            invalid_success[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:known_{kind}_invalid_bool_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Invalid known boolean field values should not succeed.",
+                    steps=invalid_success,
+                )
+            )
+    return cases
+
+
 def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return (
         genkey_cases(public)
@@ -608,6 +748,8 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
         + set_schema_cases(public)
         + end_session_cases(public)
         + activate_payload_cases(public)
+        + known_field_status_cases(public)
+        + known_field_invalid_value_cases(public)
     )
 
 

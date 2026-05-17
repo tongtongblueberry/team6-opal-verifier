@@ -30,6 +30,8 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "STARTSESSION_FINAL": ["StartSession HostChallenge HostSigningAuthority"],
     "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
     "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
+    "KNOWN_FIELD_INVALID_VALUE": ["Object table field boolean value INVALID_PARAMETER"],
+    "KNOWN_FIELD_EXPECTED_SUCCESS": ["Object table Get Set field access expected SUCCESS"],
     "ACTIVATE_TARGET": ["Activate SP UID"],
     "ACTIVATE_PAYLOAD": ["Activate SP empty result list"],
     "ENDSESSION_PAYLOAD": ["EndSession close session empty result list"],
@@ -40,6 +42,30 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "GET_PAYLOAD": ["Get Cellblock startColumn endColumn return_values"],
     "GENKEY_PAYLOAD": ["GenKey empty return_values response"],
     "DEFAULT_PASS": ["method response status compliance"],
+}
+
+# Changed: encode guidebook-backed object table columns that are safe to inspect.
+# Why: known readable fields let trace-mode explain non-success Get finals without hidden labels.
+READABLE_OBJECT_COLUMNS: dict[str, set[str]] = {
+    "cpin": {"3"},
+    "authority": {"5"},
+    "locking": {"3", "4", "5", "6", "7", "8"},
+    "mbrcontrol": {"1", "2"},
+}
+# Changed: encode guidebook-backed object table columns that are safe to modify in authenticated flows.
+# Why: known writable fields let trace-mode distinguish invalid status responses from valid rejections.
+WRITABLE_OBJECT_COLUMNS: dict[str, set[str]] = {
+    "cpin": {"3"},
+    "authority": {"5"},
+    "locking": {"3", "4", "5", "6", "7", "8"},
+    "mbrcontrol": {"1", "2"},
+}
+# Changed: encode known boolean table fields.
+# Why: invalid boolean encodings should map to INVALID_PARAMETER deterministically.
+BOOLEAN_OBJECT_COLUMNS: dict[str, set[str]] = {
+    "authority": {"5"},
+    "locking": {"5", "6", "7", "8"},
+    "mbrcontrol": {"1", "2"},
 }
 
 
@@ -278,6 +304,28 @@ def _object_key(command: Json) -> str:
     return f"{name}:{uid}" if uid else name
 
 
+def _object_kind(command: Json) -> str:
+    # Changed: reduce concrete Opal object names to table kinds.
+    # Why: field semantics are table-level, while UIDs identify individual rows.
+    invoking = _compact(_invoking_name(command))
+    for kind in ("mbrcontrol", "locking", "authority", "cpin"):
+        if kind in invoking:
+            return kind
+    # Changed: fall back to stable Opal UID prefixes for traces that omit object names.
+    # Why: hidden cases can provide only UIDs, but table-level field semantics still apply.
+    invoking_uid = _compact(_invoking_uid(command))
+    uid_kind_prefixes = {
+        "mbrcontrol": ("00000803",),
+        "locking": ("00000802",),
+        "authority": ("00000009",),
+        "cpin": ("0000000b",),
+    }
+    for kind, prefixes in uid_kind_prefixes.items():
+        if any(invoking_uid.startswith(prefix) for prefix in prefixes):
+            return kind
+    return ""
+
+
 def _column_values(value: Any) -> dict[str, Any]:
     # Changed: parse TCG table cell values from nested return_values/Values structures.
     # Why: Set writes and Get reads are producer-consumer dependencies at column granularity.
@@ -356,6 +404,45 @@ def _set_values_invalid(command: Json) -> bool:
                 return True
             seen.add(compact)
     return False
+
+
+def _bool_value_invalid(value: Any) -> bool:
+    # Changed: validate common Opal boolean encodings for object table fields.
+    # Why: Authority.Enabled, MBRControl Enable/Done, and Locking booleans are binary fields.
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value not in {0, 1}
+    text = _compact(value)
+    return text not in {"0", "1", "t", "f", "true", "false"}
+
+
+def _known_field_value_invalid(command: Json) -> bool:
+    # Changed: detect invalid values for known Opal boolean table columns.
+    # Why: invalid known-field values should explain INVALID_PARAMETER instead of generic failure.
+    kind = _object_kind(command)
+    boolean_columns = BOOLEAN_OBJECT_COLUMNS.get(kind, set())
+    if not boolean_columns:
+        return False
+    for column, value in _column_values(command).items():
+        if column in boolean_columns and _bool_value_invalid(value):
+            return True
+    return False
+
+
+def _known_field_access_expected_success(method: str, command: Json) -> str:
+    # Changed: classify known object-table accesses that should resolve successfully.
+    # Why: low-confidence public cases were correct but only explained as unexpected errors.
+    kind = _object_kind(command)
+    if method == "get":
+        requested = _requested_columns(command)
+        if requested and requested.issubset(READABLE_OBJECT_COLUMNS.get(kind, set())):
+            return f"{kind}:{','.join(sorted(requested))}"
+    if method == "set":
+        fields = set(_column_values(command))
+        if fields and fields.issubset(WRITABLE_OBJECT_COLUMNS.get(kind, set())):
+            return f"{kind}:{','.join(sorted(fields))}"
+    return ""
 
 
 def _payloads_equivalent(actual: Any, expected: Any) -> bool:
@@ -639,15 +726,34 @@ class StatefulOpalVerifier:
                 invoking_uid,
             )
             if expected_error:
+                # Changed: split known-field value violations out of generic precondition errors.
+                # Why: trace-mode reports should show the specific guidebook rule being exercised.
+                known_field_invalid = method == "set" and _known_field_value_invalid(command)
+                rule_id = "KNOWN_FIELD_INVALID_VALUE" if known_field_invalid else "PRECONDITION_EXPECTED_ERROR"
+                reads = (
+                    ["active_sessions", "authenticated", "invoking_uid", "Values"]
+                    if known_field_invalid
+                    else ["active_sessions", "authenticated", "invoking_uid"]
+                )
                 self._add_trace(
                     state,
                     step_index,
-                    "PRECONDITION_EXPECTED_ERROR",
-                    reads=["active_sessions", "authenticated", "invoking_uid"],
+                    rule_id,
+                    reads=reads,
                     detail=f"expected={expected_error}, actual={status}",
                 )
                 return status != expected_error
             if status != self.success_status:
+                expected_success = _known_field_access_expected_success(method, command)
+                if expected_success:
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "KNOWN_FIELD_EXPECTED_SUCCESS",
+                        reads=["active_sessions", "authenticated", "invoking_uid", "Cellblock", "Values"],
+                        detail=f"expected_success={expected_success}, actual={status}",
+                    )
+                    return True
                 self._add_trace(
                     state,
                     step_index,
@@ -767,6 +873,8 @@ class StatefulOpalVerifier:
         if method == "get" and _cellblock_invalid(command):
             return "invalidparameter"
         if method == "set" and _set_values_invalid(command):
+            return "invalidparameter"
+        if method == "set" and _known_field_value_invalid(command):
             return "invalidparameter"
         if method == "activate" and self._activate_target_invalid(invoking, invoking_uid):
             return "invalidparameter"

@@ -170,15 +170,25 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
     writes = {write for item in trace for write in item.get("state_writes", [])}
     if any("invoking" in read for read in reads):
         categories.add("object_identity")
-    if "PRECONDITION_EXPECTED_ERROR" in rule_ids or "STARTSESSION_FINAL" in rule_ids:
+    # Changed: count known-field value checks as precondition coverage.
+    # Why: they validate method arguments before considering a success payload.
+    if (
+        "PRECONDITION_EXPECTED_ERROR" in rule_ids
+        or "KNOWN_FIELD_INVALID_VALUE" in rule_ids
+        or "STARTSESSION_FINAL" in rule_ids
+    ):
         categories.add("precondition")
     if writes:
         categories.add("state_effect")
+    # Changed: count known-field status rules as status-invariant coverage.
+    # Why: these rules explain formerly low-confidence non-success finals.
     if any(
         rule in rule_ids
         for rule in {
             "UNEXPECTED_ERROR_STATUS",
             "PRECONDITION_EXPECTED_ERROR",
+            "KNOWN_FIELD_EXPECTED_SUCCESS",
+            "KNOWN_FIELD_INVALID_VALUE",
             "PROPERTIES_PAYLOAD",
             "STARTSESSION_FINAL",
             "ACTIVATE_TARGET",
