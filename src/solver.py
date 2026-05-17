@@ -30,6 +30,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
     "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
     "ACTIVATE_TARGET": ["Activate SP UID"],
+    "SET_PAYLOAD": ["Set method empty result list RowValues duplicate column INVALID_PARAMETER"],
     "READ_PAYLOAD": ["Read LBA result GenKey"],
     "SET_OBJECT_FIELDS": ["Set Values table column object"],
     "GET_PAYLOAD": ["Get Cellblock startColumn endColumn return_values"],
@@ -306,6 +307,26 @@ def _cellblock_invalid(command: Json) -> bool:
                 return int(item["endColumn"]) < int(item["startColumn"])
             except (TypeError, ValueError):
                 return True
+    return False
+
+
+def _set_values_invalid(command: Json) -> bool:
+    # Changed: detect duplicate Set RowValues columns.
+    # Why: Core table modification rules make duplicate columns INVALID_PARAMETER.
+    values = _find_first_key(command, {"values", "rowvalues"})
+    if not isinstance(values, list):
+        return False
+    seen: set[str] = set()
+    for row in values:
+        if not isinstance(row, dict):
+            continue
+        for key in row:
+            compact = _compact(key)
+            if not compact.isdigit():
+                continue
+            if compact in seen:
+                return True
+            seen.add(compact)
     return False
 
 
@@ -597,6 +618,17 @@ class StatefulOpalVerifier:
             )
             return inconsistent
 
+        if method == "set" and status == self.success_status:
+            inconsistent = self._empty_result_inconsistent(output)
+            self._add_trace(
+                state,
+                step_index,
+                "SET_PAYLOAD",
+                reads=["return_values"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
+
         if method == "read" and status == self.success_status:
             inconsistent = self._read_payload_inconsistent(state, command, output)
             self._add_trace(
@@ -652,6 +684,8 @@ class StatefulOpalVerifier:
             return "notauthorized"
         if method == "get" and _cellblock_invalid(command):
             return "invalidparameter"
+        if method == "set" and _set_values_invalid(command):
+            return "invalidparameter"
         if method == "activate" and self._activate_target_invalid(invoking, invoking_uid):
             return "invalidparameter"
         return ""
@@ -665,6 +699,12 @@ class StatefulOpalVerifier:
         if values in ([], {}, ""):
             return False
         return True
+
+    def _empty_result_inconsistent(self, output: Json) -> bool:
+        # Changed: share empty-result validation for methods whose success payload is empty.
+        # Why: Set and GenKey expose success through status, not through returned data.
+        values = _find_first_key(output, {"returnvalues"})
+        return values not in (None, [], {}, "")
 
     def _activate_target_invalid(self, invoking: str, invoking_uid: str) -> bool:
         # Changed: require Activate to target the Locking SP object shape seen in Opal flows.

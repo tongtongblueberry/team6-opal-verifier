@@ -113,7 +113,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
         categories.add("state_effect")
     if any(rule in rule_ids for rule in {"UNEXPECTED_ERROR_STATUS", "PROPERTIES_PAYLOAD"}):
         categories.add("status_invariant")
-    if any(rule in rule_ids for rule in {"READ_PAYLOAD", "GET_PAYLOAD", "PROPERTIES_PAYLOAD"}):
+    if any(rule in rule_ids for rule in {"READ_PAYLOAD", "GET_PAYLOAD", "PROPERTIES_PAYLOAD", "SET_PAYLOAD"}):
         categories.add("payload_invariant")
     if spec_hits:
         categories.add("spec_backed")

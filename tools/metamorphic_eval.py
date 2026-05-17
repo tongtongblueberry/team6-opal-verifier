@@ -245,12 +245,61 @@ def pin_auth_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return cases
 
 
+def set_schema_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add schema/property mutations for Set RowValues.
+    # Why: guidebook says duplicate RowValues columns are INVALID_PARAMETER and success returns an empty list.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, _ in final_step_with_method(steps, "Set"):
+            prefix = copy.deepcopy(steps[: index + 1])
+            optional = prefix[-1]["input"].setdefault("method", {}).setdefault("args", {}).setdefault("optional", {})
+            optional["Values"] = [{"5": 1}, {"5": 0}]
+
+            duplicate_rejected = copy.deepcopy(prefix)
+            duplicate_rejected[-1]["output"] = {"return_values": [], "status_codes": "INVALID_PARAMETER"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:set_duplicate_column_rejected:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="Duplicate Set RowValues columns should be INVALID_PARAMETER.",
+                    steps=duplicate_rejected,
+                )
+            )
+
+            duplicate_success = copy.deepcopy(prefix)
+            duplicate_success[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:set_duplicate_column_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Duplicate Set RowValues columns should not succeed.",
+                    steps=duplicate_success,
+                )
+            )
+
+            nonempty_success = copy.deepcopy(steps[: index + 1])
+            nonempty_success[-1]["output"] = {"return_values": [{"unexpected": 1}], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:set_nonempty_success_payload:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful Set returns an empty list.",
+                    steps=nonempty_success,
+                )
+            )
+    return cases
+
+
 def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return (
         genkey_cases(public)
         + malformed_challenge_cases(public)
         + data_command_cases(public)
         + pin_auth_cases(public)
+        + set_schema_cases(public)
     )
 
 
