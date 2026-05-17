@@ -341,6 +341,18 @@ def _payloads_equivalent(actual: Any, expected: Any) -> bool:
     return actual_text == expected_text or actual_text == f"pattern{expected_text}"
 
 
+def _is_empty_result(value: Any) -> bool:
+    # Changed: treat structured required/optional empty containers as an empty method result.
+    # Why: public TCG responses often encode [] as {"required": {}, "optional": {}}.
+    if value is None or value == "":
+        return True
+    if isinstance(value, list):
+        return all(_is_empty_result(item) for item in value)
+    if isinstance(value, dict):
+        return all(_is_empty_result(item) for item in value.values())
+    return False
+
+
 @dataclass
 class ProtocolState:
     # Changed: track only state needed for command legality and response validation.
@@ -706,17 +718,13 @@ class StatefulOpalVerifier:
         # Changed: enforce the Core GenKey success response shape.
         # Why: guidebook describes GenKey as returning an empty result list on success.
         values = _find_first_key(output, {"returnvalues"})
-        if values is None:
-            return False
-        if values in ([], {}, ""):
-            return False
-        return True
+        return not _is_empty_result(values)
 
     def _empty_result_inconsistent(self, output: Json) -> bool:
         # Changed: share empty-result validation for methods whose success payload is empty.
         # Why: Set and GenKey expose success through status, not through returned data.
         values = _find_first_key(output, {"returnvalues"})
-        return values not in (None, [], {}, "")
+        return not _is_empty_result(values)
 
     def _activate_target_invalid(self, invoking: str, invoking_uid: str) -> bool:
         # Changed: require Activate to target the Locking SP object shape seen in Opal flows.
