@@ -29,6 +29,7 @@ from src.solver import (
     _method_name,
     _object_kind,
     _requested_columns,
+    _status_name,
 )
 
 
@@ -616,12 +617,6 @@ def _set_command_values(step: Json, values: dict[str, Any]) -> None:
     optional["Values"] = [values]
 
 
-def _success_get_output(columns: set[str]) -> Json:
-    # Changed: generate a minimal successful Get response for requested table columns.
-    # Why: known-field access checks need positive controls as well as error mutations.
-    return {"return_values": [{column: 0 for column in sorted(columns)}], "status_codes": "SUCCESS"}
-
-
 def known_field_status_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     # Changed: add table-field status mutations for known Opal object columns.
     # Why: low-confidence public failures were correct but explained only as generic unexpected errors.
@@ -638,17 +633,19 @@ def known_field_status_cases(public: dict[str, list[Json]]) -> list[SyntheticCas
                 requested = _requested_columns(command)
                 if not requested or not requested.issubset(READABLE_OBJECT_COLUMNS.get(kind, set())):
                     continue
-                success = copy.deepcopy(steps[: index + 1])
-                success[-1]["output"] = _success_get_output(requested)
-                cases.append(
-                    SyntheticCase(
-                        name=f"{source}:known_{kind}_get_success:{index}",
-                        expected="pass",
-                        source=source,
-                        reason="Known readable object fields should support a successful Get.",
-                        steps=success,
+                if _status_name(step.get("output", {})) == "success":
+                    # Changed: keep the original successful Get payload instead of inventing field values.
+                    # Why: object-field state consistency depends on values written earlier in the trace.
+                    success = copy.deepcopy(steps[: index + 1])
+                    cases.append(
+                        SyntheticCase(
+                            name=f"{source}:known_{kind}_get_success:{index}",
+                            expected="pass",
+                            source=source,
+                            reason="Known readable object fields should support a successful Get.",
+                            steps=success,
+                        )
                     )
-                )
                 for status in ("NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL"):
                     error = copy.deepcopy(steps[: index + 1])
                     error[-1]["output"] = {"return_values": {}, "status_codes": status}
@@ -666,17 +663,19 @@ def known_field_status_cases(public: dict[str, list[Json]]) -> list[SyntheticCas
                 fields = set(_column_values(command))
                 if not fields or not fields.issubset(WRITABLE_OBJECT_COLUMNS.get(kind, set())):
                     continue
-                success = copy.deepcopy(steps[: index + 1])
-                success[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
-                cases.append(
-                    SyntheticCase(
-                        name=f"{source}:known_{kind}_set_success:{index}",
-                        expected="pass",
-                        source=source,
-                        reason="Known writable object fields should support a successful Set.",
-                        steps=success,
+                if _status_name(step.get("output", {})) == "success":
+                    # Changed: keep positive Set controls anchored to observed successful traces.
+                    # Why: some writable fields can still fail for independent preconditions in other contexts.
+                    success = copy.deepcopy(steps[: index + 1])
+                    cases.append(
+                        SyntheticCase(
+                            name=f"{source}:known_{kind}_set_success:{index}",
+                            expected="pass",
+                            source=source,
+                            reason="Known writable object fields should support a successful Set.",
+                            steps=success,
+                        )
                     )
-                )
                 for status in ("NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL"):
                     error = copy.deepcopy(steps[: index + 1])
                     error[-1]["output"] = {"return_values": {}, "status_codes": status}
