@@ -86,6 +86,8 @@ def _status_name(output: Json) -> str:
         compact = _compact(text)
         if compact in {"success", "fail", "notauthorized", "invalidparameter"}:
             return compact
+    if _find_first_key(output, {"command"}) is not None or _find_first_key(output, {"result"}) is not None:
+        return "success"
     return ""
 
 
@@ -97,6 +99,9 @@ def _method_name(command: Json) -> str:
             return _norm(name)
     if isinstance(method, str):
         return _norm(method)
+    command_name = _find_first_key(command, {"command"})
+    if isinstance(command_name, str):
+        return _norm(command_name)
     for text in _collect_strings(command):
         compact = _compact(text)
         if compact in {
@@ -141,6 +146,16 @@ def _host_challenge(command: Json) -> str:
     if challenge is None:
         return ""
     return _norm(challenge)
+
+
+def _challenge_malformed(command: Json) -> bool:
+    # Changed: validate HostChallenge as a challenge token, not as the stored PIN itself.
+    # Why: StartSession authentication compares cryptographic proof material, not plaintext equality.
+    challenge = _host_challenge(command)
+    if not challenge:
+        return False
+    compact = re.sub(r"\s+", "", challenge)
+    return re.fullmatch(r"[0-9a-fA-F]{64}", compact) is None
 
 
 def _candidate_secret(command: Json) -> str:
@@ -218,9 +233,7 @@ class StatefulOpalVerifier:
         if method == "startsession":
             sid = _session_id(output) or _session_id(command) or str(len(state.active_sessions) + 1)
             state.active_sessions.add(sid)
-            challenge = _host_challenge(command)
-            if not state.known_secrets or challenge in state.known_secrets:
-                state.authenticated = True
+            state.authenticated = not _challenge_malformed(command)
             return
 
         if method == "endsession":
@@ -298,10 +311,6 @@ class StatefulOpalVerifier:
             return "notauthorized"
         if method == "activate" and "sp" not in invoking:
             return "invalidparameter"
-        if method == "startsession":
-            challenge = _host_challenge(command)
-            if state.known_secrets and challenge and challenge not in state.known_secrets:
-                return "notauthorized"
         return ""
 
     def _start_session_inconsistent(
@@ -311,8 +320,7 @@ class StatefulOpalVerifier:
         output: Json,
         status: str,
     ) -> bool:
-        challenge = _host_challenge(command)
-        if state.known_secrets and challenge and challenge not in state.known_secrets:
+        if _challenge_malformed(command):
             return status == self.success_status
         if status != self.success_status:
             return True
@@ -330,7 +338,7 @@ class StatefulOpalVerifier:
         return any(any(marker in item for marker in property_markers) for item in strings)
 
     def _payload(self, value: Any) -> str:
-        for key in ("data", "payload", "bytes", "value"):
+        for key in ("data", "payload", "bytes", "value", "result"):
             found = _find_first_key(value, {_compact(key)})
             if isinstance(found, str) and found.strip():
                 return _norm(found)
