@@ -1,5 +1,5 @@
-<!-- Changed: update project analysis after c613397 field-semantics submission and metric interpretation. -->
-<!-- Why: previous analysis still treated low-confidence traces as the next gap; that is now resolved but leaderboard remains flat. -->
+<!-- Changed: update project analysis after Metamorphic Coverage diagnostics and submission. -->
+<!-- Why: the current bottleneck is diagnostic saturation, not public/metamorphic pass rate. -->
 
 # Team 6 SSD TCG/Opal Verifier 현재 분석
 
@@ -15,11 +15,11 @@
 
 - GitHub repo: `https://github.com/tongtongblueberry/team6-opal-verifier`
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
-- Latest submitted commit: `c613397`
+- Latest submitted commit: `41b4df6`
 - Latest submitted job:
-  - Job ID: `102`
-  - Submission ID: `3440cbdce03e48529eacb057a3c84b77`
-  - Job Name: `team6-field-semantics-c613397`
+  - Job ID: `106`
+  - Submission ID: `fcc52d52b98a437ca1afd7f3a9171f25`
+  - Job Name: `team6-mc-41b4df6`
   - Score: `69.50`
 - Current best leaderboard score: `69.50`
 - Server diagnostics:
@@ -27,6 +27,7 @@
   - Metamorphic/property diagnostics: `1821/1821`
   - Rule coverage with synthetic cases: `low_confidence=0`
   - Method-specific missing gaps: all `none`
+  - Metamorphic Coverage diagnostics: `guidance_pairs=1626`, `mean_pair_mc_size=5.67`, `zero_mc_pairs=245`, `mc_cv_by_relation=0.77`, `coverage_cv_by_relation=0.32`
 
 ## 55점이 낮게 나온 이유
 
