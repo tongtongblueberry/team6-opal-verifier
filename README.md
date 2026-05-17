@@ -21,6 +21,11 @@ No dataset files are committed here.
 - Leaderboard feedback must be treated as a separate validation signal, not training labels.
 - Private test data is never inspected and must only be used by the official evaluator.
 
+## Project State
+
+See `TODO.md` for the current handoff state, recent leaderboard result, and next actions. See
+`docs/rule_coverage_research_ko.md` for the rule-coverage expansion plan.
+
 ## Commands
 
 ```bash
