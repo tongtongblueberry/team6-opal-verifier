@@ -18,11 +18,11 @@
 - GitHub repo: `https://github.com/tongtongblueberry/team6-opal-verifier`
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
 - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
-- Leaderboard submission:
-  - Job ID: `93`
-  - Submission ID: `6629d72c38474f839b3723e553b557f6`
-  - Job Name: `team6-state-verifier-872f31d`
-  - Score: `60.50`
+- Leaderboard best submission:
+  - Job ID: `94`
+  - Submission ID: `d59207632cad4289b347a2bb84fd71f8`
+  - Job Name: `team6-rule-coverage-fd43bd5`
+  - Score: `68.00`
 
 ## 55점이 낮게 나온 이유
 
@@ -34,7 +34,8 @@
 - `Write` 입력의 `pattern` payload를 읽지 못했다.
 - `Activate`에서 SP UID identity 검증이 부족했다.
 
-이 문제들을 수정한 뒤 public train/dev는 100점이 됐다. 하지만 leaderboard는 60.50이므로 hidden scenario에
+이 문제들을 수정한 뒤 public train/dev는 100점이 됐다. guidebook 기반 `Get` field consistency,
+DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 하지만 hidden scenario에
 대한 rule coverage가 여전히 부족하다.
 
 ## 현재 방향

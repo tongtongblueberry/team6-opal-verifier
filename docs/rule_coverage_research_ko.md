@@ -1,5 +1,5 @@
 <!-- Added: research-backed plan for expanding guidebook-grounded rule coverage. -->
-<!-- Why: leaderboard 60.50 after public 100 means hidden coverage gaps must be handled systematically, not by guessing labels. -->
+<!-- Why: leaderboard 68.00 after public 100 means hidden coverage gaps must be handled systematically, not by guessing labels. -->
 
 # Rule Coverage 확장 조사와 실행 계획
 
@@ -7,11 +7,11 @@
 
 ## 현재 문제 정의
 
-[Original Text/Data] → 현재 서버 public train/dev는 `100.00`이고 leaderboard 제출 `team6-state-verifier-872f31d`는 `60.50`이다.
+[Original Text/Data] → 현재 서버 public train/dev는 `100.00`이고 leaderboard best 제출 `team6-rule-coverage-fd43bd5`는 `68.00`이다. 이전 제출 `team6-state-verifier-872f31d`는 `60.50`이었다.
 
 [Exact Interpretation] → public 20개에 대한 parser/rule은 맞췄지만 hidden leaderboard scenario의 method/object/state/payload 조합을 충분히 덮지 못했다.
 
-[Detailed Explanation/Example] → 이것은 “Qwen을 fine-tuning하면 해결”할 문제가 아니다. hidden label을 모르기 때문에 supervised fine-tuning 대상이 없다. 현재 필요한 것은 guidebook과 trace를 사용해 **rule coverage를 확장하는 것**이다.
+[Detailed Explanation/Example] → 이것은 “Qwen을 fine-tuning하면 해결”할 문제가 아니다. hidden label을 모르기 때문에 supervised fine-tuning 대상이 없다. 실제로 guidebook 기반 `Get` field consistency와 invalid Cellblock rule을 추가하자 leaderboard가 60.50에서 68.00으로 올랐다. 현재 필요한 것은 guidebook과 trace를 사용해 **rule coverage를 계속 확장하는 것**이다.
 
 ## 관련 연구에서 배운 원칙
 
