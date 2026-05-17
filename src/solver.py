@@ -210,7 +210,9 @@ def _challenge_malformed(command: Json) -> bool:
     if not challenge:
         return False
     compact = re.sub(r"\s+", "", challenge)
-    return re.fullmatch(r"[0-9a-fA-F]{64}", compact) is None
+    if re.fullmatch(r"[0-9a-fA-F]+", compact):
+        return len(compact) != 64
+    return len(compact) < 4
 
 
 def _candidate_secret(command: Json) -> str:
@@ -224,6 +226,19 @@ def _candidate_secret(command: Json) -> str:
         if compact not in {"cpin", "authority", "locking", "admin1", "sid", "anybody"}:
             return item
     return ""
+
+
+def _secret_values(command: Json) -> set[str]:
+    # Changed: recover C_PIN secret updates from table column 3.
+    # Why: Core C_PIN objects store the PIN in column 3, and StartSession later consumes that value.
+    secrets: set[str] = set()
+    for value in _column_values(command).values():
+        if isinstance(value, str) and value.strip():
+            secrets.add(_norm(value))
+    candidate = _candidate_secret(command)
+    if candidate and _compact(candidate) != "method":
+        secrets.add(candidate)
+    return secrets
 
 
 def _object_key(command: Json) -> str:
@@ -446,16 +461,16 @@ class StatefulOpalVerifier:
             return
 
         if method == "set":
-            secret = _candidate_secret(command)
-            if _contains_text(command, "C_PIN") and secret:
-                state.known_secrets.add(secret)
+            secrets = _secret_values(command) if _contains_text(command, "C_PIN") else set()
+            if secrets:
+                state.known_secrets.update(secrets)
                 self._add_trace(
                     state,
                     step_index,
                     "SET_CPIN_SECRET",
                     reads=["C_PIN"],
                     writes=["known_secrets"],
-                    detail="C_PIN updated",
+                    detail=f"C_PIN updated count={len(secrets)}",
                 )
             fields = _column_values(command)
             if fields:
@@ -539,7 +554,7 @@ class StatefulOpalVerifier:
                 state,
                 step_index,
                 "STARTSESSION_FINAL",
-                reads=["HostChallenge", "HostSessionID", "SPSessionID", "status"],
+                reads=["HostChallenge", "known_secrets", "HostSessionID", "SPSessionID", "status"],
                 detail=f"inconsistent={inconsistent}",
             )
             return inconsistent
@@ -665,8 +680,16 @@ class StatefulOpalVerifier:
         output: Json,
         status: str,
     ) -> bool:
+        # Changed: validate password-style HostChallenge against known C_PIN values when available.
+        # Why: NOT_AUTHORIZED is the correct response when StartSession supplies the wrong PIN.
+        challenge = _host_challenge(command)
         if _challenge_malformed(command):
             return status == self.success_status
+        if challenge and state.known_secrets:
+            if challenge in state.known_secrets and status != self.success_status:
+                return True
+            if challenge not in state.known_secrets:
+                return status != "notauthorized"
         if status != self.success_status:
             return True
         return not (_session_id(output) or _session_id(command))

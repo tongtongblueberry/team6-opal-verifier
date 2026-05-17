@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
     # Why: diagnostics run from the repository checkout on the course server.
     sys.path.insert(0, str(ROOT))
 
-from src.solver import StatefulOpalVerifier, _method_name
+from src.solver import StatefulOpalVerifier, _column_values, _contains_text, _method_name
 
 
 Json = dict[str, Any]
@@ -98,7 +98,7 @@ def malformed_challenge_cases(public: dict[str, list[Json]]) -> list[SyntheticCa
                 continue
             prefix = copy.deepcopy(steps[: index + 1])
             optional = prefix[-1]["input"].setdefault("method", {}).setdefault("args", {}).setdefault("optional", {})
-            optional["HostChallenge"] = "bad"
+            optional["HostChallenge"] = "a" * 33
             bad_success = copy.deepcopy(prefix)
             bad_success[-1]["output"] = {
                 "return_values": {"HostSessionID": "00000001", "SPSessionID": "00000002"},
@@ -162,8 +162,96 @@ def data_command_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return cases
 
 
+def latest_cpin_secret(steps: list[Json]) -> str:
+    secret = ""
+    for step in steps:
+        command = step.get("input", {}) if isinstance(step, dict) else {}
+        if _method_name(command) != "Set" or not _contains_text(command, "C_PIN"):
+            continue
+        for column, value in _column_values(command).items():
+            if column == "3" and isinstance(value, str) and value.strip():
+                secret = value.strip()
+    return secret
+
+
+def pin_auth_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add model-based StartSession authentication mutations.
+    # Why: rule coverage alone missed whether Set(C_PIN) state is consumed by later StartSession.
+    cases: list[SyntheticCase] = []
+    wrong_secret = "f" * 64
+    for source, steps in public.items():
+        for index, _ in final_step_with_method(steps, "StartSession"):
+            secret = latest_cpin_secret(steps[:index])
+            if not secret or secret == wrong_secret:
+                continue
+            prefix = copy.deepcopy(steps[: index + 1])
+            optional = prefix[-1]["input"].setdefault("method", {}).setdefault("args", {}).setdefault("optional", {})
+
+            known_success = copy.deepcopy(prefix)
+            known_success[-1]["input"]["method"]["args"]["optional"]["HostChallenge"] = secret
+            known_success[-1]["output"] = {
+                "return_values": {
+                    "required": {"HostSessionID": "00000001", "SPSessionID": "00000002"},
+                    "optional": {},
+                },
+                "status_codes": "SUCCESS",
+            }
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:known_pin_success:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="A StartSession using the current C_PIN should be allowed.",
+                    steps=known_success,
+                )
+            )
+
+            known_rejected = copy.deepcopy(known_success)
+            known_rejected[-1]["output"] = {"return_values": {}, "status_codes": "NOT_AUTHORIZED"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:known_pin_rejected:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Rejecting the current C_PIN is inconsistent.",
+                    steps=known_rejected,
+                )
+            )
+
+            wrong_success = copy.deepcopy(prefix)
+            wrong_success[-1]["input"]["method"]["args"]["optional"]["HostChallenge"] = wrong_secret
+            wrong_success[-1]["output"] = known_success[-1]["output"]
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:wrong_pin_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="A StartSession using a non-current C_PIN should not succeed.",
+                    steps=wrong_success,
+                )
+            )
+
+            wrong_rejected = copy.deepcopy(wrong_success)
+            wrong_rejected[-1]["output"] = {"return_values": {}, "status_codes": "NOT_AUTHORIZED"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:wrong_pin_rejected:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="A StartSession using a non-current C_PIN can be correctly rejected.",
+                    steps=wrong_rejected,
+                )
+            )
+    return cases
+
+
 def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
-    return genkey_cases(public) + malformed_challenge_cases(public) + data_command_cases(public)
+    return (
+        genkey_cases(public)
+        + malformed_challenge_cases(public)
+        + data_command_cases(public)
+        + pin_auth_cases(public)
+    )
 
 
 def main() -> None:
