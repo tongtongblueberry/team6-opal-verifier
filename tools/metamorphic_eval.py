@@ -289,6 +289,82 @@ def data_command_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return cases
 
 
+def _latest_locking_set_index(steps: list[Json], before_index: int) -> int | None:
+    # Changed: find the Locking table writer that governs a later DATA_COMMAND.
+    # Why: lock-enabled/locked columns are producer state for Read/Write access.
+    for index in range(before_index - 1, -1, -1):
+        command = steps[index].get("input", {}) if isinstance(steps[index], dict) else {}
+        if _method_name(command) == "Set" and _object_kind(command) == "locking":
+            return index
+    return None
+
+
+def _set_locking_columns(step: Json, values: dict[str, Any]) -> None:
+    # Changed: mutate Locking RowValues in one place for access-control synthetic cases.
+    # Why: DATA_COMMAND lock tests need to preserve the original trajectory shape.
+    command = step.setdefault("input", {})
+    optional = command.setdefault("method", {}).setdefault("args", {}).setdefault("optional", {})
+    current = _column_values(command)
+    current.update(values)
+    optional["Values"] = [current]
+
+
+def locking_data_access_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add Locking table producer-consumer mutations for DATA_COMMAND access.
+    # Why: ReadLocked/WriteLocked should block user-data Read/Write when enabled.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for data_index, step in enumerate(steps):
+            command = step.get("input", {}) if isinstance(step, dict) else {}
+            command_name = _compact(command.get("command", ""))
+            if command_name not in {"read", "write"}:
+                continue
+            locking_index = _latest_locking_set_index(steps, data_index)
+            if locking_index is None:
+                continue
+
+            locked_columns = {"5": 1, "7": 1} if command_name == "read" else {"6": 1, "8": 1}
+            locked_success = copy.deepcopy(steps[: data_index + 1])
+            _set_locking_columns(locked_success[locking_index], locked_columns)
+            locked_success[-1]["output"] = copy.deepcopy(step.get("output", {}))
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:locking_{command_name}_locked_success:{data_index}",
+                    expected="fail",
+                    source=source,
+                    reason="Enabled ReadLocked/WriteLocked ranges should not allow successful user-data access.",
+                    steps=locked_success,
+                )
+            )
+
+            locked_failed = copy.deepcopy(steps[: data_index + 1])
+            _set_locking_columns(locked_failed[locking_index], locked_columns)
+            locked_failed[-1]["output"] = {"command": command.get("command"), "result": "fail"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:locking_{command_name}_locked_fail:{data_index}",
+                    expected="pass",
+                    source=source,
+                    reason="A locked user-data command can be correctly rejected.",
+                    steps=locked_failed,
+                )
+            )
+
+            locked_not_authorized = copy.deepcopy(steps[: data_index + 1])
+            _set_locking_columns(locked_not_authorized[locking_index], locked_columns)
+            locked_not_authorized[-1]["output"] = {"status_codes": "NOT_AUTHORIZED"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:locking_{command_name}_locked_not_authorized:{data_index}",
+                    expected="pass",
+                    source=source,
+                    reason="A locked user-data command can be rejected with NOT_AUTHORIZED.",
+                    steps=locked_not_authorized,
+                )
+            )
+    return cases
+
+
 def get_precondition_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     # Changed: add no-session Get precondition tests.
     # Why: Get requires an active session, but public finals only exercised a narrow subset.
@@ -741,6 +817,7 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
         + malformed_challenge_cases(public)
         + properties_cases(public)
         + data_command_cases(public)
+        + locking_data_access_cases(public)
         + get_precondition_cases(public)
         + pin_auth_cases(public)
         + start_session_response_cases(public)

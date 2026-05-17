@@ -38,6 +38,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "SET_PAYLOAD": ["Set method empty result list RowValues duplicate column INVALID_PARAMETER"],
     "READ_PAYLOAD": ["Read LBA result GenKey"],
     "WRITE_RESPONSE": ["Write DATA_COMMAND response command payload"],
+    "LOCKING_DATA_ACCESS": ["ReadLocked WriteLocked ReadLockEnabled WriteLockEnabled user data"],
     "SET_OBJECT_FIELDS": ["Set Values table column object"],
     "GET_PAYLOAD": ["Get Cellblock startColumn endColumn return_values"],
     "GENKEY_PAYLOAD": ["GenKey empty return_values response"],
@@ -417,6 +418,16 @@ def _bool_value_invalid(value: Any) -> bool:
     return text not in {"0", "1", "t", "f", "true", "false"}
 
 
+def _bool_truthy(value: Any) -> bool:
+    # Changed: normalize Opal boolean encodings for stateful field semantics.
+    # Why: Locking and Authority tables use T/F, True/False, and 1/0 forms across traces.
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value == 1
+    return _compact(value) in {"1", "t", "true"}
+
+
 def _known_field_value_invalid(command: Json) -> bool:
     # Changed: detect invalid values for known Opal boolean table columns.
     # Why: invalid known-field values should explain INVALID_PARAMETER instead of generic failure.
@@ -717,6 +728,20 @@ class StatefulOpalVerifier:
             )
             return inconsistent
 
+        if method in {"read", "write"} and self._locking_data_access_blocked(state, method):
+            # Changed: enforce Locking table data-command effects before generic payload checks.
+            # Why: Core Locking semantics say enabled locked ranges SHALL NOT allow user-data access.
+            allowed_errors = {"fail", "notauthorized"}
+            inconsistent = status not in allowed_errors
+            self._add_trace(
+                state,
+                step_index,
+                "LOCKING_DATA_ACCESS",
+                reads=["object_fields", "LBA", "status"],
+                detail=f"method={method}, status={status}, inconsistent={inconsistent}",
+            )
+            return inconsistent
+
         if method in {"get", "set", "activate", "genkey", "read", "write", "endsession"}:
             expected_error = self._expected_error_for_state(
                 state,
@@ -997,6 +1022,18 @@ class StatefulOpalVerifier:
         if response_command is None:
             return True
         return _compact(response_command) == command_name
+
+    def _locking_data_access_blocked(self, state: ProtocolState, method: str) -> bool:
+        # Changed: consume Locking table read/write lock state for DATA_COMMAND decisions.
+        # Why: ReadLocked/WriteLocked are meaningful only when their enabled columns are True.
+        for key, fields in state.object_fields.items():
+            if "locking" not in key:
+                continue
+            if method == "read" and _bool_truthy(fields.get("5")) and _bool_truthy(fields.get("7")):
+                return True
+            if method == "write" and _bool_truthy(fields.get("6")) and _bool_truthy(fields.get("8")):
+                return True
+        return False
 
     def _get_payload_inconsistent(self, state: ProtocolState, command: Json, output: Json) -> bool:
         requested = _requested_columns(command)

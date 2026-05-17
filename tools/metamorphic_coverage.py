@@ -68,8 +68,8 @@ def source_steps_for_case(case: SyntheticCase, public: dict[str, list[Json]]) ->
     index = trailing_index(case.name)
     if index is None or index >= len(steps):
         return steps
-    if len(case.steps) == 1:
-        return [steps[index]]
+    # Changed: compare singleton no-session follow-ups against the original valid prefix.
+    # Why: pairing them with the same singleton step created zero-MC artifacts.
     return steps[: index + 1]
 
 

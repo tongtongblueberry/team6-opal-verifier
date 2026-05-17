@@ -194,6 +194,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
             "ACTIVATE_TARGET",
             "READ_PAYLOAD",
             "WRITE_RESPONSE",
+            "LOCKING_DATA_ACCESS",
             "SET_PAYLOAD",
             "GET_PAYLOAD",
             "GENKEY_PAYLOAD",
@@ -212,6 +213,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
             "ENDSESSION_PAYLOAD",
             "ACTIVATE_PAYLOAD",
             "WRITE_RESPONSE",
+            "LOCKING_DATA_ACCESS",
             "GENKEY_PAYLOAD",
         }
     ):
