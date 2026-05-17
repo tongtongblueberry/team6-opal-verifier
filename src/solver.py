@@ -14,6 +14,27 @@ from typing import Any, Iterable
 Json = dict[str, Any]
 
 
+# Changed: keep rule-to-spec search keys explicit for trace-mode evaluation.
+# Why: intermediate checks need evidence candidates without putting an LLM in the submission path.
+RULE_SPEC_QUERIES: dict[str, list[str]] = {
+    "OBSERVE_ERROR": ["status code error response"],
+    "STARTSESSION_EFFECT": ["StartSession HostSessionID SPSessionID HostChallenge"],
+    "ENDSESSION_EFFECT": ["EndSession session close"],
+    "SET_CPIN_SECRET": ["C_PIN Set PIN credential"],
+    "ACTIVATE_SP_EFFECT": ["Activate SP"],
+    "WRITE_PAYLOAD_EFFECT": ["Data Write LBA payload"],
+    "GENKEY_EFFECT": ["GenKey media encryption key"],
+    "PARSE_FINAL_COMMAND": ["method command status parsing"],
+    "PROPERTIES_PAYLOAD": ["Properties MaxMethods MaxSessions MaxPacketSize"],
+    "STARTSESSION_FINAL": ["StartSession HostChallenge HostSigningAuthority"],
+    "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
+    "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
+    "ACTIVATE_TARGET": ["Activate SP UID"],
+    "READ_PAYLOAD": ["Read LBA result GenKey"],
+    "DEFAULT_PASS": ["method response status compliance"],
+}
+
+
 # Changed: centralize string normalization for noisy JSON fields.
 # Why: public and hidden cases can vary in capitalization, spacing, and nesting.
 def _norm(value: Any) -> str:
@@ -206,6 +227,7 @@ class ProtocolState:
     written_payloads: dict[str, str] = field(default_factory=dict)
     generated_key_after_write: bool = False
     last_error: str = ""
+    trace: list[Json] = field(default_factory=list)
 
 
 class StatefulOpalVerifier:
@@ -213,17 +235,58 @@ class StatefulOpalVerifier:
     # Why: PASS means final response is protocol-compliant, including compliant errors.
     success_status = "success"
 
+    def __init__(self, trace: bool = False) -> None:
+        # Changed: make tracing opt-in so official prediction stays lightweight.
+        # Why: intermediate evaluation needs evidence, but leaderboard runtime should stay fast.
+        self.trace = trace
+
     def verify(self, trajectory: Any) -> str:
+        return self._run(trajectory)["prediction"]
+
+    def verify_with_trace(self, trajectory: Any) -> Json:
+        # Changed: expose compact rule/state evidence for intermediate evaluation only.
+        # Why: this acts as a deterministic "receptive field" for rule debugging.
+        original_trace = self.trace
+        self.trace = True
+        try:
+            return self._run(trajectory)
+        finally:
+            self.trace = original_trace
+
+    def _run(self, trajectory: Any) -> Json:
         records = self._records(trajectory)
         if not records:
-            return "fail"
+            return {"prediction": "fail", "trace": [{"rule_id": "PARSE_FINAL_COMMAND"}]}
 
         state = ProtocolState()
-        for record in records[:-1]:
-            self._advance_state(state, record)
+        for step_index, record in enumerate(records[:-1]):
+            self._advance_state(state, record, step_index)
 
         final_record = records[-1]
-        return "fail" if self._final_is_inconsistent(state, final_record) else "pass"
+        inconsistent = self._final_is_inconsistent(state, final_record, len(records) - 1)
+        return {"prediction": "fail" if inconsistent else "pass", "trace": state.trace}
+
+    def _add_trace(
+        self,
+        state: ProtocolState,
+        step: int,
+        rule_id: str,
+        reads: list[str] | None = None,
+        writes: list[str] | None = None,
+        detail: str = "",
+    ) -> None:
+        if not self.trace:
+            return
+        state.trace.append(
+            {
+                "step": step,
+                "rule_id": rule_id,
+                "state_reads": reads or [],
+                "state_writes": writes or [],
+                "spec_ref_candidates": RULE_SPEC_QUERIES.get(rule_id, []),
+                "detail": detail,
+            }
+        )
 
     def _records(self, trajectory: Any) -> list[Json]:
         if isinstance(trajectory, (str, Path)):
@@ -243,7 +306,7 @@ class StatefulOpalVerifier:
         item = record.get("output", {})
         return item if isinstance(item, dict) else {}
 
-    def _advance_state(self, state: ProtocolState, record: Json) -> None:
+    def _advance_state(self, state: ProtocolState, record: Json, step_index: int = -1) -> None:
         command = self._input(record)
         output = self._output(record)
         method = _compact(_method_name(command))
@@ -253,12 +316,27 @@ class StatefulOpalVerifier:
 
         if status != self.success_status:
             state.last_error = status
+            self._add_trace(
+                state,
+                step_index,
+                "OBSERVE_ERROR",
+                writes=["last_error"],
+                detail=f"{method}->{status}",
+            )
             return
 
         if method == "startsession":
             sid = _session_id(output) or _session_id(command) or str(len(state.active_sessions) + 1)
             state.active_sessions.add(sid)
             state.authenticated = not _challenge_malformed(command)
+            self._add_trace(
+                state,
+                step_index,
+                "STARTSESSION_EFFECT",
+                reads=["HostChallenge"],
+                writes=["active_sessions", "authenticated"],
+                detail=f"sid={sid}",
+            )
             return
 
         if method == "endsession":
@@ -268,17 +346,41 @@ class StatefulOpalVerifier:
             else:
                 state.active_sessions.clear()
             state.authenticated = bool(state.active_sessions) and state.authenticated
+            self._add_trace(
+                state,
+                step_index,
+                "ENDSESSION_EFFECT",
+                reads=["active_sessions"],
+                writes=["active_sessions", "authenticated"],
+                detail=f"sid={sid or 'all'}",
+            )
             return
 
         if method == "set":
             secret = _candidate_secret(command)
             if _contains_text(command, "C_PIN") and secret:
                 state.known_secrets.add(secret)
+                self._add_trace(
+                    state,
+                    step_index,
+                    "SET_CPIN_SECRET",
+                    reads=["C_PIN"],
+                    writes=["known_secrets"],
+                    detail="C_PIN updated",
+                )
             return
 
         if method == "activate":
             if "sp" in invoking:
                 state.activated_sps.add(invoking)
+                self._add_trace(
+                    state,
+                    step_index,
+                    "ACTIVATE_SP_EFFECT",
+                    reads=["invoking_uid"],
+                    writes=["activated_sps"],
+                    detail=invoking_uid,
+                )
             return
 
         if method == "write":
@@ -287,26 +389,60 @@ class StatefulOpalVerifier:
             if payload:
                 state.written_payloads[address] = payload
             state.generated_key_after_write = False
+            self._add_trace(
+                state,
+                step_index,
+                "WRITE_PAYLOAD_EFFECT",
+                reads=["LBA", "payload"],
+                writes=["written_payloads", "generated_key_after_write"],
+                detail=f"address={address}",
+            )
             return
 
         if method == "genkey":
             state.generated_key_after_write = bool(state.written_payloads)
+            self._add_trace(
+                state,
+                step_index,
+                "GENKEY_EFFECT",
+                reads=["written_payloads"],
+                writes=["generated_key_after_write"],
+                detail=f"after_write={state.generated_key_after_write}",
+            )
 
-    def _final_is_inconsistent(self, state: ProtocolState, record: Json) -> bool:
+    def _final_is_inconsistent(self, state: ProtocolState, record: Json, step_index: int = -1) -> bool:
         command = self._input(record)
         output = self._output(record)
         method = _compact(_method_name(command))
         status = _status_name(output)
         invoking = _compact(_invoking_name(command))
+        invoking_uid = _compact(_invoking_uid(command))
 
         if not method or not status:
+            self._add_trace(state, step_index, "PARSE_FINAL_COMMAND", detail="missing method/status")
             return True
 
         if method == "properties":
-            return status != self.success_status or not self._has_properties_payload(output)
+            inconsistent = status != self.success_status or not self._has_properties_payload(output)
+            self._add_trace(
+                state,
+                step_index,
+                "PROPERTIES_PAYLOAD",
+                reads=["status", "return_values"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
 
         if method == "startsession":
-            return self._start_session_inconsistent(state, command, output, status)
+            inconsistent = self._start_session_inconsistent(state, command, output, status)
+            self._add_trace(
+                state,
+                step_index,
+                "STARTSESSION_FINAL",
+                reads=["HostChallenge", "HostSessionID", "SPSessionID", "status"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
 
         if method in {"get", "set", "activate", "genkey", "read", "write"}:
             expected_error = self._expected_error_for_state(
@@ -317,16 +453,47 @@ class StatefulOpalVerifier:
                 invoking_uid,
             )
             if expected_error:
+                self._add_trace(
+                    state,
+                    step_index,
+                    "PRECONDITION_EXPECTED_ERROR",
+                    reads=["active_sessions", "authenticated", "invoking_uid"],
+                    detail=f"expected={expected_error}, actual={status}",
+                )
                 return status == self.success_status
             if status != self.success_status:
+                self._add_trace(
+                    state,
+                    step_index,
+                    "UNEXPECTED_ERROR_STATUS",
+                    reads=["status"],
+                    detail=status,
+                )
                 return True
 
         if method == "activate":
-            return self._activate_target_invalid(invoking, invoking_uid)
+            inconsistent = self._activate_target_invalid(invoking, invoking_uid)
+            self._add_trace(
+                state,
+                step_index,
+                "ACTIVATE_TARGET",
+                reads=["invoking_name", "invoking_uid"],
+                detail=f"uid={invoking_uid}, inconsistent={inconsistent}",
+            )
+            return inconsistent
 
         if method == "read" and status == self.success_status:
-            return self._read_payload_inconsistent(state, command, output)
+            inconsistent = self._read_payload_inconsistent(state, command, output)
+            self._add_trace(
+                state,
+                step_index,
+                "READ_PAYLOAD",
+                reads=["written_payloads", "generated_key_after_write", "result"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
 
+        self._add_trace(state, step_index, "DEFAULT_PASS", reads=["status"], detail=method)
         return False
 
     def _expected_error_for_state(

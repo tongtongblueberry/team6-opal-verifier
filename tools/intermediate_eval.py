@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
     # Why: Python otherwise searches from tools/ and cannot import the submission `src` package.
     sys.path.insert(0, str(ROOT))
 
-from src.solver import _invoking_name, _method_name, _status_name, Solver
+from src.solver import _invoking_name, _method_name, _status_name, StatefulOpalVerifier
 
 
 Json = dict[str, Any]
@@ -36,6 +36,11 @@ class CaseSummary:
     final_invoking: str
     final_status: str
     receptive_field: list[str]
+    rule_ids: list[str]
+    state_reads: list[str]
+    state_writes: list[str]
+    spec_ref_candidates: list[str]
+    spec_hits: list[str]
 
 
 def case_number(path: Path) -> int:
@@ -78,12 +83,71 @@ def event_signature(step: Json) -> str:
     return f"{method or '?'}({invoking or '?'}) -> {status or '?'}"
 
 
-def summarize_case(item: Json, label: str, prediction: str, window: int) -> CaseSummary:
+def unique(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    values: list[str] = []
+    for item in items:
+        if item and item not in seen:
+            seen.add(item)
+            values.append(item)
+    return values
+
+
+def build_spec_index(spec_root: Path | None) -> list[tuple[str, str]]:
+    # Changed: make guidebook lookup optional and lightweight.
+    # Why: default eval should stay fast, but server runs can attach concrete chunk candidates.
+    if spec_root is None or not spec_root.exists():
+        return []
+    index: list[tuple[str, str]] = []
+    for path in spec_root.rglob("*.txt"):
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except OSError:
+            continue
+        index.append((str(path.relative_to(spec_root)), text))
+    return index
+
+
+def resolve_spec_hits(candidates: list[str], spec_index: list[tuple[str, str]], limit: int) -> list[str]:
+    if not candidates or not spec_index or limit <= 0:
+        return []
+    terms = unique(
+        [
+            token.lower()
+            for candidate in candidates
+            for token in candidate.replace("_", " ").split()
+            if len(token) >= 4
+        ]
+    )
+    scored: list[tuple[int, str]] = []
+    for path, text in spec_index:
+        score = sum(1 for term in terms if term in text)
+        if score:
+            scored.append((score, path))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [path for _, path in scored[:limit]]
+
+
+def summarize_case(
+    item: Json,
+    label: str,
+    prediction: str,
+    trace: list[Json],
+    window: int,
+    spec_index: list[tuple[str, str]],
+    spec_hits: int,
+) -> CaseSummary:
     steps = item["steps"]
     final = steps[-1] if steps else {}
     command = final.get("input", {}) if isinstance(final, dict) else {}
     output = final.get("output", {}) if isinstance(final, dict) else {}
     receptive_steps = steps[max(0, len(steps) - window) :] if isinstance(steps, list) else []
+    rule_ids = unique([str(event.get("rule_id", "")) for event in trace])
+    state_reads = unique([read for event in trace for read in event.get("state_reads", [])])
+    state_writes = unique([write for event in trace for write in event.get("state_writes", [])])
+    spec_ref_candidates = unique(
+        [query for event in trace for query in event.get("spec_ref_candidates", [])]
+    )
     return CaseSummary(
         case_id=item["id"],
         label=label,
@@ -94,6 +158,11 @@ def summarize_case(item: Json, label: str, prediction: str, window: int) -> Case
         final_invoking=_invoking_name(command),
         final_status=_status_name(output),
         receptive_field=[event_signature(step) for step in receptive_steps],
+        rule_ids=rule_ids,
+        state_reads=state_reads,
+        state_writes=state_writes,
+        spec_ref_candidates=spec_ref_candidates,
+        spec_hits=resolve_spec_hits(spec_ref_candidates, spec_index, spec_hits),
     )
 
 
@@ -129,14 +198,20 @@ def write_markdown(path: Path, summaries: list[CaseSummary], score: float, datas
     if not mismatches:
         lines.append("No public mismatches.")
     else:
-        lines.append("| Case | Label | Prediction | Final | Status | Recent receptive field |")
-        lines.append("|---|---|---|---|---|---|")
+        lines.append("| Case | Label | Prediction | Final | Status | Rules | State | Spec hits |")
+        lines.append("|---|---|---|---|---|---|---|---|")
         for item in mismatches:
-            field = "<br>".join(f"`{event}`" for event in item.receptive_field)
             final = f"{item.final_method} / {item.final_invoking}"
+            rules = "<br>".join(f"`{rule}`" for rule in item.rule_ids[-4:])
+            state = "reads: " + ", ".join(item.state_reads[-4:]) + "<br>writes: " + ", ".join(
+                item.state_writes[-4:]
+            )
+            spec = "<br>".join(f"`{hit}`" for hit in item.spec_hits[:3]) or "<br>".join(
+                f"`{query}`" for query in item.spec_ref_candidates[-3:]
+            )
             lines.append(
                 f"| `{item.case_id}` | `{item.label}` | `{item.prediction}` | "
-                f"`{final}` | `{item.final_status}` | {field} |"
+                f"`{final}` | `{item.final_status}` | {rules} | {state} | {spec} |"
             )
     lines.append("")
     lines.append("## All Cases")
@@ -154,52 +229,105 @@ def write_markdown(path: Path, summaries: list[CaseSummary], score: float, datas
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def print_brief(summaries: list[CaseSummary], score: float) -> None:
+    # Changed: make the default output concise enough for fast iteration.
+    # Why: long markdown reports should be opt-in, not part of every tuning loop.
+    mismatches = [item for item in summaries if not item.correct]
+    by_method: dict[str, list[CaseSummary]] = defaultdict(list)
+    for item in summaries:
+        by_method[item.final_method or "?"].append(item)
+
+    print(f"score={score:.2f}")
+    print(f"correct={len(summaries) - len(mismatches)}/{len(summaries)}")
+    print(f"mismatch={len(mismatches)}")
+    print("methods=" + ", ".join(
+        f"{method}:{sum(1 for item in items if item.correct)}/{len(items)}"
+        for method, items in sorted(by_method.items())
+    ))
+    for item in mismatches:
+        final = f"{item.final_method}/{item.final_invoking}".strip("/")
+        rules = ",".join(item.rule_ids[-3:])
+        reads = ",".join(item.state_reads[-4:])
+        writes = ",".join(item.state_writes[-4:])
+        refs = ",".join(item.spec_hits[:2] or item.spec_ref_candidates[-2:])
+        print(
+            f"mismatch {item.case_id}: label={item.label} pred={item.prediction} "
+            f"final={final} status={item.final_status} rules=[{rules}] "
+            f"reads=[{reads}] writes=[{writes}] refs=[{refs}]"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-root", type=Path, default=Path("/dl2026/dataset"))
     parser.add_argument("--label-path", type=Path, default=None)
     parser.add_argument("--window", type=int, default=5)
-    parser.add_argument("--json-out", type=Path, default=Path("reports/intermediate_eval.json"))
-    parser.add_argument("--md-out", type=Path, default=Path("reports/intermediate_eval.md"))
+    parser.add_argument("--json-out", type=Path, default=None)
+    parser.add_argument("--jsonl-out", type=Path, default=None)
+    parser.add_argument("--md-out", type=Path, default=None)
+    parser.add_argument("--spec-root", type=Path, default=None)
+    parser.add_argument("--spec-hits", type=int, default=0)
     args = parser.parse_args()
 
     dataset = load_dataset(args.dataset_root)
     label_path = args.label_path or args.dataset_root / "label.jsonl"
     labels = load_labels(label_path)
-    predictions = Solver().predict(dataset)
+    verifier = StatefulOpalVerifier()
+    spec_index = build_spec_index(args.spec_root)
 
-    summaries = [
-        summarize_case(item, labels[item["id"]], predictions.get(item["id"], "fail"), args.window)
-        for item in dataset
-        if item["id"] in labels
-    ]
+    summaries: list[CaseSummary] = []
+    for item in dataset:
+        if item["id"] not in labels:
+            continue
+        result = verifier.verify_with_trace(item["steps"])
+        summaries.append(
+            summarize_case(
+                item,
+                labels[item["id"]],
+                str(result["prediction"]),
+                list(result.get("trace", [])),
+                args.window,
+                spec_index,
+                args.spec_hits,
+            )
+        )
     correct = sum(1 for item in summaries if item.correct)
     score = 100.0 * correct / len(summaries) if summaries else 0.0
 
-    args.json_out.parent.mkdir(parents=True, exist_ok=True)
-    args.json_out.write_text(
-        json.dumps(
-            {
-                "dataset_root": str(args.dataset_root),
-                "score": score,
-                "total": len(summaries),
-                "correct": correct,
-                "mismatch": len(summaries) - correct,
-                "cases": [asdict(item) for item in summaries],
-            },
-            ensure_ascii=False,
-            indent=2,
+    if args.json_out is not None:
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(
+            json.dumps(
+                {
+                    "dataset_root": str(args.dataset_root),
+                    "score": score,
+                    "total": len(summaries),
+                    "correct": correct,
+                    "mismatch": len(summaries) - correct,
+                    "cases": [asdict(item) for item in summaries],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    write_markdown(args.md_out, summaries, score, args.dataset_root)
+    if args.jsonl_out is not None:
+        args.jsonl_out.parent.mkdir(parents=True, exist_ok=True)
+        args.jsonl_out.write_text(
+            "".join(json.dumps(asdict(item), ensure_ascii=False) + "\n" for item in summaries),
+            encoding="utf-8",
+        )
+    if args.md_out is not None:
+        write_markdown(args.md_out, summaries, score, args.dataset_root)
 
-    print(f"score={score:.2f}")
-    print(f"correct={correct}/{len(summaries)}")
-    print(f"mismatch={len(summaries) - correct}")
-    print(f"json={args.json_out}")
-    print(f"markdown={args.md_out}")
+    print_brief(summaries, score)
+    if args.json_out is not None:
+        print(f"json={args.json_out}")
+    if args.jsonl_out is not None:
+        print(f"jsonl={args.jsonl_out}")
+    if args.md_out is not None:
+        print(f"markdown={args.md_out}")
 
 
 if __name__ == "__main__":
