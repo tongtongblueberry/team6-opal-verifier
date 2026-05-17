@@ -143,6 +143,14 @@ python3 tools/metamorphic_coverage.py \
 - `low_mc_relations`: relation 재설계 우선순위.
 - `high_mc_relations`: hidden gap 탐지에 유망한 relation.
 
+## 서버 적용 결과
+
+[Original Text/Data] → 서버 `/dl2026/dataset`에서 `tools/metamorphic_coverage.py`를 실행했다. 결과는 `pairs=1821`, `correct=1821/1821`, `identity_pairs=195`, `guidance_pairs=1626`, `mean_pair_mc_size=5.67`, `zero_mc_pairs=245`, `mc_cv_by_relation=0.77`, `coverage_cv_by_relation=0.32`였다.
+
+[Exact Interpretation] → MC가 일반 union coverage보다 relation 간 차이를 더 잘 분리한다. `mc_cv_by_relation=0.77`이 `coverage_cv_by_relation=0.32`보다 높기 때문이다. 동시에 non-identity pair 중 `245`개는 differential trace feature가 없어서, 기존 metamorphic pass rate 100%가 hidden gap 탐지력을 충분히 의미하지 않는다는 점을 보여준다.
+
+[Detailed Explanation/Example] → low-MC relation에는 `endsession_no_session_success`, `get_no_session_success`, `known_pin_success`가 포함됐다. 이들은 regression check로는 쓸 수 있지만, source/follow-up trace가 거의 같은 rule path를 타므로 MC-guided rule discovery에는 약하다. high-MC relation은 `known_cpin_get_*`, `known_cpin_set_*`, `known_locking_get_*`, `known_mbrcontrol_get_*`였다. 즉 현재 synthetic suite는 field-status mutation 쪽 differential coverage가 크고, session/precondition 계열 일부는 relation 재설계가 필요하다.
+
 ## 다음 적용 기준
 
 1. `identity_pairs`는 회귀용 positive control로 유지하되 MC guidance 해석에서는 제외한다.
