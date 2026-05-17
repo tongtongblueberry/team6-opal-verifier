@@ -361,17 +361,37 @@ LLM proposal은 바로 solver에 넣지 않는다. 다음 기준을 통과해야
 | 4 | `fc6b8df` | final method surface mutation | EndSession + structured empty result | server diagnostics pass, submission blocked |
 | 5 | `a814a87` | payload invariant mutation | Activate empty result | server diagnostics pass, submission blocked |
 
+## 69점 정체 후 4회 해결 사이클
+
+[Original Text/Data] → `fc0289e` 제출은 leaderboard `69.00`이었다. 이후 현재 coverage matrix에 남은 문제를 해결하는 방향으로 4회 반복했고, `67cd09d` 제출은 leaderboard `69.50`이었다.
+
+[Exact Interpretation] → 새 문제를 계속 찾기보다 현재 gap을 더 정확히 분해하자 두 종류가 섞여 있었다. 하나는 실제 solver invariant 부족이고, 다른 하나는 method별로 적용 불가능한 coverage column까지 missing으로 세는 진단 오류였다.
+
+[Detailed Explanation/Example] → `Properties`는 discovery 성격이라 state mutation을 요구하면 안 된다. 반대로 `StartSession`은 session id producer이므로 response가 `SyncSession` 형태이고 `HostSessionID`를 echo하며 `SPSessionID`를 만들어야 한다. 이 둘은 같은 "missing coverage"처럼 보였지만 해결 방법이 달랐다.
+
+| Cycle | 문제 확인 | 방법론 | 적용 | 확인 결과 |
+|---:|---|---|---|---|
+| 1 | public-only rule coverage가 false gap을 만든다 | AFLNet seed mutation feedback, metamorphic/property testing | `tools/rule_coverage.py --include-synthetic`, method-specific applicable columns | false `Properties`/DATA_COMMAND gaps 제거 |
+| 2 | `StartSession` success response validation이 느슨하다 | RESTler producer-consumer dependency | `SyncSession`, `HostSessionID` echo, `SPSessionID` presence check | public 유지, synthetic 증가 |
+| 3 | `Properties` target과 `Get` no-session precondition 검증이 약하다 | model-based conformance/object identity | Properties Session Manager target check, Get no-session synthetic tests | `Get`, `Properties` missing none |
+| 4 | DATA_COMMAND `Read/Write` final oracle이 약하다 | message-level protocol oracle | Read result presence, Read/Write response command identity, Write payload presence | public 20/20, metamorphic 1453/1453, coverage missing none, leaderboard 69.50 |
+
+현재 남은 문제:
+
+- method-specific coverage gap은 닫혔다.
+- low-confidence trace는 4개 남아 있다.
+- leaderboard 69.50은 hidden에서 아직 `Locking`, `MBRControl`, `Authority.Enabled`, SP lifecycle 같은 object/table field semantics가 부족할 가능성을 시사한다.
+
 ## 바로 다음 구현 TODO
 
 우선순위는 다음 순서다.
 
-1. `tools/build_spec_index.py` 구현
-2. `tools/rule_coverage.py` 구현
-3. synthetic mutation generator 구현
-4. current solver trace를 coverage matrix에 연결
-5. guidebook retrieval로 `Locking`, `MBRControl`, `Authority`, `SP`, `C_PIN`, `K_AES_256`별 rule proposal 생성
-6. 사람이 검토한 rule만 solver에 추가
-7. leaderboard 재제출
+1. low-confidence 4개 trace를 확인한다.
+2. guidebook retrieval로 `Locking`, `MBRControl`, `Authority`, `SP`, `C_PIN`, `K_AES_256`별 field semantics를 추출한다.
+3. field semantics별 writer/reader dependency를 만든다.
+4. synthetic mutation을 object/table field 중심으로 확장한다.
+5. 사람이 검토한 rule만 solver에 추가한다.
+6. public/metamorphic/coverage를 통과하면 leaderboard에 제출한다.
 
 ## 참고문헌
 

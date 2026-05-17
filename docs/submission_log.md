@@ -13,3 +13,4 @@
 | 2026-05-17 | `fc6b8df` | - | - | `team6-endsession-fc6b8df` | 100.00 | - | Submission rejected: daily submission limit exceeded. Server diagnostics passed: metamorphic 948/948. |
 | 2026-05-17 | `a814a87` | - | - | not submitted | 100.00 | - | Daily submission limit still blocked. Server diagnostics passed: metamorphic 970/970. |
 | 2026-05-18 | `fc0289e` | 99 | `1dd86a84d1d34235acd8438bcf4967d5` | `team6-latest-fc0289e` | 100.00 | 69.00 | Latest HEAD submitted. Solver code matches `a814a87`; docs updated in `fc0289e`. Server diagnostics passed: metamorphic 970/970. |
+| 2026-05-18 | `67cd09d` | 100 | `dcd43eb449a242e6a0cca623faae021f` | `team6-coverage-67cd09d` | 100.00 | 69.50 | Closed method-specific coverage gaps with synthetic-inclusive coverage, StartSession response validation, Properties/Get target/precondition tests, and DATA_COMMAND response invariants. Server diagnostics passed: metamorphic 1453/1453. |

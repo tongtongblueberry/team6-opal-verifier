@@ -19,14 +19,15 @@
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
 - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
 - Leaderboard best submission:
-  - Job ID: `99`
-  - Submission ID: `1dd86a84d1d34235acd8438bcf4967d5`
-  - Job Name: `team6-latest-fc0289e`
-  - Score: `69.00`
-- Latest local/server-validated commit: `fc0289e`
+  - Job ID: `100`
+  - Submission ID: `dcd43eb449a242e6a0cca623faae021f`
+  - Job Name: `team6-coverage-67cd09d`
+  - Score: `69.50`
+- Latest local/server-validated commit: `67cd09d`
   - Public: `100.00`
-  - Metamorphic/property diagnostics: `970/970`
-  - Submitted on 2026-05-18 as job `99`; solver code is identical to `a814a87`, while `fc0289e` adds documentation updates.
+  - Metamorphic/property diagnostics: `1453/1453`
+  - Rule coverage with synthetic cases: all method-specific missing gaps are `none`.
+  - Submitted on 2026-05-18 as job `100`.
 
 ## 55점이 낮게 나온 이유
 
@@ -39,7 +40,7 @@
 - `Activate`에서 SP UID identity 검증이 부족했다.
 
 이 문제들을 수정한 뒤 public train/dev는 100점이 됐다. guidebook 기반 `Get` field consistency,
-DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 이후 `Set(C_PIN)` column 3을 secret state로 추적해 StartSession authentication에 연결하면서 best leaderboard가 69.00이 됐다. 하지만 hidden scenario에 대한 rule coverage는 여전히 부족하다.
+DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 이후 `Set(C_PIN)` column 3을 secret state로 추적해 StartSession authentication에 연결하면서 69.00이 됐고, method-specific coverage gap을 닫는 4회 해결 사이클 후 69.50까지 올랐다. 하지만 hidden scenario에 대한 rule/state semantics는 여전히 남아 있다.
 
 ## 5회 반복 결과
 
@@ -56,6 +57,21 @@ DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 
 | 3 | `bcfdc94` | Schema mutation | duplicate Set RowValues column and Set empty-result invariant | public 20/20, metamorphic 576/576 | 69.00 |
 | 4 | `fc6b8df` | Final method surface mutation | EndSession branch and structured empty-result parser | public 20/20, metamorphic 948/948 | blocked: daily limit |
 | 5 | `a814a87` | Payload invariant mutation | Activate empty-result invariant | public 20/20, metamorphic 970/970 | submitted via `fc0289e`: 69.00 |
+
+## 4회 해결 사이클 결과
+
+[Original Text/Data] → 69.00에서 정체된 뒤, 새로운 문제를 더 찾기보다 현재 coverage matrix에 남아 있던 gap을 해결하는 방향으로 네 번 반복했다. 최종 서버 검증은 public `20/20`, metamorphic `1453/1453`, synthetic-inclusive rule coverage의 method-specific missing gap `none`이다.
+
+[Exact Interpretation] → 기존 문제 일부는 solver rule 부족이었고, 일부는 진단 기준이 부정확해서 생긴 false gap이었다. public-only coverage가 아니라 synthetic-inclusive coverage와 method별 applicable column을 써야 실제 gap과 false gap을 분리할 수 있었다.
+
+[Detailed Explanation/Example] → `Properties`에 `state_effect`를 요구하거나 DATA_COMMAND `Read/Write`에 session precondition을 요구하면 잘못된 gap이 된다. 반대로 `StartSession` success response가 `SyncSession`인지, `HostSessionID`가 echo되는지, `SPSessionID`가 있는지 보는 것은 실제 producer-consumer rule이다.
+
+| Cycle | Current issue | Applied method | Change | Result |
+|---:|---|---|---|---|
+| 1 | public-only coverage false gap | AFLNet/metamorphic seed mutation coverage | `--include-synthetic`, method-specific applicable columns | coverage gap 진단 정확화 |
+| 2 | StartSession response shape too loose | RESTler producer-consumer dependency | `SyncSession`, HostSessionID echo, SPSessionID validation | synthetic expanded |
+| 3 | Properties/Get object/precondition weak | model-based conformance | Properties target check, Get no-session tests | `Get`, `Properties` missing none |
+| 4 | DATA_COMMAND Read/Write weak oracle | message-level protocol oracle | Read result, command identity, Write payload checks | leaderboard 69.50 |
 
 ## 현재 방향
 
