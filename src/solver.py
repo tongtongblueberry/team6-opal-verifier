@@ -31,6 +31,8 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
     "ACTIVATE_TARGET": ["Activate SP UID"],
     "READ_PAYLOAD": ["Read LBA result GenKey"],
+    "SET_OBJECT_FIELDS": ["Set Values table column object"],
+    "GET_PAYLOAD": ["Get Cellblock startColumn endColumn return_values"],
     "DEFAULT_PASS": ["method response status compliance"],
 }
 
@@ -223,6 +225,70 @@ def _candidate_secret(command: Json) -> str:
     return ""
 
 
+def _object_key(command: Json) -> str:
+    # Changed: build a stable key for object-table state tracked across Get/Set.
+    # Why: hidden cases can check object field consistency beyond the small public examples.
+    name = _compact(_invoking_name(command))
+    uid = _compact(_invoking_uid(command))
+    return f"{name}:{uid}" if uid else name
+
+
+def _column_values(value: Any) -> dict[str, Any]:
+    # Changed: parse TCG table cell values from nested return_values/Values structures.
+    # Why: Set writes and Get reads are producer-consumer dependencies at column granularity.
+    values: dict[str, Any] = {}
+    if isinstance(value, dict):
+        for key, item in value.items():
+            compact_key = _compact(key)
+            if compact_key.isdigit():
+                values[compact_key] = item
+            else:
+                values.update(_column_values(item))
+    elif isinstance(value, list):
+        for item in value:
+            values.update(_column_values(item))
+    return values
+
+
+def _requested_columns(command: Json) -> set[str]:
+    # Changed: recover Get Cellblock ranges so payload shape can be validated.
+    # Why: a SUCCESS Get with missing or extra-empty values should not be accepted blindly.
+    starts: list[int] = []
+    ends: list[int] = []
+    for item in _walk(command):
+        if not isinstance(item, dict):
+            continue
+        for key, value in item.items():
+            compact = _compact(key)
+            if compact == "startcolumn":
+                try:
+                    starts.append(int(value))
+                except (TypeError, ValueError):
+                    pass
+            elif compact == "endcolumn":
+                try:
+                    ends.append(int(value))
+                except (TypeError, ValueError):
+                    pass
+    columns: set[str] = set()
+    for index, start in enumerate(starts):
+        end = ends[index] if index < len(ends) else start
+        if end < start:
+            start, end = end, start
+        columns.update(str(column) for column in range(start, end + 1))
+    return columns
+
+
+def _payloads_equivalent(actual: Any, expected: Any) -> bool:
+    # Changed: normalize DATA_COMMAND readbacks like "Pattern 8E" and raw "8E".
+    # Why: GenKey checks need to know whether old plaintext/pattern is still visible.
+    actual_text = _compact(actual)
+    expected_text = _compact(expected)
+    if not actual_text or not expected_text:
+        return False
+    return actual_text == expected_text or actual_text == f"pattern{expected_text}"
+
+
 @dataclass
 class ProtocolState:
     # Changed: track only state needed for command legality and response validation.
@@ -232,6 +298,7 @@ class ProtocolState:
     activated_sps: set[str] = field(default_factory=set)
     known_secrets: set[str] = field(default_factory=set)
     written_payloads: dict[str, str] = field(default_factory=dict)
+    object_fields: dict[str, dict[str, Any]] = field(default_factory=dict)
     generated_key_after_write: bool = False
     last_error: str = ""
     trace: list[Json] = field(default_factory=list)
@@ -375,6 +442,17 @@ class StatefulOpalVerifier:
                     writes=["known_secrets"],
                     detail="C_PIN updated",
                 )
+            fields = _column_values(command)
+            if fields:
+                state.object_fields.setdefault(_object_key(command), {}).update(fields)
+                self._add_trace(
+                    state,
+                    step_index,
+                    "SET_OBJECT_FIELDS",
+                    reads=["Values", "invoking_uid"],
+                    writes=["object_fields"],
+                    detail=f"columns={','.join(sorted(fields))}",
+                )
             return
 
         if method == "activate":
@@ -500,6 +578,17 @@ class StatefulOpalVerifier:
             )
             return inconsistent
 
+        if method == "get" and status == self.success_status:
+            inconsistent = self._get_payload_inconsistent(state, command, output)
+            self._add_trace(
+                state,
+                step_index,
+                "GET_PAYLOAD",
+                reads=["Cellblock", "object_fields", "return_values"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
+
         self._add_trace(state, step_index, "DEFAULT_PASS", reads=["status"], detail=method)
         return False
 
@@ -574,10 +663,25 @@ class StatefulOpalVerifier:
         address = self._address(command)
         expected = state.written_payloads.get(address)
         if state.generated_key_after_write and actual:
+            if expected:
+                return _payloads_equivalent(actual, expected)
             compact = _compact(actual)
             return len(compact) <= 2
         if expected:
-            return bool(actual) and actual != expected
+            return bool(actual) and not _payloads_equivalent(actual, expected)
+        return False
+
+    def _get_payload_inconsistent(self, state: ProtocolState, command: Json, output: Json) -> bool:
+        requested = _requested_columns(command)
+        returned = _column_values(output)
+        if requested and not returned:
+            return True
+        if requested and not requested.issubset(set(returned)):
+            return True
+        known = state.object_fields.get(_object_key(command), {})
+        for column in requested:
+            if column in known and column in returned and _compact(known[column]) != _compact(returned[column]):
+                return True
         return False
 
 

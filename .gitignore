@@ -7,3 +7,7 @@ __pycache__/
 wandb/
 outputs/
 leaderboard_logs/
+reports/
+rule_proposals/
+synthetic_cases/
+artifacts/spec_index.jsonl
