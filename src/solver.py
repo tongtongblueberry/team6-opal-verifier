@@ -28,6 +28,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "PROPERTIES_TARGET": ["Properties Session Manager UID target"],
     "PROPERTIES_PAYLOAD": ["Properties MaxMethods MaxSessions MaxPacketSize"],
     "STARTSESSION_FINAL": ["StartSession HostChallenge HostSigningAuthority"],
+    "AUTHORITY_DISABLED_STARTSESSION": ["Authority Enabled disabled StartSession NOT_AUTHORIZED"],
     "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
     "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
     "KNOWN_FIELD_INVALID_VALUE": ["Object table field boolean value INVALID_PARAMETER"],
@@ -305,6 +306,32 @@ def _object_key(command: Json) -> str:
     return f"{name}:{uid}" if uid else name
 
 
+def _uid_reference(value: Any, field_name: str) -> str:
+    # Changed: recover UID references embedded in named method parameters.
+    # Why: StartSession HostSigningAuthority points to an Authority object by UID.
+    found = _find_first_key(value, {_compact(field_name)})
+    if isinstance(found, dict):
+        uid = _find_first_key(found, {"uid"})
+        if uid is not None:
+            return _compact(uid)
+        name = _find_first_key(found, {"name"})
+        if name is not None:
+            return _compact(name)
+    if found is not None:
+        return _compact(found)
+    return ""
+
+
+def _start_session_authority_refs(command: Json) -> set[str]:
+    # Changed: collect authority references used during session startup.
+    # Why: disabled authorities SHALL NOT be authenticatable during StartSession.
+    refs = {
+        _uid_reference(command, "HostSigningAuthority"),
+        _uid_reference(command, "HostExchangeAuthority"),
+    }
+    return {ref for ref in refs if ref}
+
+
 def _object_kind(command: Json) -> str:
     # Changed: reduce concrete Opal object names to table kinds.
     # Why: field semantics are table-level, while UIDs identify individual rows.
@@ -488,6 +515,7 @@ class ProtocolState:
     known_secrets: set[str] = field(default_factory=set)
     written_payloads: dict[str, str] = field(default_factory=dict)
     object_fields: dict[str, dict[str, Any]] = field(default_factory=dict)
+    disabled_authorities: set[str] = field(default_factory=set)
     generated_key_after_write: bool = False
     last_error: str = ""
     trace: list[Json] = field(default_factory=list)
@@ -634,12 +662,20 @@ class StatefulOpalVerifier:
             fields = _column_values(command)
             if fields:
                 state.object_fields.setdefault(_object_key(command), {}).update(fields)
+                authority_ref = _compact(_invoking_uid(command)) or _compact(_invoking_name(command))
+                if _object_kind(command) == "authority" and "5" in fields and authority_ref:
+                    if _bool_truthy(fields["5"]):
+                        state.disabled_authorities.discard(authority_ref)
+                    else:
+                        state.disabled_authorities.add(authority_ref)
                 self._add_trace(
                     state,
                     step_index,
                     "SET_OBJECT_FIELDS",
                     reads=["Values", "invoking_uid"],
-                    writes=["object_fields"],
+                    writes=["object_fields", "disabled_authorities"]
+                    if _object_kind(command) == "authority" and "5" in fields
+                    else ["object_fields"],
                     detail=f"columns={','.join(sorted(fields))}",
                 )
             return
@@ -718,6 +754,19 @@ class StatefulOpalVerifier:
             return inconsistent
 
         if method == "startsession":
+            disabled_refs = _start_session_authority_refs(command).intersection(state.disabled_authorities)
+            if disabled_refs:
+                # Changed: apply Authority.Enabled semantics to session startup.
+                # Why: disabled authorities SHALL NOT be authenticatable and should yield NOT_AUTHORIZED.
+                inconsistent = status != "notauthorized"
+                self._add_trace(
+                    state,
+                    step_index,
+                    "AUTHORITY_DISABLED_STARTSESSION",
+                    reads=["disabled_authorities", "HostSigningAuthority", "HostExchangeAuthority", "status"],
+                    detail=f"disabled={','.join(sorted(disabled_refs))}, status={status}",
+                )
+                return inconsistent
             inconsistent = self._start_session_inconsistent(state, command, output, status)
             self._add_trace(
                 state,

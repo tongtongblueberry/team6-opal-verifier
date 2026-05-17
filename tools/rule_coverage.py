@@ -175,6 +175,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
     if (
         "PRECONDITION_EXPECTED_ERROR" in rule_ids
         or "KNOWN_FIELD_INVALID_VALUE" in rule_ids
+        or "AUTHORITY_DISABLED_STARTSESSION" in rule_ids
         or "STARTSESSION_FINAL" in rule_ids
     ):
         categories.add("precondition")
@@ -189,6 +190,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
             "PRECONDITION_EXPECTED_ERROR",
             "KNOWN_FIELD_EXPECTED_SUCCESS",
             "KNOWN_FIELD_INVALID_VALUE",
+            "AUTHORITY_DISABLED_STARTSESSION",
             "PROPERTIES_PAYLOAD",
             "STARTSESSION_FINAL",
             "ACTIVATE_TARGET",

@@ -480,6 +480,74 @@ def pin_auth_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return cases
 
 
+def _authority_uid(command: Json) -> str:
+    # Changed: recover the concrete Authority UID used by Set(Authority.Enabled).
+    # Why: StartSession must reference the same authority to exercise disabled-authority semantics.
+    from src.solver import _invoking_uid
+
+    return _invoking_uid(command)
+
+
+def authority_disabled_start_session_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add Authority.Enabled producer-consumer mutations for StartSession.
+    # Why: disabled authorities should fail session startup with NOT_AUTHORIZED.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        authority_sets: list[tuple[int, str]] = []
+        for index, step in enumerate(steps):
+            command = step.get("input", {}) if isinstance(step, dict) else {}
+            if _method_name(command) == "Set" and _object_kind(command) == "authority":
+                uid = _authority_uid(command)
+                if uid:
+                    authority_sets.append((index, uid))
+        if not authority_sets:
+            continue
+
+        for auth_index, uid in authority_sets:
+            for start_index, step in enumerate(steps[auth_index + 1 :], start=auth_index + 1):
+                command = step.get("input", {}) if isinstance(step, dict) else {}
+                if _method_name(command) != "StartSession":
+                    continue
+                disabled_success = copy.deepcopy(steps[: start_index + 1])
+                _set_command_values(disabled_success[auth_index], {"5": 0})
+                optional = disabled_success[-1]["input"].setdefault("method", {}).setdefault("args", {}).setdefault(
+                    "optional",
+                    {},
+                )
+                optional["HostSigningAuthority"] = {"uid": uid, "name": "Authority", "type": None}
+                disabled_success[-1]["output"] = {
+                    "method": {"name": "SyncSession"},
+                    "return_values": {
+                        "required": {"HostSessionID": "00000001", "SPSessionID": "00000002"},
+                        "optional": {},
+                    },
+                    "status_codes": "SUCCESS",
+                }
+                cases.append(
+                    SyntheticCase(
+                        name=f"{source}:authority_disabled_start_success:{start_index}",
+                        expected="fail",
+                        source=source,
+                        reason="StartSession with a disabled HostSigningAuthority should not succeed.",
+                        steps=disabled_success,
+                    )
+                )
+
+                disabled_rejected = copy.deepcopy(disabled_success)
+                disabled_rejected[-1]["output"] = {"return_values": {}, "status_codes": "NOT_AUTHORIZED"}
+                cases.append(
+                    SyntheticCase(
+                        name=f"{source}:authority_disabled_start_rejected:{start_index}",
+                        expected="pass",
+                        source=source,
+                        reason="StartSession with a disabled HostSigningAuthority should be NOT_AUTHORIZED.",
+                        steps=disabled_rejected,
+                    )
+                )
+                break
+    return cases
+
+
 def start_session_response_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     # Changed: add response-shape mutations for StartSession/SyncSession.
     # Why: StartSession is a producer of session ids, so response fields must be validated precisely.
@@ -820,6 +888,7 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
         + locking_data_access_cases(public)
         + get_precondition_cases(public)
         + pin_auth_cases(public)
+        + authority_disabled_start_session_cases(public)
         + start_session_response_cases(public)
         + set_schema_cases(public)
         + end_session_cases(public)
