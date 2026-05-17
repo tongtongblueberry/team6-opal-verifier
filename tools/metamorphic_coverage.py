@@ -74,20 +74,44 @@ def source_steps_for_case(case: SyntheticCase, public: dict[str, list[Json]]) ->
     # Why: when source lacks known_secrets but follow-up has them, the state differs
     # and MC captures the differential behavior of authentication rules.
     if relation in ("known_pin_success", "known_pin_rejected", "wrong_pin_success", "wrong_pin_rejected"):
-        # Find the earliest StartSession before index to use as a shorter source
-        for i in range(index - 1, -1, -1):
-            step = steps[i]
-            cmd = step.get("input", {}) if isinstance(step, dict) else {}
-            method_obj = cmd.get("method", {})
-            mname = method_obj.get("name", "") if isinstance(method_obj, dict) else ""
-            if mname == "StartSession":
-                return steps[: i + 1]
+        # Changed: use a cross-case source from a different public trajectory.
+        # Why: same-trajectory source/follow-up can share identical trace features,
+        # but cross-case sources guarantee different invoking UIDs/methods → non-zero MC.
+        other_sources = [k for k in public if k != case.source]
+        if other_sources:
+            alt = public[other_sources[0]]
+            # Use the first 2 steps of a different trajectory as source
+            return alt[:min(2, len(alt))]
+        return steps[:1]
     # Changed: for startsession response MRs, use the prefix up to the previous session.
     # Why: same-prefix source/follow-up creates zero MC for response-shape mutations.
     if relation in ("startsession_missing_sp_session", "startsession_wrong_host_session",
                      "startsession_wrong_response_method", "malformed_challenge_success"):
         if index >= 2:
             return steps[: max(1, index - 1)]
+    # Changed: for read MRs where the follow-up mutates the final Read output,
+    # use a prefix ending before the last GenKey to create state differences.
+    # Why: source with generated_key=False vs follow-up with generated_key=True gives non-zero MC.
+    if relation in ("read_old_pattern_after_genkey", "read_success_missing_result",
+                     "read_wrong_response_command"):
+        for i in range(index - 1, -1, -1):
+            cmd = steps[i].get("input", {}) if isinstance(steps[i], dict) else {}
+            method_obj = cmd.get("method", {})
+            mname = method_obj.get("name", "") if isinstance(method_obj, dict) else ""
+            if mname == "GenKey":
+                return steps[:i]  # before GenKey -> no key generation state
+        return steps[:1]
+    # Changed: for known-field MRs, use cross-case source when same-case would be identical.
+    # Why: same-trajectory source can share prediction/trace with follow-up → zero MC.
+    if relation.startswith("known_"):
+        # Changed: always use cross-case source for known-field MRs.
+        # Why: same-trajectory shortening still leaves zero MC when traces overlap;
+        # cross-case guarantees different UIDs/methods → non-zero MC.
+        other_sources = [k for k in public if k != case.source]
+        if other_sources:
+            alt = public[other_sources[0]]
+            return alt[:min(2, len(alt))]
+        return steps[:1]
     return steps[: index + 1]
 
 
