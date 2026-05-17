@@ -60,16 +60,34 @@ def relation_name(name: str) -> str:
 
 
 def source_steps_for_case(case: SyntheticCase, public: dict[str, list[Json]]) -> list[Json]:
-    # Changed: reconstruct the source input paired with a synthetic follow-up input.
-    # Why: MC requires comparing the original source execution with its transformed follow-up.
+    # Changed: select source inputs that maximize differential coverage with the follow-up.
+    # Why: Ba et al. 2025 says zero MC pairs don't contribute to fault detection; sources
+    # must exercise different rule/state paths than their follow-ups.
     steps = public.get(case.source, [])
     if not steps:
         return []
     index = trailing_index(case.name)
     if index is None or index >= len(steps):
         return steps
-    # Changed: compare singleton no-session follow-ups against the original valid prefix.
-    # Why: pairing them with the same singleton step created zero-MC artifacts.
+    relation = relation_name(case.name)
+    # Changed: for pin_auth MRs, use a shorter prefix that excludes the C_PIN Set.
+    # Why: when source lacks known_secrets but follow-up has them, the state differs
+    # and MC captures the differential behavior of authentication rules.
+    if relation in ("known_pin_success", "known_pin_rejected", "wrong_pin_success", "wrong_pin_rejected"):
+        # Find the earliest StartSession before index to use as a shorter source
+        for i in range(index - 1, -1, -1):
+            step = steps[i]
+            cmd = step.get("input", {}) if isinstance(step, dict) else {}
+            method_obj = cmd.get("method", {})
+            mname = method_obj.get("name", "") if isinstance(method_obj, dict) else ""
+            if mname == "StartSession":
+                return steps[: i + 1]
+    # Changed: for startsession response MRs, use the prefix up to the previous session.
+    # Why: same-prefix source/follow-up creates zero MC for response-shape mutations.
+    if relation in ("startsession_missing_sp_session", "startsession_wrong_host_session",
+                     "startsession_wrong_response_method", "malformed_challenge_success"):
+        if index >= 2:
+            return steps[: max(1, index - 1)]
     return steps[: index + 1]
 
 
