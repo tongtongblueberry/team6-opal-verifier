@@ -1,33 +1,32 @@
-<!-- Changed: update current scores and five-iteration verifier status. -->
-<!-- Why: the project state changed after metamorphic, C_PIN, Set, EndSession, and Activate rule work. -->
+<!-- Changed: update project analysis after c613397 field-semantics submission and metric interpretation. -->
+<!-- Why: previous analysis still treated low-confidence traces as the next gap; that is now resolved but leaderboard remains flat. -->
 
 # Team 6 SSD TCG/Opal Verifier 현재 분석
 
-작성일: 2026-05-17
+작성일: 2026-05-18
 
 ## 현재 결론
 
-이 프로젝트는 순수 AI classifier 문제라기보다 **spec-grounded state verifier** 문제다. 입력 trajectory 전체가
-주어지므로, 마지막 command-response pair가 현재 SSD/TCG/Opal 상태에서 명세상 가능한 응답인지 판단하면 된다.
+이 프로젝트는 순수 AI classifier 문제라기보다 **spec-grounded state verifier** 문제다. 입력 trajectory 전체가 주어지므로, 마지막 command-response pair가 현재 SSD/TCG/Opal 상태에서 명세상 가능한 응답인지 판단하면 된다.
 
-현재 제출 solver는 LLM이나 Qwen을 런타임에 사용하지 않는다. `src/solver.py`는 JSON command/response를
-정규화하고, session/auth/SP/key/data 상태를 추적한 뒤 마지막 record를 `pass` 또는 `fail`로 판정한다.
+현재 제출 solver는 LLM이나 Qwen을 런타임에 사용하지 않는다. `src/solver.py`는 JSON command/response를 정규화하고, session/auth/SP/key/data/object-field 상태를 추적한 뒤 마지막 record를 `pass` 또는 `fail`로 판정한다.
 
 ## 현재 구현 상태
 
 - GitHub repo: `https://github.com/tongtongblueberry/team6-opal-verifier`
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
-- Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
-- Leaderboard best submission:
-  - Job ID: `100`
-  - Submission ID: `dcd43eb449a242e6a0cca623faae021f`
-  - Job Name: `team6-coverage-67cd09d`
+- Latest submitted commit: `c613397`
+- Latest submitted job:
+  - Job ID: `102`
+  - Submission ID: `3440cbdce03e48529eacb057a3c84b77`
+  - Job Name: `team6-field-semantics-c613397`
   - Score: `69.50`
-- Latest local/server-validated commit: `67cd09d`
-  - Public: `100.00`
-  - Metamorphic/property diagnostics: `1453/1453`
-  - Rule coverage with synthetic cases: all method-specific missing gaps are `none`.
-  - Submitted on 2026-05-18 as job `100`.
+- Current best leaderboard score: `69.50`
+- Server diagnostics:
+  - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
+  - Metamorphic/property diagnostics: `1821/1821`
+  - Rule coverage with synthetic cases: `low_confidence=0`
+  - Method-specific missing gaps: all `none`
 
 ## 55점이 낮게 나온 이유
 
@@ -39,48 +38,59 @@
 - `Write` 입력의 `pattern` payload를 읽지 못했다.
 - `Activate`에서 SP UID identity 검증이 부족했다.
 
-이 문제들을 수정한 뒤 public train/dev는 100점이 됐다. guidebook 기반 `Get` field consistency,
-DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 이후 `Set(C_PIN)` column 3을 secret state로 추적해 StartSession authentication에 연결하면서 69.00이 됐고, method-specific coverage gap을 닫는 4회 해결 사이클 후 69.50까지 올랐다. 하지만 hidden scenario에 대한 rule/state semantics는 여전히 남아 있다.
+이 문제들을 수정한 뒤 public train/dev는 100점이 됐다. guidebook 기반 `Get` field consistency, DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 이후 `Set(C_PIN)` column 3을 secret state로 추적해 StartSession authentication에 연결하면서 69.00이 됐고, method-specific coverage gap을 닫는 해결 사이클 후 69.50까지 올랐다.
 
-## 5회 반복 결과
+## 최근 개선: field semantics
 
-[Original Text/Data] → 2026-05-17에 다섯 번의 개선 루프를 수행했다. 서버 public 검증은 계속 `20/20`이었고, leaderboard는 일일 제출 한도 때문에 3회 신규 제출까지만 가능했다.
+[Original Text/Data] → `67cd09d`에서 public `20/20`, metamorphic `1453/1453`, method-specific coverage gap `none`이었지만 low-confidence trace가 4개 남아 있었다. 해당 trace는 `C_PIN`, `Authority.Enabled`, `Locking`, `MBRControl` final error를 generic `UNEXPECTED_ERROR_STATUS`로 설명했다.
 
-[Exact Interpretation] → rule coverage만으로는 문제를 충분히 찾지 못했다. 추가로 metamorphic/property mutation, producer-consumer state oracle, schema mutation, final method surface mutation, payload invariant mutation이 필요했다.
+[Exact Interpretation] → solver는 pass/fail 자체는 맞췄지만, 왜 그 error가 이상한지 object/table field semantics로 설명하지 못했다. 이것은 hidden score를 직접 올리는 문제라기보다 rule explanation/coverage quality 문제였다.
 
-[Detailed Explanation/Example] → `EndSession` 회차에서 처음에는 metamorphic `855/948`로 실패했다. 이것은 `EndSession` rule 자체가 아니라 `{required: {}, optional: {}}` 형태의 structured empty result를 empty로 보지 못한 parser 결함이었다. 이 결함은 public 20개만 봐서는 드러나지 않았고, 중간 event를 final로 승격하는 synthetic mutation으로 드러났다.
+[Detailed Explanation/Example] → `Locking`의 column `3-8`, `MBRControl`의 column `1-2`, `Authority.Enabled` column `5`, `C_PIN` column `3`처럼 guidebook에서 확인되는 known field access는 정상 세션/인증 상태에서 generic error가 아니라 success여야 한다. 또한 boolean field에 `2` 같은 값이 들어가면 `INVALID_PARAMETER`가 expected error가 된다. `c613397`은 이를 `KNOWN_FIELD_EXPECTED_SUCCESS`, `KNOWN_FIELD_INVALID_VALUE` rule과 synthetic mutation으로 추가했다.
 
-| Loop | Commit | Added diagnosis | Fixed issue | Server diagnostic | Leaderboard |
-|---:|---|---|---|---|---|
-| 1 | `0c5e6d8` | Metamorphic/property invariant tests | GenKey success empty-result rule | public 20/20, metamorphic 174/174 | 68.00 |
-| 2 | `bf6c40b` | Producer-consumer auth oracle | `Set(C_PIN.Values[3]) -> StartSession.HostChallenge` state link | public 20/20, metamorphic 474/474 | 69.00 |
-| 3 | `bcfdc94` | Schema mutation | duplicate Set RowValues column and Set empty-result invariant | public 20/20, metamorphic 576/576 | 69.00 |
-| 4 | `fc6b8df` | Final method surface mutation | EndSession branch and structured empty-result parser | public 20/20, metamorphic 948/948 | blocked: daily limit |
-| 5 | `a814a87` | Payload invariant mutation | Activate empty-result invariant | public 20/20, metamorphic 970/970 | submitted via `fc0289e`: 69.00 |
+결과:
 
-## 4회 해결 사이클 결과
+- Public: `20/20`
+- Metamorphic/property: `1821/1821`
+- Synthetic-inclusive rule coverage: `low_confidence=0`
+- Leaderboard: `69.50`
 
-[Original Text/Data] → 69.00에서 정체된 뒤, 새로운 문제를 더 찾기보다 현재 coverage matrix에 남아 있던 gap을 해결하는 방향으로 네 번 반복했다. 최종 서버 검증은 public `20/20`, metamorphic `1453/1453`, synthetic-inclusive rule coverage의 method-specific missing gap `none`이다.
+## 지표 해석
 
-[Exact Interpretation] → 기존 문제 일부는 solver rule 부족이었고, 일부는 진단 기준이 부정확해서 생긴 false gap이었다. public-only coverage가 아니라 synthetic-inclusive coverage와 method별 applicable column을 써야 실제 gap과 false gap을 분리할 수 있었다.
+public, metamorphic, coverage 지표는 모두 필요하지만 hidden 성능을 보장하지 않는다.
 
-[Detailed Explanation/Example] → `Properties`에 `state_effect`를 요구하거나 DATA_COMMAND `Read/Write`에 session precondition을 요구하면 잘못된 gap이 된다. 반대로 `StartSession` success response가 `SyncSession`인지, `HostSessionID`가 echo되는지, `SPSessionID`가 있는지 보는 것은 실제 producer-consumer rule이다.
+[Original Text/Data] → 현재 public `100.00`, metamorphic `1821/1821`, coverage `low_confidence=0`이지만 leaderboard는 `69.50`에서 오르지 않았다.
 
-| Cycle | Current issue | Applied method | Change | Result |
-|---:|---|---|---|---|
-| 1 | public-only coverage false gap | AFLNet/metamorphic seed mutation coverage | `--include-synthetic`, method-specific applicable columns | coverage gap 진단 정확화 |
-| 2 | StartSession response shape too loose | RESTler producer-consumer dependency | `SyncSession`, HostSessionID echo, SPSessionID validation | synthetic expanded |
-| 3 | Properties/Get object/precondition weak | model-based conformance | Properties target check, Get no-session tests | `Get`, `Properties` missing none |
-| 4 | DATA_COMMAND Read/Write weak oracle | message-level protocol oracle | Read result, command identity, Write payload checks | leaderboard 69.50 |
+[Exact Interpretation] → 우리가 만든 진단 체계 안에서는 발견되는 문제가 줄었지만, hidden 평가에서 필요한 rule universe가 아직 진단 체계 밖에 있을 가능성이 높다. 즉 “점검한 항목은 모두 통과”와 “문제가 모두 해결”은 다르다.
+
+[Detailed Explanation/Example] → `metamorphic_eval.py`의 case 수를 1821개에서 5000개로 늘려도 같은 종류의 rule을 반복하면 hidden gap 탐지력은 늘지 않는다. 더 의미 있는 다음 평가는 solver rule을 삭제/약화한 mutant를 만들고 현재 suite가 그 mutant를 잡는지 보는 mutation-style adequacy다.
+
+[EXTERNAL KNOWLEDGE] Roelofs, R., Shankar, V., Recht, B., Fridovich-Keil, S., Hardt, M., Miller, J., & Schmidt, L. (2019). *A meta-analysis of overfitting in machine learning*. Advances in Neural Information Processing Systems, 32. https://papers.nips.cc/paper/9117-a-meta-analysis
+
+[EXTERNAL KNOWLEDGE] Blum, A., & Hardt, M. (2015). *The ladder: A reliable leaderboard for machine learning competitions*. Proceedings of Machine Learning Research, 37, 1006-1014. https://proceedings.mlr.press/v37/blum15.html
+
+[EXTERNAL KNOWLEDGE] Chen, J., Wang, Y., Guo, Y., & Jiang, M. (2019). A metamorphic testing approach for event sequences. *PLOS ONE, 14*(2), e0212476. https://doi.org/10.1371/journal.pone.0212476
+
+[EXTERNAL KNOWLEDGE] Saha, P., & Kanewala, U. (2019). *Fault detection effectiveness of metamorphic relations developed for testing supervised classifiers*. arXiv. https://doi.org/10.48550/arXiv.1904.07348
+
+[EXTERNAL KNOWLEDGE] Ba, J., Jiang, Y., & Rigger, M. (2025). *Metamorphic coverage*. arXiv. https://doi.org/10.48550/arXiv.2508.16307
+
+논문 기준:
+
+- public leaderboard feedback은 반복 제출 과정에서 holdout 적응 위험을 만든다.
+- coverage 100은 정의된 coverage grid 안에서만 의미가 있다.
+- metamorphic pass rate 100은 현재 MR 집합이 깨지지 않았다는 뜻이지 fault-detection capability가 충분하다는 뜻이 아니다.
+- Chen et al. 2019의 event-sequence MT는 전체 MR 조합이 한 실험에서 mutant의 `39.23%`만 잡았고, 개별 MR은 `0.91%`부터 `16.79%`까지 크게 갈렸다.
+- Saha and Kanewala 2019는 supervised classifier용 기존 MR들이 reachable mutant `709`개 중 `14.8%`만 잡았다고 보고했다.
 
 ## 현재 방향
 
-다음 개선은 leaderboard hidden label을 역추론하는 것이 아니라, guidebook 기반 rule coverage를 늘리는 것이다.
+다음 개선은 leaderboard hidden label을 역추론하는 것이 아니라, guidebook 기반 rule universe와 mutation-style adequacy를 확장하는 것이다.
 
 권장 구조:
 
-1. `StatefulOpalVerifier`의 trace mode로 mismatch 원인을 빠르게 확인한다.
-2. 각 rule에 `rule_id`, `state_reads`, `state_writes`, `spec_ref_candidates`를 붙인다.
+1. `StatefulOpalVerifier`의 trace mode로 final rule과 state read/write를 확인한다.
+2. `tools/metamorphic_eval.py` pass rate만 보지 말고 solver mutant를 만들어 mutation score를 측정한다.
 3. `/dl2026/skeleton/artifacts/documents`의 core/opal chunk를 lightweight index로 검색한다.
 4. 서버에서만 Qwen/Gemma 등 LLM을 사용해 rule 후보와 spec reference 후보를 추출한다.
 5. 제출 solver runtime은 deterministic rule engine으로 유지한다.

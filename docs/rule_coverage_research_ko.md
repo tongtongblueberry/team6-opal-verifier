@@ -379,27 +379,99 @@ LLM proposal은 바로 solver에 넣지 않는다. 다음 기준을 통과해야
 현재 남은 문제:
 
 - method-specific coverage gap은 닫혔다.
-- low-confidence trace는 4개 남아 있다.
-- leaderboard 69.50은 hidden에서 아직 `Locking`, `MBRControl`, `Authority.Enabled`, SP lifecycle 같은 object/table field semantics가 부족할 가능성을 시사한다.
+- `c613397`에서 `C_PIN`, `Authority.Enabled`, `Locking`, `MBRControl` known field semantics를 추가해 synthetic-inclusive `low_confidence=0`까지 만들었다.
+- 그런데 leaderboard는 `69.50`에서 오르지 않았다.
+- 따라서 현재 문제는 "기존 coverage grid의 빈칸"이라기보다 "coverage grid 밖에 있는 rule universe" 또는 "진단 지표의 hidden gap 탐지력 부족"일 가능성이 높다.
+
+## c613397 field-semantics 후속 결과
+
+[Original Text/Data] → `c613397`은 public `20/20`, metamorphic `1821/1821`, synthetic-inclusive rule coverage `low_confidence=0`을 달성했고, job `102`로 제출한 leaderboard score는 `69.50`이었다.
+
+[Exact Interpretation] → field semantics rule은 trace confidence와 regression coverage를 개선했지만 hidden leaderboard score를 개선하지는 못했다. 이 결과는 현재 public/metamorphic/coverage 지표가 saturated되어 더 이상 hidden gap을 충분히 발견하지 못할 수 있음을 보여준다.
+
+[Detailed Explanation/Example] → `tc12`, `tc16`, `tc18`, `tc19`의 final error는 이제 generic `UNEXPECTED_ERROR_STATUS`가 아니라 `KNOWN_FIELD_EXPECTED_SUCCESS`나 `KNOWN_FIELD_INVALID_VALUE` 계열로 설명된다. 하지만 hidden set에는 다른 field/lifecycle/state semantics가 더 많거나, 지금 rule이 hidden discriminative boundary와 직접 맞지 않을 수 있다.
+
+## 지표 해석과 다음 진단 기준
+
+[EXTERNAL KNOWLEDGE] Roelofs, R., Shankar, V., Recht, B., Fridovich-Keil, S., Hardt, M., Miller, J., & Schmidt, L. (2019). *A meta-analysis of overfitting in machine learning*. Advances in Neural Information Processing Systems, 32. https://papers.nips.cc/paper/9117-a-meta-analysis
+
+[Original Text/Data] → Roelofs et al.은 100개 이상 Kaggle competition에서 public leaderboard와 final/private ranking 차이를 분석했다.
+
+[Exact Interpretation] → public/leaderboard feedback은 유용한 신호지만, 반복적으로 그 신호에 맞춰 solver를 수정하면 public holdout에 적응할 위험이 있다.
+
+[Detailed Explanation/Example] → 우리 상황에서 public `100.00`은 20개 sanity check 통과일 뿐이다. public을 더 맞출 수 없고, leaderboard score 변화만 보고 hidden label을 역추론하면 데이터 분리 원칙을 깨게 된다.
+
+[EXTERNAL KNOWLEDGE] Blum, A., & Hardt, M. (2015). *The ladder: A reliable leaderboard for machine learning competitions*. Proceedings of Machine Learning Research, 37, 1006-1014. https://proceedings.mlr.press/v37/blum15.html
+
+[Original Text/Data] → Blum and Hardt는 반복 제출 과정에서 leaderboard feedback이 holdout estimate를 편향시킬 수 있음을 이론적으로 다뤘다.
+
+[Exact Interpretation] → leaderboard는 commit-level score만 기록하고, sample-level label 역추론에는 쓰지 않아야 한다.
+
+[Detailed Explanation/Example] → `c613397`이 `69.50`으로 유지됐다는 사실은 "field semantics가 hidden에서 틀렸다"가 아니다. 다만 "이 변경이 leaderboard aggregate score를 올릴 만큼 hidden sample을 바꾸지 않았다"까지만 해석해야 한다.
+
+[EXTERNAL KNOWLEDGE] Chen, J., Wang, Y., Guo, Y., & Jiang, M. (2019). A metamorphic testing approach for event sequences. *PLOS ONE, 14*(2), e0212476. https://doi.org/10.1371/journal.pone.0212476
+
+[Original Text/Data] → Chen et al.의 event-sequence metamorphic testing에서는 전체 MR 조합이 한 실험에서 mutant의 `39.23%`를 잡았고, 개별 MR은 `0.91%`부터 `16.79%`까지 크게 갈렸다.
+
+[Exact Interpretation] → metamorphic pass rate 100은 충분한 fault-detection capability를 뜻하지 않는다. 중요한 것은 어떤 MR이 어떤 mutant/fault type을 잡는지다.
+
+[Detailed Explanation/Example] → 우리 `1821/1821`은 "현재 생성한 1821개 case를 통과"라는 뜻이다. 같은 패턴의 case를 5000개로 늘려도 weak MR이면 hidden fault를 못 잡는다.
+
+[EXTERNAL KNOWLEDGE] Saha, P., & Kanewala, U. (2019). *Fault detection effectiveness of metamorphic relations developed for testing supervised classifiers*. arXiv. https://doi.org/10.48550/arXiv.1904.07348
+
+[Original Text/Data] → Saha and Kanewala는 supervised classifier용 기존 MRs가 reachable mutant `709`개 중 `14.8%`만 탐지했다고 보고했다.
+
+[Exact Interpretation] → MR 수나 test case 수가 많아도 fault model과 맞지 않으면 탐지력이 낮을 수 있다.
+
+[Detailed Explanation/Example] → 우리도 method/status만 반복 mutation하면 object lifecycle이나 locking semantics mutant를 못 잡을 수 있다.
+
+[EXTERNAL KNOWLEDGE] Ba, J., Jiang, Y., & Rigger, M. (2025). *Metamorphic coverage*. arXiv. https://doi.org/10.48550/arXiv.2508.16307
+
+[Original Text/Data] → Ba et al.은 일반 code coverage가 metamorphic testing의 실제 검증 정도를 잘 설명하지 못하고, pairwise/differential execution 관점의 metamorphic coverage가 더 유용할 수 있다고 본다.
+
+[Exact Interpretation] → 우리 coverage도 "line coverage"가 아니라 "rule/state/spec coverage"이지만, 여전히 우리가 정의한 grid 안에서만 완전하다.
+
+[Detailed Explanation/Example] → `low_confidence=0`은 좋은 신호지만, grid에 `SP lifecycle transition`이나 `Locking range state machine`이 없으면 그 영역의 hidden bug는 보이지 않는다.
+
+다음 진단 기준:
+
+- public 20/20은 제출 전 sanity check로만 본다.
+- metamorphic 100%는 regression pass로만 본다.
+- coverage low_confidence 0은 current grid confidence로만 본다.
+- 다음 핵심 지표는 mutation score다.
+
+Mutation-style adequacy TODO:
+
+1. `tools/mutation_eval.py`를 추가한다.
+2. solver rule을 삭제/약화한 mutant variant를 만든다.
+3. public + synthetic suite가 mutant prediction을 원본과 다르게 만드는지 측정한다.
+4. killed / survived / equivalent 후보를 기록한다.
+5. survived mutant가 나오면 그 mutant가 가리키는 rule category를 guidebook에서 다시 찾는다.
 
 ## 바로 다음 구현 TODO
 
 우선순위는 다음 순서다.
 
-1. low-confidence 4개 trace를 확인한다.
-2. guidebook retrieval로 `Locking`, `MBRControl`, `Authority`, `SP`, `C_PIN`, `K_AES_256`별 field semantics를 추출한다.
-3. field semantics별 writer/reader dependency를 만든다.
-4. synthetic mutation을 object/table field 중심으로 확장한다.
-5. 사람이 검토한 rule만 solver에 추가한다.
-6. public/metamorphic/coverage를 통과하면 leaderboard에 제출한다.
+1. mutation-style adequacy 평가를 만든다.
+2. survived mutant가 어떤 rule category를 가리키는지 분류한다.
+3. guidebook retrieval로 grid 밖 rule universe를 찾는다.
+4. `Locking`, `MBRControl`, `Authority`, `SP`, `C_PIN`, `K_AES_256`별 field/lifecycle semantics를 재점검한다.
+5. synthetic mutation은 case 수가 아니라 MR diversity를 기준으로 확장한다.
+6. 사람이 검토한 rule만 solver에 추가한다.
+7. public/metamorphic/coverage/mutation score를 확인한 뒤 leaderboard에 제출한다.
 
 ## 참고문헌
 
 - Atlidakis, V., Godefroid, P., & Polishchuk, M. (2019). *RESTler: Stateful REST API fuzzing*. 2019 IEEE/ACM 41st International Conference on Software Engineering. https://patricegodefroid.github.io/public_psfiles/icse2019.pdf
+- Ba, J., Jiang, Y., & Rigger, M. (2025). *Metamorphic coverage*. arXiv. https://doi.org/10.48550/arXiv.2508.16307
+- Blum, A., & Hardt, M. (2015). *The ladder: A reliable leaderboard for machine learning competitions*. Proceedings of Machine Learning Research, 37, 1006-1014. https://proceedings.mlr.press/v37/blum15.html
+- Chen, J., Wang, Y., Guo, Y., & Jiang, M. (2019). A metamorphic testing approach for event sequences. *PLOS ONE, 14*(2), e0212476. https://doi.org/10.1371/journal.pone.0212476
 - Claessen, K., & Hughes, J. (2000). *QuickCheck: A lightweight tool for random testing of Haskell programs*. Proceedings of the Fifth ACM SIGPLAN International Conference on Functional Programming, 268-279. https://doi.org/10.1145/351240.351266
 - Maklad, Y., Wael, F., Hamdi, A., Elsersy, W., & Shaban, K. (2025). *MultiFuzz: A Dense Retrieval-based Multi-Agent System for Network Protocol Fuzzing*. arXiv. https://arxiv.org/abs/2508.14300
 - Meng, R., Mirchev, M., Böhme, M., & Roychoudhury, A. (2024). *Large language model guided protocol fuzzing*. Network and Distributed System Security Symposium. https://www.ndss-symposium.org/ndss-paper/large-language-model-guided-protocol-fuzzing/
 - Natella, R. (2022). *StateAFL: Greybox fuzzing for stateful network servers*. Empirical Software Engineering, 27, Article 191. https://link.springer.com/article/10.1007/s10664-022-10233-3
 - Pham, V.-T., Böhme, M., & Roychoudhury, A. (2020). *AFLNET: A greybox fuzzer for network protocols*. 2020 IEEE 13th International Conference on Software Testing, Validation and Verification. https://thuanpv.github.io/publications/AFLNet_ICST20.pdf
+- Roelofs, R., Shankar, V., Recht, B., Fridovich-Keil, S., Hardt, M., Miller, J., & Schmidt, L. (2019). *A meta-analysis of overfitting in machine learning*. Advances in Neural Information Processing Systems, 32. https://papers.nips.cc/paper/9117-a-meta-analysis
+- Saha, P., & Kanewala, U. (2019). *Fault detection effectiveness of metamorphic relations developed for testing supervised classifiers*. arXiv. https://doi.org/10.48550/arXiv.1904.07348
 - Segura, S., Fraser, G., Sánchez, A. B., & Ruiz-Cortés, A. (2016). *A survey on metamorphic testing*. IEEE Transactions on Software Engineering, 42(9), 805-824. https://doi.org/10.1109/TSE.2016.2532875
 - Zhang, Y., Zhu, K., Peng, J., Lu, Y., Chen, Q., & Li, Z. (2025). *StatePre: A large language model-based state-handling method for network protocol fuzzing*. Electronics, 14(10), 1931. https://www.mdpi.com/2079-9292/14/10/1931
