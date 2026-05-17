@@ -32,6 +32,53 @@ COVERAGE_COLUMNS = [
     "tested",
 ]
 LOW_CONFIDENCE_RULES = {"DEFAULT_PASS", "PARSE_FINAL_COMMAND", "UNEXPECTED_ERROR_STATUS"}
+APPLICABLE_COLUMNS: dict[str, set[str]] = {
+    "Properties": {"parser", "object_identity", "status_invariant", "payload_invariant", "spec_backed", "tested"},
+    "StartSession": {
+        "parser",
+        "object_identity",
+        "precondition",
+        "state_effect",
+        "status_invariant",
+        "payload_invariant",
+        "spec_backed",
+        "tested",
+    },
+    "EndSession": {"parser", "precondition", "state_effect", "status_invariant", "payload_invariant", "spec_backed", "tested"},
+    "Get": {"parser", "object_identity", "precondition", "status_invariant", "payload_invariant", "spec_backed", "tested"},
+    "Set": {
+        "parser",
+        "object_identity",
+        "precondition",
+        "state_effect",
+        "status_invariant",
+        "payload_invariant",
+        "spec_backed",
+        "tested",
+    },
+    "Activate": {
+        "parser",
+        "object_identity",
+        "precondition",
+        "state_effect",
+        "status_invariant",
+        "payload_invariant",
+        "spec_backed",
+        "tested",
+    },
+    "GenKey": {
+        "parser",
+        "object_identity",
+        "precondition",
+        "state_effect",
+        "status_invariant",
+        "payload_invariant",
+        "spec_backed",
+        "tested",
+    },
+    "Read": {"parser", "state_effect", "status_invariant", "payload_invariant", "spec_backed", "tested"},
+    "Write": {"parser", "state_effect", "status_invariant", "payload_invariant", "spec_backed", "tested"},
+}
 
 
 def case_number(path: Path) -> int:
@@ -127,7 +174,22 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
         categories.add("precondition")
     if writes:
         categories.add("state_effect")
-    if any(rule in rule_ids for rule in {"UNEXPECTED_ERROR_STATUS", "PROPERTIES_PAYLOAD"}):
+    if any(
+        rule in rule_ids
+        for rule in {
+            "UNEXPECTED_ERROR_STATUS",
+            "PRECONDITION_EXPECTED_ERROR",
+            "PROPERTIES_PAYLOAD",
+            "STARTSESSION_FINAL",
+            "ACTIVATE_TARGET",
+            "READ_PAYLOAD",
+            "WRITE_RESPONSE",
+            "SET_PAYLOAD",
+            "GET_PAYLOAD",
+            "GENKEY_PAYLOAD",
+            "ENDSESSION_PAYLOAD",
+        }
+    ):
         categories.add("status_invariant")
     if any(
         rule in rule_ids
@@ -135,10 +197,12 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
             "READ_PAYLOAD",
             "GET_PAYLOAD",
             "PROPERTIES_PAYLOAD",
+            "STARTSESSION_FINAL",
             "SET_PAYLOAD",
             "ENDSESSION_PAYLOAD",
             "ACTIVATE_PAYLOAD",
             "WRITE_RESPONSE",
+            "GENKEY_PAYLOAD",
         }
     ):
         categories.add("payload_invariant")
@@ -201,10 +265,10 @@ def main() -> None:
 
     total = len([case for case in cases if case["label"]])
     score = 100.0 * correct / total if total else None
-    missing = {
-        method: [column for column, covered in columns.items() if not covered]
-        for method, columns in sorted(matrix.items())
-    }
+    missing = {}
+    for method, columns in sorted(matrix.items()):
+        applicable = APPLICABLE_COLUMNS.get(method, set(COVERAGE_COLUMNS))
+        missing[method] = [column for column in COVERAGE_COLUMNS if column in applicable and not columns[column]]
     output = {
         "score": score,
         "total_labeled": total,
