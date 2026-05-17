@@ -33,6 +33,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "READ_PAYLOAD": ["Read LBA result GenKey"],
     "SET_OBJECT_FIELDS": ["Set Values table column object"],
     "GET_PAYLOAD": ["Get Cellblock startColumn endColumn return_values"],
+    "GENKEY_PAYLOAD": ["GenKey empty return_values response"],
     "DEFAULT_PASS": ["method response status compliance"],
 }
 
@@ -592,6 +593,17 @@ class StatefulOpalVerifier:
             )
             return inconsistent
 
+        if method == "genkey" and status == self.success_status:
+            inconsistent = self._genkey_payload_inconsistent(output)
+            self._add_trace(
+                state,
+                step_index,
+                "GENKEY_PAYLOAD",
+                reads=["return_values"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
+
         if method == "get" and status == self.success_status:
             inconsistent = self._get_payload_inconsistent(state, command, output)
             self._add_trace(
@@ -628,6 +640,16 @@ class StatefulOpalVerifier:
         if method == "activate" and self._activate_target_invalid(invoking, invoking_uid):
             return "invalidparameter"
         return ""
+
+    def _genkey_payload_inconsistent(self, output: Json) -> bool:
+        # Changed: enforce the Core GenKey success response shape.
+        # Why: guidebook describes GenKey as returning an empty result list on success.
+        values = _find_first_key(output, {"returnvalues"})
+        if values is None:
+            return False
+        if values in ([], {}, ""):
+            return False
+        return True
 
     def _activate_target_invalid(self, invoking: str, invoking_uid: str) -> bool:
         # Changed: require Activate to target the Locking SP object shape seen in Opal flows.
