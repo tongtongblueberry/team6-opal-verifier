@@ -115,7 +115,14 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
         categories.add("status_invariant")
     if any(
         rule in rule_ids
-        for rule in {"READ_PAYLOAD", "GET_PAYLOAD", "PROPERTIES_PAYLOAD", "SET_PAYLOAD", "ENDSESSION_PAYLOAD"}
+        for rule in {
+            "READ_PAYLOAD",
+            "GET_PAYLOAD",
+            "PROPERTIES_PAYLOAD",
+            "SET_PAYLOAD",
+            "ENDSESSION_PAYLOAD",
+            "ACTIVATE_PAYLOAD",
+        }
     ):
         categories.add("payload_invariant")
     if spec_hits:

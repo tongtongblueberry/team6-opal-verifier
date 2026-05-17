@@ -30,6 +30,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
     "UNEXPECTED_ERROR_STATUS": ["method status code SUCCESS FAIL NOT_AUTHORIZED"],
     "ACTIVATE_TARGET": ["Activate SP UID"],
+    "ACTIVATE_PAYLOAD": ["Activate SP empty result list"],
     "ENDSESSION_PAYLOAD": ["EndSession close session empty result list"],
     "SET_PAYLOAD": ["Set method empty result list RowValues duplicate column INVALID_PARAMETER"],
     "READ_PAYLOAD": ["Read LBA result GenKey"],
@@ -629,7 +630,17 @@ class StatefulOpalVerifier:
                 reads=["invoking_name", "invoking_uid"],
                 detail=f"uid={invoking_uid}, inconsistent={inconsistent}",
             )
-            return inconsistent
+            if inconsistent:
+                return True
+            payload_inconsistent = self._empty_result_inconsistent(output)
+            self._add_trace(
+                state,
+                step_index,
+                "ACTIVATE_PAYLOAD",
+                reads=["return_values"],
+                detail=f"inconsistent={payload_inconsistent}",
+            )
+            return payload_inconsistent
 
         if method == "endsession" and status == self.success_status:
             inconsistent = self._empty_result_inconsistent(output)

@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
     # Why: diagnostics run from the repository checkout on the course server.
     sys.path.insert(0, str(ROOT))
 
-from src.solver import StatefulOpalVerifier, _column_values, _contains_text, _method_name
+from src.solver import StatefulOpalVerifier, _column_values, _compact, _contains_text, _invoking_uid, _method_name
 
 
 Json = dict[str, Any]
@@ -350,6 +350,42 @@ def end_session_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return cases
 
 
+def activate_payload_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add Activate payload mutations.
+    # Why: Activate success is status-only, and non-empty return data indicates a payload invariant miss.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, step in final_step_with_method(steps, "Activate"):
+            command = step.get("input", {}) if isinstance(step, dict) else {}
+            if not _compact(_invoking_uid(command)).startswith("00000205"):
+                continue
+            prefix = copy.deepcopy(steps[: index + 1])
+            valid_success = copy.deepcopy(prefix)
+            valid_success[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:activate_empty_success:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="Successful Activate returns an empty result.",
+                    steps=valid_success,
+                )
+            )
+
+            nonempty_success = copy.deepcopy(prefix)
+            nonempty_success[-1]["output"] = {"return_values": [{"unexpected": 1}], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:activate_nonempty_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful Activate should not return payload data.",
+                    steps=nonempty_success,
+                )
+            )
+    return cases
+
+
 def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return (
         genkey_cases(public)
@@ -358,6 +394,7 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
         + pin_auth_cases(public)
         + set_schema_cases(public)
         + end_session_cases(public)
+        + activate_payload_cases(public)
     )
 
 
