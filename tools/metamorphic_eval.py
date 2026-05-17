@@ -879,6 +879,47 @@ def known_field_invalid_value_cases(public: dict[str, list[Json]]) -> list[Synth
     return cases
 
 
+# Changed: add Get payload column-subset mutations to kill NO_GET_PAYLOAD mutant.
+# Why: mutation score requires that removing Get payload validation changes at least one prediction.
+def get_payload_column_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, step in enumerate(steps):
+            command = step.get("input", {}) if isinstance(step, dict) else {}
+            if _method_name(command).lower() != "get":
+                continue
+            requested = _requested_columns(command)
+            if not requested or len(requested) < 2:
+                continue
+            # Mutation: return only a strict subset of requested columns
+            prefix = copy.deepcopy(steps[: index + 1])
+            partial_columns = sorted(requested)[: len(requested) // 2]
+            partial_return = {col: "value" for col in partial_columns}
+            prefix[-1]["output"] = {"return_values": [[partial_return]], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:get_partial_columns:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful Get should return all requested columns, not a subset.",
+                    steps=prefix,
+                )
+            )
+            # Mutation: return empty values for SUCCESS Get
+            empty_return = copy.deepcopy(prefix)
+            empty_return[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:get_empty_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful Get with requested columns should not return empty.",
+                    steps=empty_return,
+                )
+            )
+    return cases
+
+
 def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return (
         genkey_cases(public)
@@ -895,6 +936,7 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
         + activate_payload_cases(public)
         + known_field_status_cases(public)
         + known_field_invalid_value_cases(public)
+        + get_payload_column_cases(public)
     )
 
 
