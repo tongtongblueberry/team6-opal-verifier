@@ -1,5 +1,5 @@
-<!-- Changed: replace the outdated initial analysis with the current project state. -->
-<!-- Why: the previous version said the repo only had a PDF and recommended model-first work, which no longer matches the actual solution path. -->
+<!-- Changed: update current scores and five-iteration verifier status. -->
+<!-- Why: the project state changed after metamorphic, C_PIN, Set, EndSession, and Activate rule work. -->
 
 # Team 6 SSD TCG/Opal Verifier 현재 분석
 
@@ -19,10 +19,14 @@
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
 - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
 - Leaderboard best submission:
-  - Job ID: `94`
-  - Submission ID: `d59207632cad4289b347a2bb84fd71f8`
-  - Job Name: `team6-rule-coverage-fd43bd5`
-  - Score: `68.00`
+  - Job ID: `96`
+  - Submission ID: `f6e155417ebc4d3f8cf5b2af035363e5`
+  - Job Name: `team6-cpin-auth-bf6c40b`
+  - Score: `69.00`
+- Latest local/server-validated commit: `a814a87`
+  - Public: `100.00`
+  - Metamorphic/property diagnostics: `970/970`
+  - Not submitted because the leaderboard rejected further uploads on 2026-05-17: daily submission limit exceeded.
 
 ## 55점이 낮게 나온 이유
 
@@ -35,8 +39,23 @@
 - `Activate`에서 SP UID identity 검증이 부족했다.
 
 이 문제들을 수정한 뒤 public train/dev는 100점이 됐다. guidebook 기반 `Get` field consistency,
-DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 하지만 hidden scenario에
-대한 rule coverage가 여전히 부족하다.
+DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 68.00이 됐다. 이후 `Set(C_PIN)` column 3을 secret state로 추적해 StartSession authentication에 연결하면서 best leaderboard가 69.00이 됐다. 하지만 hidden scenario에 대한 rule coverage는 여전히 부족하다.
+
+## 5회 반복 결과
+
+[Original Text/Data] → 2026-05-17에 다섯 번의 개선 루프를 수행했다. 서버 public 검증은 계속 `20/20`이었고, leaderboard는 일일 제출 한도 때문에 3회 신규 제출까지만 가능했다.
+
+[Exact Interpretation] → rule coverage만으로는 문제를 충분히 찾지 못했다. 추가로 metamorphic/property mutation, producer-consumer state oracle, schema mutation, final method surface mutation, payload invariant mutation이 필요했다.
+
+[Detailed Explanation/Example] → `EndSession` 회차에서 처음에는 metamorphic `855/948`로 실패했다. 이것은 `EndSession` rule 자체가 아니라 `{required: {}, optional: {}}` 형태의 structured empty result를 empty로 보지 못한 parser 결함이었다. 이 결함은 public 20개만 봐서는 드러나지 않았고, 중간 event를 final로 승격하는 synthetic mutation으로 드러났다.
+
+| Loop | Commit | Added diagnosis | Fixed issue | Server diagnostic | Leaderboard |
+|---:|---|---|---|---|---|
+| 1 | `0c5e6d8` | Metamorphic/property invariant tests | GenKey success empty-result rule | public 20/20, metamorphic 174/174 | 68.00 |
+| 2 | `bf6c40b` | Producer-consumer auth oracle | `Set(C_PIN.Values[3]) -> StartSession.HostChallenge` state link | public 20/20, metamorphic 474/474 | 69.00 |
+| 3 | `bcfdc94` | Schema mutation | duplicate Set RowValues column and Set empty-result invariant | public 20/20, metamorphic 576/576 | 69.00 |
+| 4 | `fc6b8df` | Final method surface mutation | EndSession branch and structured empty-result parser | public 20/20, metamorphic 948/948 | blocked: daily limit |
+| 5 | `a814a87` | Payload invariant mutation | Activate empty-result invariant | public 20/20, metamorphic 970/970 | blocked: daily limit |
 
 ## 현재 방향
 

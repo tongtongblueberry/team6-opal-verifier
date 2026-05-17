@@ -305,7 +305,61 @@ LLM proposal은 바로 solver에 넣지 않는다. 다음 기준을 통과해야
 4. server clean archive
 5. `submit -d ... -n team6-state-verifier-<commit>`
 6. `submit --list`
-7. score와 commit만 `reports/submission_log.md`에 기록
+7. score와 commit만 `docs/submission_log.md`에 기록
+
+## 5회 반복에서 추가한 문제 확인 방법
+
+### 1. Rule coverage만으로는 부족했다
+
+[Original Text/Data] → `tools/rule_coverage.py`는 method별 missing cell과 low-confidence case를 찾았다. 하지만 `EndSession` 회차에서 rule coverage가 직접 가리키지 못한 structured empty-result parser 결함이 발견됐다.
+
+[Exact Interpretation] → rule coverage는 "어떤 rule cell이 비었는가"를 찾는 데 유용하지만, parser가 정상 payload encoding을 잘못 정규화하는 문제, 중간 event가 final로 왔을 때의 final branch 누락, producer-consumer state link 누락은 별도 진단이 필요하다.
+
+[Detailed Explanation/Example] → `EndSession` success output은 `{required: {}, optional: {}}` 형태일 수 있다. 단순 `values in ([], {}, "")` 검사만 쓰면 이 정상 empty result를 non-empty로 오판한다. 이 문제는 public final 20개에는 `EndSession` final이 없어서 드러나지 않았고, 중간 `EndSession`을 final로 승격한 synthetic mutation에서 드러났다.
+
+### 2. 추가한 진단 방법
+
+[EXTERNAL KNOWLEDGE] Segura, S., Fraser, G., Sánchez, A. B., & Ruiz-Cortés, A. (2016). *A survey on metamorphic testing*. IEEE Transactions on Software Engineering, 42(9), 805-824. https://doi.org/10.1109/TSE.2016.2532875
+
+[Original Text/Data] → Metamorphic testing은 직접 oracle을 알기 어려운 입력에서, source test와 follow-up test 사이에 성립해야 하는 관계를 검사한다.
+
+[Exact Interpretation] → hidden label을 알 수 없는 이 과제에서는 "이 trajectory의 label은 무엇인가"를 추측하지 않고, guidebook에서 확실한 관계만 synthetic positive/negative로 만든다.
+
+[Detailed Explanation/Example] → `GenKey` success는 empty result여야 한다. 따라서 같은 prefix에서 final output을 empty success로 바꾸면 pass, non-empty success로 바꾸면 fail이어야 한다. 이것은 hidden label이 아니라 명세 기반 metamorphic relation이다.
+
+[EXTERNAL KNOWLEDGE] Claessen, K., & Hughes, J. (2000). *QuickCheck: A lightweight tool for random testing of Haskell programs*. Proceedings of the Fifth ACM SIGPLAN International Conference on Functional Programming, 268-279. https://doi.org/10.1145/351240.351266
+
+[Original Text/Data] → Property-based testing은 개별 example이 아니라 일반 property를 정의하고 생성된 입력으로 검증한다.
+
+[Exact Interpretation] → `tools/metamorphic_eval.py`는 QuickCheck식 무작위 생성기는 아니지만 같은 원칙을 따른다. public seed에서 rule-specific follow-up case를 만들고 solver가 property를 지키는지 확인한다.
+
+[Detailed Explanation/Example] → `Set`의 duplicate RowValues column은 `INVALID_PARAMETER`여야 한다. 따라서 duplicate column success는 fail, duplicate column invalid-parameter는 pass가 되어야 한다.
+
+[EXTERNAL KNOWLEDGE] Atlidakis, V., Godefroid, P., & Polishchuk, M. (2019). *RESTler: Stateful REST API fuzzing*. 2019 IEEE/ACM 41st International Conference on Software Engineering. https://patricegodefroid.github.io/public_psfiles/icse2019.pdf
+
+[Original Text/Data] → RESTler는 specification에서 producer-consumer dependency를 추론하고, response에서 생성된 값을 후속 request에 연결한다.
+
+[Exact Interpretation] → 우리 문제의 핵심 producer-consumer link는 `StartSession -> active session`, `Set(C_PIN.Values[3]) -> known secret`, `Write -> written payload`, `GenKey -> key generation after write`다.
+
+[Detailed Explanation/Example] → 2회차에서 `Set(C_PIN.Values[3])`를 `known_secrets`에 쓰고 `StartSession.HostChallenge`에서 읽도록 바꿨다. 이 변경으로 leaderboard best가 68.00에서 69.00으로 올랐다.
+
+[EXTERNAL KNOWLEDGE] Pham, V.-T., Böhme, M., & Roychoudhury, A. (2020). *AFLNET: A greybox fuzzer for network protocols*. 2020 IEEE 13th International Conference on Software Testing, Validation and Verification. https://doi.org/10.1109/ICST46399.2020.00062
+
+[Original Text/Data] → AFLNet은 recorded message exchange seed에서 시작해 message sequence를 mutation하고 response code/state feedback으로 유효한 탐색을 늘린다.
+
+[Exact Interpretation] → public pass trajectory는 seed corpus이고, mutation 대상은 filename이 아니라 final method/status/payload/object/session field다.
+
+[Detailed Explanation/Example] → `EndSession`, `Activate`처럼 public에서는 final이 아닌 중간 method를 final로 승격해 검사하면 final branch 누락을 찾을 수 있다.
+
+## 5회 반복 결과 요약
+
+| Loop | Commit | Diagnosis method | Fix | Result |
+|---:|---|---|---|---|
+| 1 | `0c5e6d8` | metamorphic/property invariant | GenKey empty result | leaderboard 68.00 |
+| 2 | `bf6c40b` | producer-consumer state oracle | C_PIN secret tracking | leaderboard 69.00 |
+| 3 | `bcfdc94` | schema mutation | Set duplicate column + empty result | leaderboard 69.00 |
+| 4 | `fc6b8df` | final method surface mutation | EndSession + structured empty result | server diagnostics pass, submission blocked |
+| 5 | `a814a87` | payload invariant mutation | Activate empty result | server diagnostics pass, submission blocked |
 
 ## 바로 다음 구현 TODO
 
@@ -322,8 +376,10 @@ LLM proposal은 바로 solver에 넣지 않는다. 다음 기준을 통과해야
 ## 참고문헌
 
 - Atlidakis, V., Godefroid, P., & Polishchuk, M. (2019). *RESTler: Stateful REST API fuzzing*. 2019 IEEE/ACM 41st International Conference on Software Engineering. https://patricegodefroid.github.io/public_psfiles/icse2019.pdf
+- Claessen, K., & Hughes, J. (2000). *QuickCheck: A lightweight tool for random testing of Haskell programs*. Proceedings of the Fifth ACM SIGPLAN International Conference on Functional Programming, 268-279. https://doi.org/10.1145/351240.351266
 - Maklad, Y., Wael, F., Hamdi, A., Elsersy, W., & Shaban, K. (2025). *MultiFuzz: A Dense Retrieval-based Multi-Agent System for Network Protocol Fuzzing*. arXiv. https://arxiv.org/abs/2508.14300
 - Meng, R., Mirchev, M., Böhme, M., & Roychoudhury, A. (2024). *Large language model guided protocol fuzzing*. Network and Distributed System Security Symposium. https://www.ndss-symposium.org/ndss-paper/large-language-model-guided-protocol-fuzzing/
 - Natella, R. (2022). *StateAFL: Greybox fuzzing for stateful network servers*. Empirical Software Engineering, 27, Article 191. https://link.springer.com/article/10.1007/s10664-022-10233-3
 - Pham, V.-T., Böhme, M., & Roychoudhury, A. (2020). *AFLNET: A greybox fuzzer for network protocols*. 2020 IEEE 13th International Conference on Software Testing, Validation and Verification. https://thuanpv.github.io/publications/AFLNet_ICST20.pdf
+- Segura, S., Fraser, G., Sánchez, A. B., & Ruiz-Cortés, A. (2016). *A survey on metamorphic testing*. IEEE Transactions on Software Engineering, 42(9), 805-824. https://doi.org/10.1109/TSE.2016.2532875
 - Zhang, Y., Zhu, K., Peng, J., Lu, Y., Chen, Q., & Li, Z. (2025). *StatePre: A large language model-based state-handling method for network protocol fuzzing*. Electronics, 14(10), 1931. https://www.mdpi.com/2079-9292/14/10/1931
