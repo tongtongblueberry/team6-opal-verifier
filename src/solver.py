@@ -141,6 +141,13 @@ def _method_name(command: Json) -> str:
     return ""
 
 
+def _is_data_command(command: Json) -> bool:
+    # Changed: distinguish DATA_COMMAND Read/Write from TCG method calls.
+    # Why: public traces perform media Read after EndSession, so session preconditions differ.
+    command_name = _find_first_key(command, {"command"})
+    return isinstance(command_name, str) and _compact(command_name) in {"read", "write"}
+
+
 def _invoking_name(command: Json) -> str:
     invoking = _find_first_key(command, {"invokinguid", "invokingid", "invoking"})
     if isinstance(invoking, dict):
@@ -504,9 +511,14 @@ class StatefulOpalVerifier:
         invoking: str,
         invoking_uid: str,
     ) -> str:
-        if method in {"get", "set", "activate", "genkey", "read", "write"} and not state.active_sessions:
+        data_command = _is_data_command(command)
+        if (
+            method in {"get", "set", "activate", "genkey", "read", "write"}
+            and not data_command
+            and not state.active_sessions
+        ):
             return "notauthorized"
-        if method in {"set", "activate", "genkey", "write"} and not state.authenticated:
+        if method in {"set", "activate", "genkey", "write"} and not data_command and not state.authenticated:
             return "notauthorized"
         if method == "activate" and self._activate_target_invalid(invoking, invoking_uid):
             return "invalidparameter"
@@ -544,7 +556,7 @@ class StatefulOpalVerifier:
         return any(any(marker in item for marker in property_markers) for item in strings)
 
     def _payload(self, value: Any) -> str:
-        for key in ("data", "payload", "bytes", "value", "result"):
+        for key in ("data", "payload", "bytes", "value", "pattern", "result"):
             found = _find_first_key(value, {_compact(key)})
             if isinstance(found, str) and found.strip():
                 return _norm(found)
