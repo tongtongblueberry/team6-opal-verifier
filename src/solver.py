@@ -134,8 +134,32 @@ def _invoking_name(command: Json) -> str:
     return ""
 
 
+def _invoking_uid(command: Json) -> str:
+    # Changed: expose the raw invoking UID for target-specific legality checks.
+    # Why: name-only checks cannot distinguish valid Locking SP activation from wrong SP objects.
+    invoking = _find_first_key(command, {"invokinguid", "invokingid", "invoking"})
+    if isinstance(invoking, dict):
+        uid = _find_first_key(invoking, {"uid"})
+        if uid is not None:
+            return _norm(uid)
+    if isinstance(invoking, str):
+        return _norm(invoking)
+    return ""
+
+
 def _session_id(value: Any) -> str:
-    sid = _find_first_key(value, {"hsn", "tsn", "sessionid", "hostsessionnumber", "tpersessionnumber"})
+    sid = _find_first_key(
+        value,
+        {
+            "hsn",
+            "tsn",
+            "sessionid",
+            "hostsessionid",
+            "spsessionid",
+            "hostsessionnumber",
+            "tpersessionnumber",
+        },
+    )
     if sid is None:
         return ""
     return _norm(sid)
@@ -225,6 +249,7 @@ class StatefulOpalVerifier:
         method = _compact(_method_name(command))
         status = _status_name(output)
         invoking = _compact(_invoking_name(command))
+        invoking_uid = _compact(_invoking_uid(command))
 
         if status != self.success_status:
             state.last_error = status
@@ -284,14 +309,20 @@ class StatefulOpalVerifier:
             return self._start_session_inconsistent(state, command, output, status)
 
         if method in {"get", "set", "activate", "genkey", "read", "write"}:
-            expected_error = self._expected_error_for_state(state, command, method, invoking)
+            expected_error = self._expected_error_for_state(
+                state,
+                command,
+                method,
+                invoking,
+                invoking_uid,
+            )
             if expected_error:
                 return status == self.success_status
             if status != self.success_status:
                 return True
 
         if method == "activate":
-            return "sp" not in invoking
+            return self._activate_target_invalid(invoking, invoking_uid)
 
         if method == "read" and status == self.success_status:
             return self._read_payload_inconsistent(state, command, output)
@@ -304,14 +335,22 @@ class StatefulOpalVerifier:
         command: Json,
         method: str,
         invoking: str,
+        invoking_uid: str,
     ) -> str:
         if method in {"get", "set", "activate", "genkey", "read", "write"} and not state.active_sessions:
             return "notauthorized"
         if method in {"set", "activate", "genkey", "write"} and not state.authenticated:
             return "notauthorized"
-        if method == "activate" and "sp" not in invoking:
+        if method == "activate" and self._activate_target_invalid(invoking, invoking_uid):
             return "invalidparameter"
         return ""
+
+    def _activate_target_invalid(self, invoking: str, invoking_uid: str) -> bool:
+        # Changed: require Activate to target the Locking SP object shape seen in Opal flows.
+        # Why: public counterexamples show SUCCESS on a different SP UID must be rejected.
+        if "sp" not in invoking:
+            return True
+        return bool(invoking_uid) and not invoking_uid.startswith("00000205")
 
     def _start_session_inconsistent(
         self,
@@ -355,11 +394,11 @@ class StatefulOpalVerifier:
         actual = self._payload(output)
         address = self._address(command)
         expected = state.written_payloads.get(address)
-        if expected:
-            return bool(actual) and actual != expected
         if state.generated_key_after_write and actual:
             compact = _compact(actual)
             return len(compact) <= 2
+        if expected:
+            return bool(actual) and actual != expected
         return False
 
 
