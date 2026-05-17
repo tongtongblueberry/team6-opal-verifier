@@ -274,9 +274,23 @@ def _requested_columns(command: Json) -> set[str]:
     for index, start in enumerate(starts):
         end = ends[index] if index < len(ends) else start
         if end < start:
-            start, end = end, start
+            continue
         columns.update(str(column) for column in range(start, end + 1))
     return columns
+
+
+def _cellblock_invalid(command: Json) -> bool:
+    # Changed: detect structurally invalid Get column ranges before trusting SUCCESS.
+    # Why: Core method status rules include INVALID_PARAMETER for malformed method arguments.
+    for item in _walk(command):
+        if not isinstance(item, dict):
+            continue
+        if "startColumn" in item and "endColumn" in item:
+            try:
+                return int(item["endColumn"]) < int(item["startColumn"])
+            except (TypeError, ValueError):
+                return True
+    return False
 
 
 def _payloads_equivalent(actual: Any, expected: Any) -> bool:
@@ -545,7 +559,7 @@ class StatefulOpalVerifier:
                     reads=["active_sessions", "authenticated", "invoking_uid"],
                     detail=f"expected={expected_error}, actual={status}",
                 )
-                return status == self.success_status
+                return status != expected_error
             if status != self.success_status:
                 self._add_trace(
                     state,
@@ -609,6 +623,8 @@ class StatefulOpalVerifier:
             return "notauthorized"
         if method in {"set", "activate", "genkey", "write"} and not data_command and not state.authenticated:
             return "notauthorized"
+        if method == "get" and _cellblock_invalid(command):
+            return "invalidparameter"
         if method == "activate" and self._activate_target_invalid(invoking, invoking_uid):
             return "invalidparameter"
         return ""
