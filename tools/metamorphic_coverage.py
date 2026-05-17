@@ -35,6 +35,7 @@ class PairCoverage:
     expected: str
     prediction: str
     correct: bool
+    identity_pair: bool
     source_coverage_size: int
     followup_coverage_size: int
     union_coverage_size: int
@@ -129,8 +130,11 @@ def coefficient_of_variation(values: list[float]) -> float:
 
 
 def summarize_pairs(pairs: list[PairCoverage]) -> Json:
+    # Changed: separate unchanged positive controls from guidance statistics.
+    # Why: MC is meaningful for distinct source/follow-up pairs, not identical regression controls.
+    guidance_pairs = [pair for pair in pairs if not pair.identity_pair]
     groups: dict[str, list[PairCoverage]] = {}
-    for pair in pairs:
+    for pair in guidance_pairs:
         groups.setdefault(pair.relation, []).append(pair)
 
     group_summary: dict[str, Json] = {}
@@ -145,13 +149,13 @@ def summarize_pairs(pairs: list[PairCoverage]) -> Json:
             "correct": sum(1 for item in items if item.correct),
         }
 
-    all_mc = [float(pair.mc_size) for pair in pairs]
-    all_union = [float(pair.union_coverage_size) for pair in pairs]
+    all_mc = [float(pair.mc_size) for pair in guidance_pairs]
+    all_union = [float(pair.union_coverage_size) for pair in guidance_pairs]
     group_mc_means = [float(item["mean_mc_size"]) for item in group_summary.values()]
     group_union_means = [float(item["mean_union_coverage_size"]) for item in group_summary.values()]
     total_union = set()
     total_mc = set()
-    for pair in pairs:
+    for pair in guidance_pairs:
         total_mc.update(pair.differential_features)
         total_union.update(pair.union_features)
 
@@ -167,11 +171,14 @@ def summarize_pairs(pairs: list[PairCoverage]) -> Json:
     return {
         "pairs": len(pairs),
         "correct": sum(1 for pair in pairs if pair.correct),
+        "identity_pairs": sum(1 for pair in pairs if pair.identity_pair),
+        "guidance_pairs": len(guidance_pairs),
+        "guidance_correct": sum(1 for pair in guidance_pairs if pair.correct),
         "mean_pair_mc_size": statistics.fmean(all_mc) if all_mc else 0.0,
         "median_pair_mc_size": statistics.median(all_mc) if all_mc else 0.0,
         "max_pair_mc_size": max(all_mc) if all_mc else 0.0,
         "mean_pair_union_coverage_size": statistics.fmean(all_union) if all_union else 0.0,
-        "zero_mc_pairs": sum(1 for pair in pairs if pair.mc_size == 0),
+        "zero_mc_pairs": sum(1 for pair in guidance_pairs if pair.mc_size == 0),
         "mc_cv_by_relation": coefficient_of_variation(group_mc_means),
         "coverage_cv_by_relation": coefficient_of_variation(group_union_means),
         "unique_mc_features": len(total_mc),
@@ -199,6 +206,7 @@ def build_pair_coverage(public: dict[str, list[Json]], synthetic: list[Synthetic
         followup_cov, prediction = coverage_tokens(verifier, case.steps)
         union_cov = source_cov | followup_cov
         mc = source_cov ^ followup_cov
+        identity_pair = json.dumps(source_steps, sort_keys=True) == json.dumps(case.steps, sort_keys=True)
         pairs.append(
             PairCoverage(
                 name=case.name,
@@ -207,6 +215,7 @@ def build_pair_coverage(public: dict[str, list[Json]], synthetic: list[Synthetic
                 expected=case.expected,
                 prediction=prediction,
                 correct=prediction == case.expected,
+                identity_pair=identity_pair,
                 source_coverage_size=len(source_cov),
                 followup_coverage_size=len(followup_cov),
                 union_coverage_size=len(union_cov),
@@ -242,6 +251,8 @@ def main() -> None:
 
     print(f"pairs={summary['pairs']}")
     print(f"correct={summary['correct']}/{summary['pairs']}")
+    print(f"identity_pairs={summary['identity_pairs']}")
+    print(f"guidance_pairs={summary['guidance_pairs']}")
     print(f"mean_pair_mc_size={summary['mean_pair_mc_size']:.2f}")
     print(f"zero_mc_pairs={summary['zero_mc_pairs']}")
     print(f"mc_cv_by_relation={summary['mc_cv_by_relation']:.2f}")

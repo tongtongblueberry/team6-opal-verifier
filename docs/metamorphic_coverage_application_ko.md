@@ -134,8 +134,10 @@ python3 tools/metamorphic_coverage.py \
 
 - `pairs`: source/follow-up pair 수.
 - `correct`: 기존 metamorphic expected label과 solver prediction 일치 수.
+- `identity_pairs`: source와 follow-up이 완전히 같은 회귀용 positive control 수.
+- `guidance_pairs`: MC guidance에 실제로 쓰는 non-identity pair 수.
 - `mean_pair_mc_size`: pair별 MC size 평균.
-- `zero_mc_pairs`: differential feature가 없는 pair 수.
+- `zero_mc_pairs`: non-identity pair 중 differential feature가 없는 pair 수.
 - `mc_cv_by_relation`: relation별 MC 민감도.
 - `coverage_cv_by_relation`: relation별 일반 coverage 민감도.
 - `low_mc_relations`: relation 재설계 우선순위.
@@ -143,8 +145,8 @@ python3 tools/metamorphic_coverage.py \
 
 ## 다음 적용 기준
 
-1. `zero_mc_pairs`가 있으면 해당 relation은 제거하거나 source/follow-up 설계를 바꾼다.
-2. `low_mc_relations`는 case 수를 늘리지 않는다. relation 자체가 같은 path를 반복할 가능성이 높다.
-3. `high_mc_relations` 주변에서 guidebook rule extraction을 확장한다.
-4. 이후 mutation score를 추가해 MC가 실제 rule mutant kill과 맞는지 확인한다.
-
+1. `identity_pairs`는 회귀용 positive control로 유지하되 MC guidance 해석에서는 제외한다.
+2. `zero_mc_pairs`가 있으면 해당 relation은 제거하거나 source/follow-up 설계를 바꾼다.
+3. `low_mc_relations`는 case 수를 늘리지 않는다. relation 자체가 같은 path를 반복할 가능성이 높다.
+4. `high_mc_relations` 주변에서 guidebook rule extraction을 확장한다.
+5. 이후 mutation score를 추가해 MC가 실제 rule mutant kill과 맞는지 확인한다.
