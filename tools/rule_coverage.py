@@ -170,7 +170,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
     writes = {write for item in trace for write in item.get("state_writes", [])}
     if any("invoking" in read for read in reads):
         categories.add("object_identity")
-    if "PRECONDITION_EXPECTED_ERROR" in rule_ids:
+    if "PRECONDITION_EXPECTED_ERROR" in rule_ids or "STARTSESSION_FINAL" in rule_ids:
         categories.add("precondition")
     if writes:
         categories.add("state_effect")

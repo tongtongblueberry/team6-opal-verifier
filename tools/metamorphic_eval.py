@@ -86,6 +86,28 @@ def genkey_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
                     steps=bad,
                 )
             )
+            no_session_success = copy.deepcopy(prefix[-1])
+            no_session_success["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:genkey_no_session_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="GenKey without an active authenticated session should not succeed.",
+                    steps=[no_session_success],
+                )
+            )
+            no_session_rejected = copy.deepcopy(prefix[-1])
+            no_session_rejected["output"] = {"return_values": {}, "status_codes": "NOT_AUTHORIZED"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:genkey_no_session_rejected:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="GenKey without an active authenticated session can be correctly rejected.",
+                    steps=[no_session_rejected],
+                )
+            )
     return cases
 
 
