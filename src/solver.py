@@ -356,8 +356,8 @@ class StatefulOpalVerifier:
 
 
 def predict(dataset: Any) -> list[str]:
-    # Changed: keep the public skeleton API while avoiding any model loading.
-    # Why: evaluation calls predict(dataset), and deterministic rules are faster and reproducible.
+    # Changed: keep a batch helper while avoiding any model loading.
+    # Why: some local scripts call module-level predict, while the official evaluator uses Solver.
     verifier = StatefulOpalVerifier()
     if isinstance(dataset, dict):
         cases = dataset.get("testcases") or dataset.get("cases") or dataset.get("data") or []
@@ -376,3 +376,25 @@ def predict_one(testcase: Any) -> str:
     # Changed: add a small helper for local scripts and smoke tests.
     # Why: it keeps batch API behavior unchanged while making unit checks simple.
     return StatefulOpalVerifier().verify(testcase)
+
+
+class Solver:
+    # Changed: add the official course skeleton interface.
+    # Why: /dl2026/skeleton/evaluate.py imports Solver and expects predict() to return id->label.
+    def __init__(self) -> None:
+        self.verifier = StatefulOpalVerifier()
+
+    def predict(self, dataset: Any) -> dict[str, str]:
+        if not isinstance(dataset, list):
+            return {}
+
+        predictions: dict[str, str] = {}
+        for index, item in enumerate(dataset):
+            if isinstance(item, dict):
+                case_id = str(item.get("id", f"case_{index}"))
+                steps = item.get("steps", item)
+            else:
+                case_id = f"case_{index}"
+                steps = item
+            predictions[case_id] = self.verifier.verify(steps)
+        return predictions
