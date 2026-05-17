@@ -5,10 +5,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    # Changed: make direct `python tools/intermediate_eval.py` execution work on the server.
+    # Why: Python otherwise searches from tools/ and cannot import the submission `src` package.
+    sys.path.insert(0, str(ROOT))
 
 from src.solver import _invoking_name, _method_name, _status_name, Solver
 
