@@ -846,13 +846,10 @@ class StatefulOpalVerifier:
                     # Changed: C_PIN_MSID (UID *8402) is Anybody-accessible per Opal spec.
                     # Why: MSID can be read without authentication; other C_PINs require auth.
                     is_msid = kind == "cpin" and "8402" in invoking_uid_val
-                    # Changed: only assert expected success when access evidence is strong.
-                    # Why: unauthenticated sessions or sessions without signing authority
-                    # might validly get NOT_AUTHORIZED on protected objects.
-                    should_expect_success = (
-                        is_msid
-                        or (state.has_signing_authority and kind != "cpin")
-                    )
+                    # Changed: non-CPIN objects (Locking, MBRControl, Authority) are expected
+                    # to be accessible for known readable columns per Opal table semantics.
+                    # Only C_PIN access requires distinguishing MSID from other credentials.
+                    should_expect_success = is_msid or kind != "cpin"
                     if should_expect_success:
                         self._add_trace(
                             state,
