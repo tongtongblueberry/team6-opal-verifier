@@ -19,14 +19,14 @@
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
 - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
 - Leaderboard best submission:
-  - Job ID: `96`
-  - Submission ID: `f6e155417ebc4d3f8cf5b2af035363e5`
-  - Job Name: `team6-cpin-auth-bf6c40b`
+  - Job ID: `99`
+  - Submission ID: `1dd86a84d1d34235acd8438bcf4967d5`
+  - Job Name: `team6-latest-fc0289e`
   - Score: `69.00`
-- Latest local/server-validated commit: `a814a87`
+- Latest local/server-validated commit: `fc0289e`
   - Public: `100.00`
   - Metamorphic/property diagnostics: `970/970`
-  - Not submitted because the leaderboard rejected further uploads on 2026-05-17: daily submission limit exceeded.
+  - Submitted on 2026-05-18 as job `99`; solver code is identical to `a814a87`, while `fc0289e` adds documentation updates.
 
 ## 55점이 낮게 나온 이유
 
@@ -55,7 +55,7 @@ DATA_COMMAND read/write, invalid Cellblock rule을 추가한 뒤 leaderboard는 
 | 2 | `bf6c40b` | Producer-consumer auth oracle | `Set(C_PIN.Values[3]) -> StartSession.HostChallenge` state link | public 20/20, metamorphic 474/474 | 69.00 |
 | 3 | `bcfdc94` | Schema mutation | duplicate Set RowValues column and Set empty-result invariant | public 20/20, metamorphic 576/576 | 69.00 |
 | 4 | `fc6b8df` | Final method surface mutation | EndSession branch and structured empty-result parser | public 20/20, metamorphic 948/948 | blocked: daily limit |
-| 5 | `a814a87` | Payload invariant mutation | Activate empty-result invariant | public 20/20, metamorphic 970/970 | blocked: daily limit |
+| 5 | `a814a87` | Payload invariant mutation | Activate empty-result invariant | public 20/20, metamorphic 970/970 | submitted via `fc0289e`: 69.00 |
 
 ## 현재 방향
 

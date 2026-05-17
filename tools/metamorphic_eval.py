@@ -127,6 +127,48 @@ def malformed_challenge_cases(public: dict[str, list[Json]]) -> list[SyntheticCa
     return cases
 
 
+def properties_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add Properties object-identity and payload mutations.
+    # Why: public coverage had Properties final cases but not target/object variants.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, _ in final_step_with_method(steps, "Properties"):
+            prefix = copy.deepcopy(steps[: index + 1])
+
+            wrong_target = copy.deepcopy(prefix)
+            wrong_target[-1]["input"]["invoking_id"] = {
+                "uid": "00 00 02 05 00 00 00 02",
+                "name": "SP",
+                "type": None,
+            }
+            wrong_target[-1]["output"] = {
+                "return_values": [{"MaxMethods": 8, "MaxSessions": 4}],
+                "status_codes": "SUCCESS",
+            }
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:properties_wrong_target_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Properties should be invoked on the Session Manager object.",
+                    steps=wrong_target,
+                )
+            )
+
+            missing_payload = copy.deepcopy(prefix)
+            missing_payload[-1]["output"] = {"return_values": [], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:properties_missing_payload_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful Properties should include discovery property values.",
+                    steps=missing_payload,
+                )
+            )
+    return cases
+
+
 def data_command_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     cases: list[SyntheticCase] = []
     for source, steps in public.items():
@@ -159,6 +201,88 @@ def data_command_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
                 steps=random_data,
             )
         )
+        missing_result = copy.deepcopy(steps[: final_read + 1])
+        missing_result[-1]["output"] = {"command": "Read", "args": {}}
+        cases.append(
+            SyntheticCase(
+                name=f"{source}:read_success_missing_result:{final_read}",
+                expected="fail",
+                source=source,
+                reason="Successful Read should include a result payload.",
+                steps=missing_result,
+            )
+        )
+        wrong_command = copy.deepcopy(random_data)
+        wrong_command[-1]["output"] = {"command": "Write", "args": {"result": "Random Data"}}
+        cases.append(
+            SyntheticCase(
+                name=f"{source}:read_wrong_response_command:{final_read}",
+                expected="fail",
+                source=source,
+                reason="Read output should not be reported as a Write response.",
+                steps=wrong_command,
+            )
+        )
+        write_indices = [index for index, step in enumerate(steps) if step.get("input", {}).get("command") == "Write"]
+        for write_index in write_indices[-2:]:
+            valid_prefix = copy.deepcopy(steps[: write_index + 1])
+            missing_payload = copy.deepcopy(valid_prefix)
+            missing_payload[-1]["input"].get("args", {}).pop("data", None)
+            missing_payload[-1]["input"].get("args", {}).pop("payload", None)
+            missing_payload[-1]["input"].get("args", {}).pop("pattern", None)
+            missing_payload[-1]["output"] = {"command": "Write", "args": {}}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:write_missing_payload_success:{write_index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful Write should carry a write payload in the input.",
+                    steps=missing_payload,
+                )
+            )
+            wrong_write_response = copy.deepcopy(valid_prefix)
+            wrong_write_response[-1]["output"] = {"command": "Read", "args": {}}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:write_wrong_response_command:{write_index}",
+                    expected="fail",
+                    source=source,
+                    reason="Write output should not be reported as a Read response.",
+                    steps=wrong_write_response,
+                )
+            )
+    return cases
+
+
+def get_precondition_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add no-session Get precondition tests.
+    # Why: Get requires an active session, but public finals only exercised a narrow subset.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, step in final_step_with_method(steps, "Get"):
+            no_session_success = copy.deepcopy(step)
+            no_session_success["output"] = {"return_values": [{"1": "value"}], "status_codes": "SUCCESS"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:get_no_session_success:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Get without an active session should not succeed.",
+                    steps=[no_session_success],
+                )
+            )
+
+            no_session_rejected = copy.deepcopy(step)
+            no_session_rejected["output"] = {"return_values": {}, "status_codes": "NOT_AUTHORIZED"}
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:get_no_session_rejected:{index}",
+                    expected="pass",
+                    source=source,
+                    reason="Get without an active session can be correctly rejected.",
+                    steps=[no_session_rejected],
+                )
+            )
     return cases
 
 
@@ -240,6 +364,70 @@ def pin_auth_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
                     source=source,
                     reason="A StartSession using a non-current C_PIN can be correctly rejected.",
                     steps=wrong_rejected,
+                )
+            )
+    return cases
+
+
+def start_session_response_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
+    # Changed: add response-shape mutations for StartSession/SyncSession.
+    # Why: StartSession is a producer of session ids, so response fields must be validated precisely.
+    cases: list[SyntheticCase] = []
+    for source, steps in public.items():
+        for index, _ in final_step_with_method(steps, "StartSession"):
+            prefix = copy.deepcopy(steps[: index + 1])
+
+            missing_sp = copy.deepcopy(prefix)
+            missing_sp[-1]["output"] = {
+                "method": {"name": "SyncSession"},
+                "return_values": {"required": {"HostSessionID": "00000001"}, "optional": {}},
+                "status_codes": "SUCCESS",
+            }
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:startsession_missing_sp_session:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="Successful StartSession/SyncSession must return SPSessionID.",
+                    steps=missing_sp,
+                )
+            )
+
+            wrong_host = copy.deepcopy(prefix)
+            wrong_host[-1]["output"] = {
+                "method": {"name": "SyncSession"},
+                "return_values": {
+                    "required": {"HostSessionID": "00000002", "SPSessionID": "00000003"},
+                    "optional": {},
+                },
+                "status_codes": "SUCCESS",
+            }
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:startsession_wrong_host_session:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="SyncSession HostSessionID should echo the requested HostSessionID.",
+                    steps=wrong_host,
+                )
+            )
+
+            wrong_method = copy.deepcopy(prefix)
+            wrong_method[-1]["output"] = {
+                "method": {"name": "Get"},
+                "return_values": {
+                    "required": {"HostSessionID": "00000001", "SPSessionID": "00000003"},
+                    "optional": {},
+                },
+                "status_codes": "SUCCESS",
+            }
+            cases.append(
+                SyntheticCase(
+                    name=f"{source}:startsession_wrong_response_method:{index}",
+                    expected="fail",
+                    source=source,
+                    reason="A successful StartSession response should be SyncSession-shaped.",
+                    steps=wrong_method,
                 )
             )
     return cases
@@ -390,8 +578,11 @@ def build_synthetic_cases(public: dict[str, list[Json]]) -> list[SyntheticCase]:
     return (
         genkey_cases(public)
         + malformed_challenge_cases(public)
+        + properties_cases(public)
         + data_command_cases(public)
+        + get_precondition_cases(public)
         + pin_auth_cases(public)
+        + start_session_response_cases(public)
         + set_schema_cases(public)
         + end_session_cases(public)
         + activate_payload_cases(public)

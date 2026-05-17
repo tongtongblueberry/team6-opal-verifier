@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.solver import RULE_SPEC_QUERIES, StatefulOpalVerifier, _invoking_name, _method_name, _status_name
+from tools.metamorphic_eval import build_synthetic_cases, load_public_cases
 
 
 Json = dict[str, Any]
@@ -46,6 +47,21 @@ def load_dataset(root: Path) -> list[Json]:
     return [
         {"id": path.name, "steps": load_json(path)}
         for path in sorted((root / "testcases").glob("tc*.json"), key=case_number)
+    ]
+
+
+def load_synthetic_dataset(root: Path) -> list[Json]:
+    # Changed: include rule-specific synthetic cases in coverage diagnostics when requested.
+    # Why: public-only coverage can report false gaps for rules already covered by metamorphic tests.
+    public = load_public_cases(root)
+    return [
+        {
+            "id": f"synthetic:{case.name}",
+            "steps": case.steps,
+            "label": case.expected,
+            "synthetic_reason": case.reason,
+        }
+        for case in build_synthetic_cases(public)
     ]
 
 
@@ -122,6 +138,7 @@ def categories_for_trace(trace: list[Json], spec_hits: int) -> set[str]:
             "SET_PAYLOAD",
             "ENDSESSION_PAYLOAD",
             "ACTIVATE_PAYLOAD",
+            "WRITE_RESPONSE",
         }
     ):
         categories.add("payload_invariant")
@@ -136,9 +153,12 @@ def main() -> None:
     parser.add_argument("--label-path", type=Path, default=None)
     parser.add_argument("--spec-index", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=Path("reports/rule_coverage.json"))
+    parser.add_argument("--include-synthetic", action="store_true")
     args = parser.parse_args()
 
     dataset = load_dataset(args.dataset_root)
+    if args.include_synthetic:
+        dataset.extend(load_synthetic_dataset(args.dataset_root))
     labels = load_labels(args.label_path or args.dataset_root / "label.jsonl")
     spec_index = load_spec_index(args.spec_index)
     verifier = StatefulOpalVerifier()
@@ -152,7 +172,7 @@ def main() -> None:
         method, invoking, status = final_info(item["steps"])
         result = verifier.verify_with_trace(item["steps"])
         prediction = str(result["prediction"])
-        label = labels.get(item["id"], "")
+        label = str(item.get("label") or labels.get(item["id"], ""))
         if label and prediction == label:
             correct += 1
         trace = list(result.get("trace", []))

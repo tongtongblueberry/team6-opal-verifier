@@ -25,6 +25,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "WRITE_PAYLOAD_EFFECT": ["Data Write LBA payload"],
     "GENKEY_EFFECT": ["GenKey media encryption key"],
     "PARSE_FINAL_COMMAND": ["method command status parsing"],
+    "PROPERTIES_TARGET": ["Properties Session Manager UID target"],
     "PROPERTIES_PAYLOAD": ["Properties MaxMethods MaxSessions MaxPacketSize"],
     "STARTSESSION_FINAL": ["StartSession HostChallenge HostSigningAuthority"],
     "PRECONDITION_EXPECTED_ERROR": ["method precondition NOT_AUTHORIZED INVALID_PARAMETER"],
@@ -34,6 +35,7 @@ RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "ENDSESSION_PAYLOAD": ["EndSession close session empty result list"],
     "SET_PAYLOAD": ["Set method empty result list RowValues duplicate column INVALID_PARAMETER"],
     "READ_PAYLOAD": ["Read LBA result GenKey"],
+    "WRITE_RESPONSE": ["Write DATA_COMMAND response command payload"],
     "SET_OBJECT_FIELDS": ["Set Values table column object"],
     "GET_PAYLOAD": ["Get Cellblock startColumn endColumn return_values"],
     "GENKEY_PAYLOAD": ["GenKey empty return_values response"],
@@ -197,6 +199,30 @@ def _session_id(value: Any) -> str:
     if sid is None:
         return ""
     return _norm(sid)
+
+
+def _field_text(value: Any, key_name: str) -> str:
+    # Changed: recover a specific protocol field without falling back to related session ids.
+    # Why: response validation must compare HostSessionID and SPSessionID independently.
+    found = _find_first_key(value, {_compact(key_name)})
+    if found is None:
+        return ""
+    return _norm(found)
+
+
+def _ids_equivalent(left: Any, right: Any) -> bool:
+    # Changed: compare session ids across integer and zero-padded hex encodings.
+    # Why: public StartSession requests use 1 while responses use 00000001.
+    left_text = _compact(left)
+    right_text = _compact(right)
+    if not left_text or not right_text:
+        return False
+    if left_text == right_text:
+        return True
+    try:
+        return int(left_text, 16) == int(right_text, 16)
+    except ValueError:
+        return False
 
 
 def _host_challenge(command: Json) -> str:
@@ -573,6 +599,16 @@ class StatefulOpalVerifier:
             return True
 
         if method == "properties":
+            target_invalid = self._properties_target_invalid(invoking, invoking_uid)
+            self._add_trace(
+                state,
+                step_index,
+                "PROPERTIES_TARGET",
+                reads=["invoking_name", "invoking_uid"],
+                detail=f"uid={invoking_uid}, inconsistent={target_invalid}",
+            )
+            if target_invalid:
+                return True
             inconsistent = status != self.success_status or not self._has_properties_payload(output)
             self._add_trace(
                 state,
@@ -675,6 +711,17 @@ class StatefulOpalVerifier:
             )
             return inconsistent
 
+        if method == "write" and status == self.success_status:
+            inconsistent = self._write_response_inconsistent(command, output)
+            self._add_trace(
+                state,
+                step_index,
+                "WRITE_RESPONSE",
+                reads=["payload", "command"],
+                detail=f"inconsistent={inconsistent}",
+            )
+            return inconsistent
+
         if method == "genkey" and status == self.success_status:
             inconsistent = self._genkey_payload_inconsistent(output)
             self._add_trace(
@@ -744,6 +791,15 @@ class StatefulOpalVerifier:
             return True
         return bool(invoking_uid) and not invoking_uid.startswith("00000205")
 
+    def _properties_target_invalid(self, invoking: str, invoking_uid: str) -> bool:
+        # Changed: constrain Properties to the Session Manager object when identity is present.
+        # Why: generic discovery responses should not be accepted on unrelated invoking objects.
+        if invoking and "sessionmanager" not in invoking:
+            return True
+        if invoking_uid and not invoking_uid.endswith("ff"):
+            return True
+        return False
+
     def _start_session_inconsistent(
         self,
         state: ProtocolState,
@@ -763,7 +819,17 @@ class StatefulOpalVerifier:
                 return status != "notauthorized"
         if status != self.success_status:
             return True
-        return not (_session_id(output) or _session_id(command))
+        output_method = _compact(_method_name(output))
+        if output_method and output_method != "syncsession":
+            return True
+        output_host_session = _field_text(output, "HostSessionID")
+        output_sp_session = _field_text(output, "SPSessionID")
+        if not output_host_session or not output_sp_session:
+            return True
+        input_host_session = _field_text(command, "HostSessionID")
+        if input_host_session and not _ids_equivalent(input_host_session, output_host_session):
+            return True
+        return False
 
     def _has_properties_payload(self, output: Json) -> bool:
         strings = [_compact(item) for item in _collect_strings(output)]
@@ -792,6 +858,10 @@ class StatefulOpalVerifier:
 
     def _read_payload_inconsistent(self, state: ProtocolState, command: Json, output: Json) -> bool:
         actual = self._payload(output)
+        if not self._data_command_response_matches("read", output):
+            return True
+        if not actual:
+            return True
         address = self._address(command)
         expected = state.written_payloads.get(address)
         if state.generated_key_after_write and actual:
@@ -802,6 +872,23 @@ class StatefulOpalVerifier:
         if expected:
             return bool(actual) and not _payloads_equivalent(actual, expected)
         return False
+
+    def _write_response_inconsistent(self, command: Json, output: Json) -> bool:
+        # Changed: validate DATA_COMMAND Write as a concrete media operation.
+        # Why: final Write should not fall through DEFAULT_PASS without command/payload evidence.
+        if not _is_data_command(command):
+            return False
+        if not self._payload(command):
+            return True
+        return not self._data_command_response_matches("write", output)
+
+    def _data_command_response_matches(self, command_name: str, output: Json) -> bool:
+        # Changed: enforce DATA_COMMAND response command identity when provided.
+        # Why: Read/Write response shape is part of the command-level oracle.
+        response_command = _find_first_key(output, {"command"})
+        if response_command is None:
+            return True
+        return _compact(response_command) == command_name
 
     def _get_payload_inconsistent(self, state: ProtocolState, command: Json, output: Json) -> bool:
         requested = _requested_columns(command)
