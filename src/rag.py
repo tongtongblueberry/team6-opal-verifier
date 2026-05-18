@@ -382,14 +382,14 @@ locked range, invalid column).
 4. An error is FAIL if the operation should have succeeded \
 (e.g., valid credentials but got NOT_AUTHORIZED, valid parameters but got INVALID_PARAMETER).
 
-Key state factors:
+Key state factors to check:
 - Is there an active session?
 - Is the host authenticated with the required authority?
 - Is the target locking range locked or unlocked?
 - Are the command parameters valid (column ranges, values)?
 
-When uncertain, lean towards "pass" — most error responses are intentional.
-Answer with EXACTLY one word: pass or fail"""
+Think step by step. First identify the relevant state, then check against the specification.
+Answer with EXACTLY one word on the last line: pass or fail"""
 
 # Changed: separate template for per-document scoring (RAG-Sequence).
 # Why: each document z_i gets its own prompt for independent p(y|x, z_i) scoring.
@@ -646,26 +646,62 @@ class LLMJudge:
                 messages, tokenize=False, add_generation_prompt=True,
             )
         inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        # Changed: increase max_new_tokens to 8192 for thinking mode.
+        # Why: Cycle 3 found that 4096 tokens is often consumed by thinking,
+        # leaving no room for the final "pass"/"fail" answer.
         with torch.no_grad():
             outputs = self.model.generate(
-                **inputs, max_new_tokens=self.max_new_tokens,
+                **inputs, max_new_tokens=8192,
                 do_sample=False, temperature=None, top_p=None,
             )
         new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
-        response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
-        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip().lower()
-        words = response.split()
-        tail = words[-5:] if len(words) >= 5 else words
-        if "fail" in tail:
-            return "fail"
-        if "pass" in tail:
-            return "pass"
-        head = words[:5] if len(words) >= 5 else words
-        if "fail" in head:
-            return "fail"
-        if "pass" in head:
-            return "pass"
-        logger.warning("Generation ambiguous: %r — defaulting to pass", response[-200:])
+        # Changed: decode with skip_special_tokens=False first to find </think> boundary.
+        # Why: skip_special_tokens=True removes <think>/</ think> tags but keeps content.
+        # We need to find the boundary and extract only the post-thinking answer.
+        raw = self.tokenizer.decode(new_tokens, skip_special_tokens=False)
+        # Extract answer after </think> tag if present
+        if "</think>" in raw:
+            answer_part = raw.split("</think>", 1)[1].strip().lower()
+        else:
+            # No thinking tags — use the full response
+            answer_part = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip().lower()
+        # Also check inside thinking for verdict if answer_part is empty
+        thinking_part = raw.split("</think>")[0] if "</think>" in raw else ""
+        # Parse answer
+        words = answer_part.split()
+        if words:
+            tail = words[-5:] if len(words) >= 5 else words
+            if "fail" in tail:
+                return "fail"
+            if "pass" in tail:
+                return "pass"
+            head = words[:5]
+            if "fail" in head:
+                return "fail"
+            if "pass" in head:
+                return "pass"
+        # Changed: if answer_part is empty/ambiguous, look for verdict in thinking content.
+        # Why: model sometimes states its conclusion inside <think> before max_tokens cutoff.
+        if thinking_part:
+            think_lower = thinking_part.lower()
+            # Look for explicit verdict patterns in thinking
+            verdict_patterns = [
+                r"verdict[:\s]+fail", r"answer[:\s]+fail", r"therefore[,:\s]+fail",
+                r"the response is inconsistent", r"should have returned",
+                r"this is a violation", r"the response violates",
+            ]
+            for pattern in verdict_patterns:
+                if re.search(pattern, think_lower):
+                    return "fail"
+            pass_patterns = [
+                r"verdict[:\s]+pass", r"answer[:\s]+pass", r"therefore[,:\s]+pass",
+                r"the response is consistent", r"correctly returns",
+                r"this is compliant", r"the response complies",
+            ]
+            for pattern in pass_patterns:
+                if re.search(pattern, think_lower):
+                    return "pass"
+        logger.warning("Generation ambiguous: %r — defaulting to pass", answer_part[-200:] or raw[-200:])
         return "pass"
 
 
@@ -731,26 +767,28 @@ class RAGSolver:
         if not primary_query:
             return "pass"
 
-        # Changed: multi-query retrieval with RRF fusion (Cycle 1).
-        # Why: query expansion + RRF raises BM25 recall ~17% (Haystack 2024, RAG-Fusion).
-        queries = expand_queries(primary_query, records)
-        ranked_lists = [self.index.query(q, self.top_k * 2) for q in queries]
-        fused = rrf_fuse(ranked_lists)
-        top_results = fused[: self.top_k]
-        if not top_results:
+        # Changed: use direct BM25 retrieval instead of query expansion + RRF.
+        # Why: Shi et al. (2026, "From BM25 to Corrective RAG") benchmarked multi-query
+        # expansion on 23,088 queries and found -0.4pp R@5 vs plain BM25.
+        # "Multi-query retrieval provides negligible improvement for specific queries."
+        # TCG/Opal queries are equally specific (method names, object names, status codes).
+        results = self.index.query(primary_query, self.top_k)
+        if not results:
             return "pass"
 
-        # Changed: retrieve original BM25 scores from primary query for marginalization weights.
-        # Why: RRF gives rank-based scores; we need BM25 scores for p_η(z|x) softmax.
-        primary_scores = {idx: score for idx, score in ranked_lists[0]}
         spec_texts: list[str] = []
         bm25_scores: list[float] = []
-        for idx, _rrf_score in top_results:
+        for idx, score in results:
             if idx < len(self.chunks):
                 spec_texts.append(self.chunks[idx].text)
-                bm25_scores.append(primary_scores.get(idx, 0.1))
+                bm25_scores.append(score)
 
         if not spec_texts:
             return "pass"
 
-        return self.llm.judge_marginalized(records, spec_texts, bm25_scores)
+        # Changed: use generation mode (thinking) instead of logit marginalization.
+        # Why: Cycle 2 showed logit scoring has severe pass-bias (55% accuracy, fail recall 10%).
+        # Zero-shot logits are poorly calibrated (Amazon 2024 "Label with Confidence").
+        # Generation with thinking mode allows step-by-step spec reasoning (Wei et al., 2022 CoT).
+        # Cost: ~60s/case vs ~4s/case, but 3-hour budget allows this for ~60 DEFAULT_PASS cases.
+        return self.llm.judge_generate(records, spec_texts)

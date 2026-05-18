@@ -1236,12 +1236,18 @@ class Solver:
             predictions[case_id] = prediction
         return predictions
 
+    # Changed: revert to DEFAULT_PASS only after KNOWN_FIELD_EXPECTED_SUCCESS regression.
+    # Why: Cycle 1 test showed adding KNOWN_FIELD_EXPECTED_SUCCESS caused public 100→80
+    # (4 fail cases flipped to pass by RAG). Rule engine's field-level knowledge is more
+    # precise than LLM's spec reading for these cases.
+    _LOW_CONFIDENCE_RULES = {
+        "DEFAULT_PASS",
+    }
+
     @staticmethod
     def _is_low_confidence(trace: list[Json]) -> bool:
-        """Check if the rule engine ended with DEFAULT_PASS (unmodeled error)."""
+        """Check if the rule engine's final judgment has low confidence."""
         if not trace:
             return False
-        # Changed: only check the final trace entry for DEFAULT_PASS.
-        # Why: DEFAULT_PASS is only emitted during _final_is_inconsistent when the
-        # status is an error that the rule engine cannot explain.
-        return trace[-1].get("rule_id") == "DEFAULT_PASS"
+        last_rule = trace[-1].get("rule_id", "")
+        return last_rule in Solver._LOW_CONFIDENCE_RULES
