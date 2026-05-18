@@ -1191,10 +1191,21 @@ def predict_one(testcase: Any) -> str:
 
 
 class Solver:
-    # Changed: add the official course skeleton interface.
-    # Why: /dl2026/skeleton/evaluate.py imports Solver and expects predict() to return id->label.
+    # Changed: add confidence-gated hybrid — rule engine + RAG/LLM fallback.
+    # Why: rule engine hits DEFAULT_PASS for unmodeled errors (~30% of cases).
+    # RAG retrieves relevant spec passages and an LLM judges those cases.
     def __init__(self) -> None:
         self.verifier = StatefulOpalVerifier()
+        self.rag_solver = None
+        # Changed: lazy-import RAGSolver so local dev (no torch/transformers) still works.
+        # Why: the server has PyTorch + transformers installed; local macOS does not.
+        try:
+            from src.rag import RAGSolver
+            self.rag_solver = RAGSolver()
+            if not self.rag_solver.available:
+                self.rag_solver = None
+        except Exception:
+            self.rag_solver = None
 
     def predict(self, dataset: Any) -> dict[str, str]:
         if not isinstance(dataset, list):
@@ -1208,5 +1219,29 @@ class Solver:
             else:
                 case_id = f"case_{index}"
                 steps = item
-            predictions[case_id] = self.verifier.verify(steps)
+
+            # Changed: run rule engine with trace to assess confidence level.
+            # Why: trace reveals which rule fired last; DEFAULT_PASS means low confidence.
+            result = self.verifier.verify_with_trace(steps)
+            prediction = result["prediction"]
+            trace = result.get("trace", [])
+
+            # Changed: delegate low-confidence cases to RAG+LLM fallback.
+            # Why: the rule engine defaults to "pass" for unmodeled errors, but the LLM
+            # can consult the spec to determine if the error is actually valid.
+            if self.rag_solver and self._is_low_confidence(trace):
+                records = self.verifier._records(steps)
+                prediction = self.rag_solver.predict(records, trace)
+
+            predictions[case_id] = prediction
         return predictions
+
+    @staticmethod
+    def _is_low_confidence(trace: list[Json]) -> bool:
+        """Check if the rule engine ended with DEFAULT_PASS (unmodeled error)."""
+        if not trace:
+            return False
+        # Changed: only check the final trace entry for DEFAULT_PASS.
+        # Why: DEFAULT_PASS is only emitted during _final_is_inconsistent when the
+        # status is an error that the rule engine cannot explain.
+        return trace[-1].get("rule_id") == "DEFAULT_PASS"

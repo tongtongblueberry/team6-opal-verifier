@@ -7,11 +7,11 @@
 
 ## 현재 문제 정의
 
-[Original Text/Data] → 현재 서버 public train/dev는 `100.00`이고 leaderboard best 제출 `team6-rule-coverage-fd43bd5`는 `68.00`이다. 이전 제출 `team6-state-verifier-872f31d`는 `60.50`이었다.
+[Original Text/Data] → 현재 서버 public train/dev는 `100.00`이고 leaderboard best는 `71.50`이다. 초기 제출은 `60.50`이었다.
 
-[Exact Interpretation] → public 20개에 대한 parser/rule은 맞췄지만 hidden leaderboard scenario의 method/object/state/payload 조합을 충분히 덮지 못했다.
+[Exact Interpretation] → public 20개에 대한 parser/rule은 맞췄지만 hidden leaderboard scenario의 method/object/state/payload 조합을 충분히 덮지 못했다. 순수 rule engine은 71.50에서 plateau 상태다.
 
-[Detailed Explanation/Example] → 이것은 “Qwen을 fine-tuning하면 해결”할 문제가 아니다. hidden label을 모르기 때문에 supervised fine-tuning 대상이 없다. 실제로 guidebook 기반 `Get` field consistency와 invalid Cellblock rule을 추가하자 leaderboard가 60.50에서 68.00으로 올랐다. 현재 필요한 것은 guidebook과 trace를 사용해 **rule coverage를 계속 확장하는 것**이다.
+[Detailed Explanation/Example] → rule engine 확장은 계속 필요하지만, 수동 규칙 작성만으로는 500+ spec 문서의 모든 edge case를 커버하기 어렵다. 이에 따라 **confidence-gated hybrid** 아키텍처로 전환했다: rule engine이 판단하지 못하는 case (`DEFAULT_PASS`)를 RAG (BM25 spec retrieval) + LLM (Qwen3.5-27B-FP8)로 판정한다. 이것은 rule coverage를 대체하는 것이 아니라 보완하는 것이다.
 
 ## 관련 연구에서 배운 원칙
 

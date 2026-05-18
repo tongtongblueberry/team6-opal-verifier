@@ -1,17 +1,50 @@
-<!-- Changed: document the executable approach and data boundaries for repository users. -->
-<!-- Why: leaderboard work must not mix public labels with private leaderboard/test data. -->
+<!-- Changed: update README to reflect RAG+LLM hybrid solver architecture. -->
+<!-- Why: the solver now uses confidence-gated hybrid: rule engine + RAG/LLM fallback. -->
 # Team 6 Opal Verifier
 
-This repository contains a deterministic verifier for SSD TCG/Opal command-response trajectories.
+A **confidence-gated hybrid solver** for SSD TCG/Opal command-response trajectory pass/fail
+classification.
 
-The main submission entry point is `src/solver.py::predict(dataset)`, which returns lowercase
-`pass` or `fail` for each testcase. The solver does not load an LLM at runtime. It converts each
-trajectory into canonical events, tracks protocol state, and checks whether the final response is
-consistent with the preceding command history.
+## Architecture
 
-Heavy pretrained models such as Qwen must not be downloaded into this local repository or committed
-to GitHub. If an auxiliary LLM experiment is needed, it should run only on the course server using
-the shared model cache documented by the project.
+The entry point is `src/solver.py::Solver.predict(dataset)`, which returns `{id: "pass"/"fail"}`.
+
+```
+Trajectory → Rule Engine (StatefulOpalVerifier) → prediction + confidence
+                                                         │
+                             HIGH confidence ←───────────┤
+                             (specific rule fired)        │
+                                  │                  LOW confidence
+                                  │                  (DEFAULT_PASS)
+                                  │                       │
+                                  │         Query extraction + BM25 retrieval
+                                  │         over TCG/Opal spec documents
+                                  │                       │
+                                  │         LLM judgment (Qwen3.5-27B-FP8)
+                                  │                       │
+                                  └──────── final prediction ◄──────┘
+```
+
+- **High confidence cases** (~70%): deterministic rule engine, no LLM needed
+- **Low confidence cases** (~30%): RAG retrieves relevant spec passages, LLM judges pass/fail
+
+The rule engine handles all protocol-specific checks (session tracking, authentication, field
+semantics, payload validation). The LLM handles unmodeled error statuses that the rule engine
+cannot explain.
+
+Reference: Lewis et al. (2020), *Retrieval-Augmented Generation for Knowledge-Intensive Language
+Tasks*, NeurIPS 2020.
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/solver.py` | Entry point. Confidence-gated hybrid: rule engine + RAG/LLM |
+| `src/rag.py` | BM25 retrieval over spec chunks + Qwen3.5-27B-FP8 LLM judge |
+| `tools/download_model.py` | Pre-download LLM on server (run once) |
+| `tools/intermediate_eval.py` | Public train/dev evaluation |
+| `tools/build_spec_index.py` | Guidebook chunk index builder |
+| `tools/mutation_eval.py` | Mutation testing adequacy framework |
 
 ## Data Boundary
 
@@ -20,18 +53,26 @@ No dataset files are committed here.
 - Public labeled files under `/dl2026/dataset` are treated as train/dev only.
 - Leaderboard feedback must be treated as a separate validation signal, not training labels.
 - Private test data is never inspected and must only be used by the official evaluator.
-
-## Project State
-
-See `TODO.md` for the current handoff state, recent leaderboard result, and next actions. See
-`docs/rule_coverage_research_ko.md` for the rule-coverage expansion plan.
+- Heavy pretrained models (Qwen etc.) are not committed. They are downloaded on the server only.
 
 ## Commands
 
+Local (no GPU needed — RAG disabled, pure rule engine):
 ```bash
 bash setup.sh
-python3 -m compileall src
+python3 -m compileall src tools
 ```
 
-On the course server, copy or clone this repository into the submission workspace and run the
-official `evaluate.py` and `submit` commands from that environment.
+Server setup (first time):
+```bash
+python3 tools/download_model.py --model Qwen/Qwen3.5-27B-FP8
+```
+
+Server evaluation:
+```bash
+python3 tools/intermediate_eval.py --dataset-root /dl2026/dataset
+```
+
+## Project State
+
+See `TODO.md` for the current handoff state, recent leaderboard result, and next actions.

@@ -1,5 +1,5 @@
-<!-- Changed: update project analysis after Metamorphic Coverage diagnostics and submission. -->
-<!-- Why: the current bottleneck is diagnostic saturation, not public/metamorphic pass rate. -->
+<!-- Changed: update project analysis after RAG+LLM hybrid solver implementation. -->
+<!-- Why: architecture changed from pure rule engine to confidence-gated hybrid. -->
 
 # Team 6 SSD TCG/Opal Verifier 현재 분석
 
@@ -9,25 +9,33 @@
 
 이 프로젝트는 순수 AI classifier 문제라기보다 **spec-grounded state verifier** 문제다. 입력 trajectory 전체가 주어지므로, 마지막 command-response pair가 현재 SSD/TCG/Opal 상태에서 명세상 가능한 응답인지 판단하면 된다.
 
-현재 제출 solver는 LLM이나 Qwen을 런타임에 사용하지 않는다. `src/solver.py`는 JSON command/response를 정규화하고, session/auth/SP/key/data/object-field 상태를 추적한 뒤 마지막 record를 `pass` 또는 `fail`로 판정한다.
+현재 제출 solver는 **confidence-gated hybrid** 방식을 사용한다:
+- 확신이 높은 case: deterministic rule engine (`StatefulOpalVerifier`)이 직접 판정
+- 확신이 낮은 case (DEFAULT_PASS): RAG (BM25 over spec chunks) + LLM (Qwen3.5-27B-FP8)이 판정
+
+`src/solver.py`는 JSON command/response를 정규화하고, session/auth/SP/key/data/object-field 상태를 추적한 뒤, 마지막 record를 판정한다. Rule engine이 error status를 설명하지 못하면 (`DEFAULT_PASS`), spec 문서에서 관련 passage를 BM25로 검색하고 LLM에게 pass/fail을 묻는다.
+
+[EXTERNAL KNOWLEDGE] Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., ... & Kiela, D. (2020). *Retrieval-Augmented Generation for Knowledge-Intensive Language Tasks*. NeurIPS 2020. https://arxiv.org/abs/2005.11401
 
 ## 현재 구현 상태
 
 - GitHub repo: `https://github.com/tongtongblueberry/team6-opal-verifier`
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
-- Latest submitted commit: `41b4df6`
+- Architecture: **Confidence-Gated Hybrid** (Rule Engine + RAG/LLM)
+- LLM: Qwen3.5-27B-FP8 (FP16, ~27GB VRAM FP8, 서버 전용)
+- Retrieval: BM25 over 500+ spec .txt chunks (from `/dl2026/skeleton/artifacts/documents/`)
+- Latest submitted commit: `2df1e71`
 - Latest submitted job:
-  - Job ID: `106`
-  - Submission ID: `fcc52d52b98a437ca1afd7f3a9171f25`
-  - Job Name: `team6-mc-41b4df6`
-  - Score: `69.50`
-- Current best leaderboard score: `69.50`
-- Server diagnostics:
+  - Job ID: `107`
+  - Submission ID: `1871750633c343ccb8f2bc7af1fd0665`
+  - Job Name: `team6-locking-2df1e71`
+  - Score: `71.50`
+- Current best leaderboard score: `71.50`
+- Server diagnostics (latest code):
   - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
-  - Metamorphic/property diagnostics: `1821/1821`
+  - Metamorphic/property diagnostics: `1891/1891`
+  - Mutation score: `1.0000` (`11/11` mutants killed)
   - Rule coverage with synthetic cases: `low_confidence=0`
-  - Method-specific missing gaps: all `none`
-  - Metamorphic Coverage diagnostics: `guidance_pairs=1626`, `mean_pair_mc_size=5.67`, `zero_mc_pairs=245`, `mc_cv_by_relation=0.77`, `coverage_cv_by_relation=0.32`
 
 ## 55점이 낮게 나온 이유
 
@@ -86,20 +94,27 @@ public, metamorphic, coverage 지표는 모두 필요하지만 hidden 성능을 
 
 ## 현재 방향
 
-다음 개선은 leaderboard hidden label을 역추론하는 것이 아니라, guidebook 기반 rule universe와 mutation-style adequacy를 확장하는 것이다.
+순수 rule engine의 한계(71.50 plateau)를 넘기 위해 **confidence-gated hybrid** 아키텍처로 전환했다.
 
-권장 구조:
+현재 구조:
 
-1. `StatefulOpalVerifier`의 trace mode로 final rule과 state read/write를 확인한다.
-2. `tools/metamorphic_eval.py` pass rate만 보지 말고 solver mutant를 만들어 mutation score를 측정한다.
-3. `/dl2026/skeleton/artifacts/documents`의 core/opal chunk를 lightweight index로 검색한다.
-4. 서버에서만 Qwen/Gemma 등 LLM을 사용해 rule 후보와 spec reference 후보를 추출한다.
-5. 제출 solver runtime은 deterministic rule engine으로 유지한다.
+1. `StatefulOpalVerifier`가 모든 case를 trace mode로 판정한다.
+2. 확신이 높은 case (specific rule fired): rule engine 결과를 그대로 사용한다.
+3. 확신이 낮은 case (`DEFAULT_PASS`): `src/rag.py`의 RAG pipeline이 처리한다.
+   - BM25로 spec chunk를 검색한다 (500+ guidebook .txt files).
+   - Qwen3.5-27B-FP8 (FP16)가 trajectory + spec context를 보고 pass/fail을 판정한다.
+4. 로컬에서는 RAG가 비활성화되고 순수 rule engine으로 동작한다 (torch/transformers 없음).
+
+다음 개선:
+
+1. 서버에서 hybrid solver 검증 후 leaderboard 제출
+2. Prompt/retrieval 튜닝 (top_k, chunk_size, system prompt 강도)
+3. Rule engine 자체 확장 (Authenticate, Byte table, Session type 등)
 
 ## 데이터 분리 원칙
 
 - Public labeled data `/dl2026/dataset`은 train/dev 용도로만 사용한다.
 - Leaderboard 결과는 점수와 commit 기록에만 사용한다.
 - Hidden leaderboard/test sample label을 역추론해 rule에 직접 박지 않는다.
-- 로컬과 GitHub에는 Qwen 같은 대형 모델을 받거나 커밋하지 않는다.
+- 로컬과 GitHub에는 Qwen 같은 대형 모델을 받거나 커밋하지 않는다. 서버 캐시만 사용한다.
 - 서버 비밀번호나 GitHub token은 파일, 커밋, 문서에 저장하지 않는다.

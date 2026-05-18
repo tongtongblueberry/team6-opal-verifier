@@ -11,12 +11,19 @@
 DeepLog/LogBERT/LogGPT류처럼 public labels를 사용해 classifier를 학습하는 접근은 우선순위가 낮다.
 더 가까운 계열은 RESTler/AFLNet/StateAFL/ChatAFL 쪽의 "상태 기반 protocol reasoning"이다.
 
+**2026-05-18 업데이트**: 순수 rule engine이 71.50에서 plateau한 후, confidence-gated hybrid로 전환했다.
+확신이 높은 case는 rule engine이 직접 판정하고, 확신이 낮은 case (`DEFAULT_PASS`)는 RAG (BM25 over
+spec chunks) + LLM (Qwen3.5-27B-FP8)이 판정한다. 이것은 Lewis et al. (2020)의 Retrieval-Augmented
+Generation 아키텍처를 적용한 것이다. LLM은 spec 원문을 직접 읽고 판단하므로 supervised fine-tuning이
+아니며, 공개 라벨에 의존하지 않는다.
+
 우리에게 필요한 것은 다음 구조다.
 
 1. JSON command/response를 canonical event로 변환한다.
 2. 마지막 record 이전까지 session/auth/SP/locking/key/data 상태를 추적한다.
 3. 마지막 record 판단에 사용된 state 변수와 spec 근거를 trace로 남긴다.
-4. LLM은 런타임 classifier가 아니라 spec chunk 검색, rule 후보 추출, report 작성에만 쓴다.
+4. 확신이 높은 case는 rule engine이 직접 판정한다.
+5. 확신이 낮은 case는 RAG+LLM이 spec chunk를 검색하고 pass/fail을 판정한다.
 
 ## 조사 대상 분류
 

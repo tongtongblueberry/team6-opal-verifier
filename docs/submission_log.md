@@ -17,3 +17,11 @@
 | 2026-05-18 | `c613397` | 102 | `3440cbdce03e48529eacb057a3c84b77` | `team6-field-semantics-c613397` | 100.00 | 69.50 | Added known field semantics for C_PIN, Authority, Locking, and MBRControl; server diagnostics passed: metamorphic 1821/1821, synthetic-inclusive low_confidence 0. Score plateau suggests diagnostics are saturated rather than solved hidden coverage. |
 | 2026-05-18 | `41b4df6` | 106 | `fcc52d52b98a437ca1afd7f3a9171f25` | `team6-mc-41b4df6` | 100.00 | 69.50 | Applied Ba et al. 2025 Metamorphic Coverage diagnostics to solver trace features. Server MC: pairs 1821, guidance pairs 1626, mean MC 5.67, zero-MC guidance pairs 245, MC CV 0.77 vs coverage CV 0.32. Solver behavior unchanged. |
 | 2026-05-18 | `2df1e71` | 107 | `1871750633c343ccb8f2bc7af1fd0665` | `team6-locking-2df1e71` | 100.00 | 71.50 | Redesigned MC source/follow-up pairing and added guidebook-backed Locking ReadLocked/WriteLocked DATA_COMMAND access rules. Server diagnostics passed: metamorphic 1839/1839, low_confidence 0, MC guidance pairs 1648, mean MC 14.81, zero-MC guidance pairs 86. |
+
+## Architecture Note (2026-05-18)
+
+After `2df1e71` (71.50), the architecture transitioned from **pure rule engine** to **confidence-gated hybrid** (Lewis et al., 2020 — RAG):
+- High confidence cases: deterministic rule engine (unchanged)
+- Low confidence cases (`DEFAULT_PASS`): BM25 spec retrieval + Qwen3.5-27B-FP8 LLM judgment
+
+New files: `src/rag.py`, `tools/download_model.py`. Next submission will use the hybrid solver.

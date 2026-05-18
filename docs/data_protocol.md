@@ -15,17 +15,22 @@ test의 내용이나 추정 라벨을 기록하지 않는다.
 
 ## 구현 정책
 
-현재 solver는 학습 기반 분류기가 아니라 상태 기반 verifier다. 따라서 public 20개 라벨을 외우는 방식이
-아니라 다음 순서로 판단한다.
+현재 solver는 **confidence-gated hybrid**다. 학습 기반 분류기가 아니라 상태 기반 verifier + RAG/LLM fallback이다.
 
 1. JSON trajectory를 command/response event로 정규화한다.
 2. 마지막 이전 record들로 session, authentication, activation, write/read 상태를 갱신한다.
 3. 마지막 record의 command와 output이 현재 상태에서 가능한지 검사한다.
-4. 가능한 응답이면 `pass`, 모순이면 `fail`을 반환한다.
+4. Rule engine이 확신을 가지고 판단할 수 있으면 (specific rule): 직접 판정한다.
+5. Rule engine이 판단하지 못하면 (`DEFAULT_PASS`): BM25로 spec passage를 검색하고 LLM에게 묻는다.
+6. 최종 prediction을 반환한다.
+
+LLM은 학습 데이터를 기반으로 판단하는 것이 아니라, 검색된 spec 원문을 직접 읽고 판단한다. 따라서
+public 라벨을 외우는 방식이 아니며 data leakage 위험이 없다.
 
 ## 금지 사항
 
 - Leaderboard 샘플을 train 데이터로 합치지 않는다.
 - Private test 내용을 저장소에 커밋하지 않는다.
 - 서버 비밀번호나 GitHub 토큰을 문서, 코드, 커밋 메시지에 남기지 않는다.
-- Qwen 같은 대형 모델을 로컬 저장소나 로컬 캐시에 내려받지 않는다. 필요한 경우 서버의 공유 캐시만 사용한다.
+- Qwen 같은 대형 모델을 로컬 저장소나 로컬 캐시에 내려받지 않는다. 서버의 캐시만 사용한다.
+- LLM의 판정에 공개 라벨 정보를 주입하지 않는다 (few-shot으로 정답을 보여주지 않음).
