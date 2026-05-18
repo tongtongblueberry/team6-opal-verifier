@@ -124,7 +124,10 @@ def main() -> None:
                         item["messages"], tokenize=False,
                         add_generation_prompt=False,
                     )
-                encoded = tokenizer(text, truncation=True, max_length=2048,
+                # Changed: reduce max_length from 2048 to 512 to avoid OOM.
+                # Why: 4B model + LoRA + 2048 tokens = 44GB VRAM overflow.
+                # 512 tokens should capture the final steps of trajectory.
+                encoded = tokenizer(text, truncation=True, max_length=512,
                                     padding="max_length", return_tensors="pt")
                 self.examples.append({
                     "input_ids": encoded["input_ids"].squeeze(),
@@ -145,6 +148,11 @@ def main() -> None:
     # Training
     from transformers import Trainer
 
+    # Changed: enable gradient checkpointing + reduce batch to save VRAM.
+    # Why: 4B model OOM at 2048 tokens. Checkpointing trades compute for memory.
+    model.gradient_checkpointing_enable()
+    model.enable_input_require_grads()
+
     training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=3,
@@ -156,6 +164,7 @@ def main() -> None:
         save_steps=500,
         save_total_limit=2,
         fp16=True,
+        gradient_checkpointing=True,
         report_to="none",
     )
 
