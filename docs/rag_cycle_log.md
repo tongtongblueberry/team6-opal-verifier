@@ -317,9 +317,32 @@ Agent 분석으로 DEFAULT_PASS 트리거 조건 6가지 파악:
 accuracy: 4/6 = 67% (진행 중)
 ```
 
-### 확인: Logit mode (206건) 미실행
-- GPU 점유 중 (generation mode 프로세스) + 서버 rate limit
-- 다음 세션에서 실행 필요
+### Generation mode 최종 결과 (8건 중 6건 완료, SSH 끊김으로 중단)
+
+```
+[OK]    pass→pass 535s | Get K_AES_256 unauth → NOT_AUTHORIZED
+[OK]    pass→pass 238s | Get K_AES_256 auth → NOT_AUTHORIZED
+[WRONG] pass→fail 597s | Get SP table → FAIL
+[OK]    pass→pass 186s | Get C_PIN_SID unauth → NOT_AUTHORIZED
+[OK]    pass→pass 340s | Get C_PIN_Admin1 unauth → NOT_AUTHORIZED
+[WRONG] pass→fail 538s | Read after EndSession → FAIL
+
+Accuracy: 4/6 = 66.7%
+Avg time: 407s/case
+Errors: 2 false negatives (pass→fail) — LLM incorrectly judges valid errors as violations
+```
+
+### 모드별 비교 요약
+
+| Mode | Test data | Accuracy | fail recall | Time/case | 핵심 문제 |
+|------|-----------|----------|-------------|-----------|----------|
+| Logit marginalization | public 20 (forced) | 55% | 10% | 4.2s | pass-bias 심함 |
+| Generation+thinking | DEFAULT_PASS 6건 | 67% | 0% (fail case 미도달) | 407s | 느림, fail case 부족 |
+| Rule engine | public 20 | 100% | 100% | 0.01s | hidden에서 71.50 |
+
+### Logit mode (206건) 미실행
+- GPU 점유 + 서버 rate limit으로 미실행
+- 다음 세션에서 실행 필요 (~14분 예상)
 
 ## 다음 TODO
 
