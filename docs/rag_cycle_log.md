@@ -495,3 +495,40 @@ sshpass -p 'bg@3*a&5r+uoN2FRoAU^' ssh student@147.46.78.61 -p 2227 \
    cp -r team6-opal-verifier/src team6-opal-verifier/setup.sh team6-opal-verifier/pyproject.toml team6-opal-verifier/uv.lock submission-\$(cd team6-opal-verifier && git rev-parse --short HEAD)/ && \
    submit -d submission-\$(cd team6-opal-verifier && git rev-parse --short HEAD) -n team6-hybrid 2>&1"
 ```
+
+## Cycle 10 결과: Embedding Classifier — LEADERBOARD REGRESSION
+
+### Leaderboard: 68.00 (이전 best 71.50에서 -3.50)
+
+9B embedding (2163 training cases, CV acc 0.569) + ridge regression.
+Embedding classifier가 DEFAULT_PASS case에서 rule engine 기본값(pass)보다 나쁜 성능.
+
+### 원인 분석
+1. Synthetic training data가 hidden test distribution과 다름
+2. Metamorphic cases는 rule engine이 만든 것 → rule engine이 이미 맞추는 패턴만 학습
+3. DEFAULT_PASS의 hidden 분포에서 대부분이 실제 "pass"일 가능성 → classifier가 "fail"로 바꾸면 regression
+
+### Solver reverted to RAG mode (commit cb70d7b)
+
+### 전체 Leaderboard 이력
+
+| Commit | Method | Score |
+|--------|--------|:-----:|
+| 872f31d | rule engine v1 | 60.50 |
+| fd43bd5 | +spec index, Get rules | 68.00 |
+| bf6c40b | +C_PIN secret tracking | 69.00 |
+| 67cd09d | +coverage gaps | 69.50 |
+| 2df1e71 | +Locking access rules | **71.50** (best) |
+| **submission-emb** | **+embedding classifier** | **68.00** (regression) |
+
+## 다음 방향
+
+문제: LLM approach가 필수이지만, 모든 시도에서 regression 또는 fail recall=0%.
+핵심 질문: **어떻게 LLM을 사용해야 점수가 올라가는가?**
+
+가능한 방향:
+1. LLM으로 spec을 분석하여 새 rule 발견 → rule engine 확장
+2. LLM을 ALL cases에 사용 (DEFAULT_PASS뿐 아니라)
+3. 더 정교한 training data 생성 (hidden distribution에 가까운)
+4. LoRA fine-tuning on 20 public cases
+5. Status prediction (Cycle 8에서 부분 성공)을 더 정교하게
