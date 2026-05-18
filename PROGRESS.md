@@ -4,6 +4,14 @@
 
 ---
 
+## 0. 절대 원칙
+
+**이 과제는 "딥러닝의 기초" (Introduction to Deep Learning) 수업 과제다.** 따라서:
+- **LLM approach는 필수**. 순수 rule engine만으로는 과제 취지에 맞지 않는다.
+- LLM 결과가 안 좋으면 → **LLM을 잘못 쓰고 있다는 뜻**. LLM 폐기는 절대 선택지가 아니다.
+- 500+ spec 문서를 전부 수동 규칙화하는 것은 **불가능**. LLM이 spec을 읽고 판단해야 한다.
+- 핵심 질문은 항상: **"어떻게 LLM을 더 잘 쓸까?"**
+
 ## 1. 프로젝트 요약
 
 SSD TCG/Opal command-response trajectory에서 마지막 response가 명세와 현재 상태에 부합하는지 `pass`/`fail`로 판정하는 문제다. 공개 라벨 20개, hidden test ~180개, GPU L40S 48GB, 평가 시 네트워크 불가, 3시간 제한.

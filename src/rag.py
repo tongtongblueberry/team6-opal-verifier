@@ -339,55 +339,89 @@ def _extract_field(record: Json, name: str) -> str:
 
 
 def extract_query(records: list[Json], trace: list[Json] | None = None) -> str:
+    """Extract BM25 query from trajectory.
+
+    Changed: completely redesigned query extraction to include object names, UIDs,
+    and domain-specific keywords instead of internal solver variable names.
+    Why: Cycle 7 retrieval diagnosis showed BM25 was getting Context Recall ≈ 0
+    because queries like "auth signing unmodeled_error" don't match spec keywords.
+    The fix: extract actual TCG/Opal entity names from the trajectory JSON.
+    """
     if not records:
         return ""
-    final = records[-1] if isinstance(records[-1], dict) else {}
-    cmd = final.get("input", {}) if isinstance(final, dict) else {}
-    out = final.get("output", {}) if isinstance(final, dict) else {}
     parts: list[str] = []
-    for key in ("method", "Method"):
-        val = cmd.get(key)
-        if isinstance(val, dict):
-            n = val.get("Name", val.get("name", ""))
-            if n:
-                parts.append(str(n))
+
+    # Changed: extract from ALL records, not just the final one.
+    # Why: earlier steps contain context (StartSession to which SP, Set on which object).
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        cmd = record.get("input", {})
+        out = record.get("output", {})
+
+        # Method name
+        method = _extract_field(cmd, "Method") or _extract_field(cmd, "method")
+        if method:
+            parts.append(method)
+
+        # Object name AND uid — both are critical for BM25 matching
+        for key in ("invokingID", "InvokingID", "invoking_id"):
+            val = cmd.get(key)
+            if isinstance(val, dict):
+                name = val.get("Name", val.get("name", ""))
+                uid = val.get("uid", val.get("UID", ""))
+                if name:
+                    parts.append(str(name))
+                    # Split compound names like "C_PIN_Admin1" into parts
+                    parts.extend(str(name).replace("_", " ").split())
+                if uid:
+                    parts.append(str(uid).replace(" ", ""))
                 break
-        elif val:
-            parts.append(str(val))
-            break
-    for key in ("invokingID", "InvokingID"):
-        val = cmd.get(key)
-        if isinstance(val, dict):
-            n = val.get("Name", val.get("name", ""))
-            if n:
-                parts.append(str(n))
+            elif val:
+                parts.append(str(val))
                 break
-        elif val:
-            parts.append(str(val))
-            break
-    for key in ("status", "Status"):
-        val = out.get(key)
-        if isinstance(val, dict):
-            n = val.get("Name", val.get("name", ""))
-            if n:
-                parts.append(str(n))
-                break
-        elif val:
-            parts.append(str(val))
-            break
-    status_str = " ".join(parts).lower()
-    if "notauthorized" in status_str or "not_authorized" in status_str:
-        parts.extend(["authority", "authentication", "NOT_AUTHORIZED", "session", "ACL"])
-    elif "invalidparameter" in status_str or "invalid_parameter" in status_str:
-        parts.extend(["parameter", "validation", "INVALID_PARAMETER", "value", "range"])
-    elif "fail" in status_str:
-        parts.extend(["error", "failure", "FAIL", "status"])
-    if trace:
-        for event in trace[-3:]:
-            detail = event.get("detail", "")
-            if detail:
-                parts.extend(re.findall(r"[a-zA-Z_]{4,}", detail))
-    return " ".join(parts)
+
+        # Status
+        status = _extract_field(out, "Status") or _extract_field(out, "status")
+        if status:
+            parts.append(status)
+
+        # DATA_COMMAND (Read/Write) specific fields
+        command_name = cmd.get("command", "")
+        if command_name:
+            parts.append(str(command_name))
+        args = cmd.get("args", {})
+        if isinstance(args, dict):
+            lba = args.get("LBA", "")
+            if lba:
+                parts.append("LBA")
+                parts.append("range")
+
+    # Changed: add domain-specific search expansion based on the FINAL step.
+    # Why: these keywords match spec section content about error conditions.
+    final = records[-1] if records else {}
+    final_out = final.get("output", {}) if isinstance(final, dict) else {}
+    final_status = (_extract_field(final_out, "Status") or
+                    _extract_field(final_out, "status") or
+                    str(final_out.get("status_codes", ""))).lower()
+
+    if "notauthorized" in final_status or "not_authorized" in final_status:
+        parts.extend(["access", "control", "ACL", "ACE", "authority",
+                       "authentication", "NOT_AUTHORIZED", "permission"])
+    elif "invalidparameter" in final_status or "invalid_parameter" in final_status:
+        parts.extend(["parameter", "column", "value", "range",
+                       "INVALID_PARAMETER", "Cellblock"])
+    elif "fail" in final_status:
+        parts.extend(["error", "status", "method", "FAIL"])
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for p in parts:
+        if p and p not in seen:
+            seen.add(p)
+            unique.append(p)
+    return " ".join(unique)
 
 
 # Changed: add query expansion + RRF for higher BM25 recall.
@@ -895,6 +929,117 @@ class LLMJudge:
         return "pass"
 
 
+    # ── Status Prediction mode (Cycle 8: task reframing) ────────────────
+
+    _STATUS_PREDICT_PROMPT = """\
+You are a TCG Storage/Opal protocol expert. Given a command trajectory and specification excerpts, predict what the CORRECT status code should be for the final command.
+
+Possible status codes: Success, NOT_AUTHORIZED, INVALID_PARAMETER, FAIL
+
+Think step by step:
+1. What method is being called and on what object?
+2. Is there an active session? Is it Read-Write or Read-Only?
+3. Is the host authenticated with the required authority?
+4. Are the parameters valid?
+5. Based on the specification, what status should the SSD return?
+
+Answer with EXACTLY one status code on the last line: Success, NOT_AUTHORIZED, INVALID_PARAMETER, or FAIL"""
+
+    def judge_predict_status(self, records: list[Json], spec_chunks: list[str]) -> str:
+        """Predict expected status, then compare with actual to determine pass/fail.
+
+        Changed: reframe from "is this error valid?" to "what should the status be?"
+        Why: Cycles 1-7 showed LLM always says "pass" (error is valid) regardless.
+        Task reframing literature (arXiv 2511.10871, arXiv 2410.21136) shows:
+        - LLMs are better at prediction than validation
+        - Direct pass/fail question triggers "agreeable" bias
+        - Predicting expected output then comparing is more reliable
+
+        If LLM predicts status X and actual status is Y:
+        - X == Y → pass (LLM agrees with the response)
+        - X != Y → fail (LLM thinks a different status was expected)
+        """
+        if not self.available:
+            return "pass"
+        import torch
+
+        final = records[-1] if records else {}
+        cmd = final.get("input", {})
+        out = final.get("output", {})
+        method = _extract_field(cmd, "Method") or _extract_field(cmd, "method") or "unknown"
+        inv = _extract_field(cmd, "InvokingID") or _extract_field(cmd, "invokingID") or "unknown"
+        actual_status = (_extract_field(out, "Status") or
+                         _extract_field(out, "status") or
+                         str(out.get("status_codes", "unknown"))).strip()
+
+        spec_context = "\n\n---\n\n".join(spec_chunks[:8]) if spec_chunks else "None."
+
+        # Changed: ask "what should the status be?" instead of "is this pass or fail?"
+        user_msg = f"""{self._few_shot_block}## Specification Excerpts
+{spec_context}
+
+## Trajectory
+{format_trajectory_context(records)}
+
+## Final Command (predict the correct status for this)
+```json
+{json.dumps(cmd, indent=2, default=str)[:3000]}
+```
+
+Based on the specification and the trajectory state, what status code should the SSD return for this command?
+Answer with one status code: Success, NOT_AUTHORIZED, INVALID_PARAMETER, or FAIL"""
+
+        messages = [
+            {"role": "system", "content": self._STATUS_PREDICT_PROMPT},
+            {"role": "user", "content": user_msg},
+        ]
+        try:
+            text = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+                enable_thinking=True,
+            )
+        except TypeError:
+            text = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+            )
+        inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs, max_new_tokens=4096,
+                do_sample=False, temperature=None, top_p=None,
+            )
+        new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+        raw = self.tokenizer.decode(new_tokens, skip_special_tokens=False)
+
+        # Extract predicted status from after </think>
+        if "</think>" in raw:
+            answer = raw.split("</think>", 1)[1].strip().lower()
+        else:
+            answer = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip().lower()
+
+        # Parse predicted status
+        actual_lower = actual_status.lower().replace("_", "")
+        predicted_status = "unknown"
+        for candidate in ["success", "notauthorized", "not_authorized", "invalidparameter",
+                          "invalid_parameter", "fail"]:
+            if candidate in answer[-100:]:
+                predicted_status = candidate.replace("_", "")
+                break
+
+        # Compare: if predicted matches actual, pass; otherwise fail
+        actual_norm = actual_lower.replace("_", "")
+        if predicted_status == "unknown":
+            logger.warning("Status prediction ambiguous: %r — defaulting to pass", answer[-200:])
+            return "pass"
+
+        if predicted_status == actual_norm:
+            logger.info("Status prediction: predicted=%s actual=%s → MATCH (pass)", predicted_status, actual_norm)
+            return "pass"
+        else:
+            logger.info("Status prediction: predicted=%s actual=%s → MISMATCH (fail)", predicted_status, actual_norm)
+            return "fail"
+
+
 # ── RAG Solver ────────────────────────────────────────────────────────────────
 
 
@@ -994,4 +1139,8 @@ class RAGSolver:
         # Zero-shot logits are poorly calibrated (Amazon 2024 "Label with Confidence").
         # Generation with thinking mode allows step-by-step spec reasoning (Wei et al., 2022 CoT).
         # Cost: ~60s/case vs ~4s/case, but 3-hour budget allows this for ~60 DEFAULT_PASS cases.
-        return self.llm.judge_generate(records, spec_texts)
+        # Changed: use status prediction mode instead of direct pass/fail judgment.
+        # Why: Cycles 1-7 showed LLM always says "pass" (fail recall=0%).
+        # Task reframing: predict expected status → compare with actual.
+        # If predicted != actual → fail. Bypasses "error is valid" bias.
+        return self.llm.judge_predict_status(records, spec_texts)
