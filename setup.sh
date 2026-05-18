@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Changed: keep setup explicit and offline-safe.
-# Why: the submission environment allows setup time, but this solver has no external dependencies.
+# Changed: install peft for LoRA adapter loading during setup phase.
+# Why: LoRA fine-tuned model (4B v2) is stored in artifacts/lora_adapter_v2/.
+# peft library is needed to load the adapter. Setup phase has network access.
 set -euo pipefail
-# Changed: use python3 explicitly for macOS and course-server compatibility.
-# Why: some environments do not provide a `python` executable.
+
+# Install peft if not already available (setup phase has network)
+pip install --break-system-packages peft 2>/dev/null || pip install peft 2>/dev/null || true
+
 python3 - <<'PY'
 from src.solver import predict_one
 
