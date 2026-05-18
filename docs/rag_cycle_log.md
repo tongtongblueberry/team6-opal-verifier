@@ -366,14 +366,65 @@ Logit mode의 pass-bias는 치명적. FEVER 논문 기준 fail 비율 ~20%에서
 3. **Zero-shot의 한계**: FEVER에서 RAG가 89.5%를 달성한 건 fine-tuned BART (400M)를 사용.
    우리는 zero-shot 27B — parameter가 크지만 task-specific 학습 없음
 
-## 다음 TODO
+## Cycle 5 기록: Logit 252건 + 논문 선정
 
-1. 서버 프로세스 정리 후 **logit mode로 206건 test set 평가** (~14분)
-2. **Leaderboard 제출** (일일 한도 해제 후)
-3. Logit/generation 결과 비교하여 최적 모드 결정
-4. **wandb 통합**: test set 결과 로깅
-5. **Prompt 개선**: 206건 결과에서 오답 패턴 분석 → prompt 수정
-6. Rule engine 확장 후보: Authenticate, Byte table, Session type, ACL
+### 확인: Logit mode 252건 balanced test set
+
+```
+accuracy=80.6% (203/252)
+precision(fail)=0.0000 recall(fail)=0.0000 f1(fail)=0.0000
+tp=0 fp=0 fn=49 tn=203
+time=965.7s (3.8s/case)
+```
+
+**LLM이 모든 49개 fail case를 pass로 예측.** fail recall = 0%.
+Zero-shot logit scoring은 fail 감지가 불가능함을 확정.
+
+### Label 비율 조사 (논문 기반)
+
+| Dataset | fail 비율 | 근거 |
+|---------|:---:|------|
+| FEVER 2-way train | 27% | Thorne et al. (2018) |
+| FEVER 2-way dev/test | 50% | balanced |
+| Public 20 | 50% | 과제 데이터 |
+| 우리 synthetic (초기) | 1.5% | 비정상 |
+| 우리 synthetic (수정) | 19.4% | FEVER train 수준 |
+
+### 논문 선정: Many-Shot In-Context Learning
+
+Agrawal, R., et al. (2024). *Many-shot in-context learning*. NeurIPS 2024 (Spotlight).
+https://arxiv.org/abs/2404.11018
+
+**선정 이유**:
+- Code Verification task (binary Yes/No)가 우리와 동일 구조
+- Zero-shot → few-shot 전환으로 classification 정확도 대폭 개선
+- Reinforced ICL: 모델 생성 rationale로 +11%p (BBH 72.1→83%)
+- Pre-training bias 극복 가능 (우리의 pass-bias 문제)
+
+**핵심 적용 방법**:
+- Public 20개 case를 few-shot in-context examples로 prompt에 추가
+- Zero-shot (현재, fail recall=0%) → 20-shot ICL
+- 논문 기준 16-shot Code Verification에서 유의미한 개선 확인됨
+- 262K context window로 20개 example 충분히 수용
+
+## Cycle 6: Few-Shot ICL 적용 (진행 중)
+
+### 조사 완료
+- Many-Shot ICL (Agrawal et al., NeurIPS 2024) 완전 분석
+- 9개 task, 13+ benchmark, 5+ metric
+- 핵심: Code Verification에서 16-shot → significant improvement
+- Reinforced ICL: 모델 생성 rationale이 human rationale과 동등
+
+### 적용 중
+- Agent가 src/rag.py에 few-shot ICL 구현 중
+- Public 20개 case를 in-context examples로 추가
+- Logit scoring + generation mode 양쪽에 적용
+
+### 다음 TODO
+1. Few-shot ICL 구현 완료 확인
+2. 서버에 배포 → 252건 test set 재평가
+3. Leaderboard 제출
+4. 결과에 따라 Reinforced ICL 적용 검토
 
 ## 파일 변경 이력
 

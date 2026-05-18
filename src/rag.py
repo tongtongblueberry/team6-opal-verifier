@@ -34,6 +34,161 @@ logger = logging.getLogger(__name__)
 Json = dict[str, Any]
 
 
+# ── Few-Shot ICL Examples ─────────────────────────────────────────────────────
+# Changed: add few-shot in-context learning support for RAG prompts.
+# Why: Agrawal et al. (2024, "Many-Shot ICL", NeurIPS) showed that for binary
+# classification (Code Verification Yes/No), 16-shot significantly overcomes
+# pre-training bias. Cycle 2 confirmed severe pass-bias with zero-shot logit
+# scoring (fail recall = 0% on 252 test cases). Few-shot examples from the
+# public 20 cases provide the model with calibration signal.
+
+_DEFAULT_DATASET_ROOT = "/dl2026/dataset"
+
+
+@dataclass
+class FewShotExample:
+    """A labeled trajectory example for in-context learning."""
+    case_id: str
+    trajectory_summary: str
+    final_command: str
+    final_response: str
+    method: str
+    invoking: str
+    status: str
+    label: str  # "pass" or "fail"
+
+
+def load_few_shot_examples(
+    dataset_root: str | Path | None = None,
+) -> list[FewShotExample]:
+    """Load public labeled cases as few-shot ICL examples.
+
+    Changed: load and format public 20 cases from /dl2026/dataset/.
+    Why: these cases provide calibration signal for the LLM judge, overcoming
+    the zero-shot pass-bias documented in Cycle 2 (fail recall 0%).
+
+    Returns empty list if dataset_root doesn't exist (local dev without server data).
+    """
+    if dataset_root is None:
+        dataset_root = Path(os.environ.get("RAG_FEWSHOT_ROOT", _DEFAULT_DATASET_ROOT))
+    else:
+        dataset_root = Path(dataset_root)
+
+    testcase_dir = dataset_root / "testcases"
+    label_path = dataset_root / "label.jsonl"
+
+    if not testcase_dir.exists() or not label_path.exists():
+        logger.info("Few-shot dataset not found at %s — skipping ICL examples.", dataset_root)
+        return []
+
+    # Load labels: {"filename": "tc1.json", "label": "pass"}
+    labels: dict[str, str] = {}
+    try:
+        with label_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                labels[rec["filename"]] = str(rec["label"]).strip().lower()
+    except Exception as exc:
+        logger.warning("Failed to load labels from %s: %s", label_path, exc)
+        return []
+
+    # Load and format each test case
+    examples: list[FewShotExample] = []
+    for tc_path in sorted(testcase_dir.glob("tc*.json"),
+                          key=lambda p: int(p.stem.removeprefix("tc").split("_")[0])):
+        case_id = tc_path.name
+        label = labels.get(case_id)
+        if label is None:
+            continue
+        try:
+            with tc_path.open("r", encoding="utf-8") as f:
+                steps = json.load(f)
+        except Exception:
+            continue
+
+        # Normalize records (same logic as StatefulOpalVerifier._records)
+        if isinstance(steps, dict) and "records" in steps:
+            steps = steps["records"]
+        if not isinstance(steps, list):
+            continue
+        records = [item for item in steps if isinstance(item, dict)]
+        if not records:
+            continue
+
+        # Extract final step fields
+        final = records[-1]
+        cmd = final.get("input", {}) if isinstance(final, dict) else {}
+        out = final.get("output", {}) if isinstance(final, dict) else {}
+        method = _extract_field(cmd, "Method") or _extract_field(cmd, "method") or "unknown"
+        inv = _extract_field(cmd, "InvokingID") or _extract_field(cmd, "invokingID") or "unknown"
+        status = _extract_field(out, "Status") or _extract_field(out, "status") or "unknown"
+
+        examples.append(FewShotExample(
+            case_id=case_id,
+            trajectory_summary=format_trajectory_context(records),
+            final_command=json.dumps(cmd, indent=2, default=str)[:2000],
+            final_response=json.dumps(out, indent=2, default=str)[:2000],
+            method=method,
+            invoking=inv,
+            status=status,
+            label=label,
+        ))
+
+    logger.info("Loaded %d few-shot ICL examples (pass=%d, fail=%d)",
+                len(examples),
+                sum(1 for e in examples if e.label == "pass"),
+                sum(1 for e in examples if e.label == "fail"))
+    return examples
+
+
+def format_few_shot_block(examples: list[FewShotExample]) -> str:
+    """Format few-shot examples into a prompt block.
+
+    Changed: implement the few-shot format from Agrawal et al. (2024).
+    Why: the paper shows that binary classification (Code Verification) benefits
+    significantly from 16+ shot examples. The format pairs each trajectory with
+    its ground-truth label so the model learns the decision boundary.
+
+    The format interleaves pass and fail examples to avoid recency bias.
+    """
+    if not examples:
+        return ""
+
+    # Changed: interleave pass/fail examples to reduce recency bias.
+    # Why: Agrawal et al. (2024, Section 4.2) noted that label ordering affects
+    # classification. Interleaving gives balanced exposure to both classes.
+    pass_examples = [e for e in examples if e.label == "pass"]
+    fail_examples = [e for e in examples if e.label == "fail"]
+    interleaved: list[FewShotExample] = []
+    pi, fi = 0, 0
+    while pi < len(pass_examples) or fi < len(fail_examples):
+        if pi < len(pass_examples):
+            interleaved.append(pass_examples[pi])
+            pi += 1
+        if fi < len(fail_examples):
+            interleaved.append(fail_examples[fi])
+            fi += 1
+
+    parts: list[str] = []
+    parts.append("## Labeled Examples\n")
+    parts.append("Below are labeled examples of trajectory judgments. "
+                 "Study the pattern of when the response is pass vs fail, "
+                 "then apply the same reasoning to the test case.\n")
+
+    for i, ex in enumerate(interleaved, 1):
+        parts.append(f"### Example {i} ({ex.case_id})")
+        parts.append(f"{ex.trajectory_summary}")
+        parts.append(f"Final: {ex.method}({ex.invoking}) -> {ex.status}")
+        parts.append(f"Answer: {ex.label}\n")
+
+    parts.append("---\n")
+    parts.append("Now judge the following test case:\n")
+    return "\n".join(parts)
+
+
 # ── BM25 Index ────────────────────────────────────────────────────────────────
 
 
@@ -436,6 +591,7 @@ class LLMJudge:
         model_name: str = _DEFAULT_MODEL,
         device: str = "auto",
         max_new_tokens: int = 4096,
+        few_shot_examples: list[FewShotExample] | None = None,
     ) -> None:
         self.model_name = model_name
         self.max_new_tokens = max_new_tokens
@@ -443,6 +599,15 @@ class LLMJudge:
         self.tokenizer: Any = None
         self._pass_token_ids: list[int] = []
         self._fail_token_ids: list[int] = []
+        # Changed: store few-shot examples for ICL prompts.
+        # Why: Agrawal et al. (2024, "Many-Shot ICL") showed 16-shot overcomes
+        # pre-training bias in binary classification. Pass-bias (fail recall 0%)
+        # is the primary bottleneck for RAG accuracy (Cycle 2).
+        self._few_shot_examples: list[FewShotExample] = few_shot_examples or []
+        self._few_shot_block: str = format_few_shot_block(self._few_shot_examples)
+        if self._few_shot_examples:
+            logger.info("LLMJudge initialized with %d few-shot examples (block=%d chars)",
+                        len(self._few_shot_examples), len(self._few_shot_block))
         self._load_model(device)
 
     def _load_model(self, device: str) -> None:
@@ -496,7 +661,13 @@ class LLMJudge:
     # ── Core: per-document logit scoring ──────────────────────────────────
 
     def _build_prompt(self, records: list[Json], spec_chunk: str) -> str:
-        """Build a prompt for scoring one (trajectory, document) pair."""
+        """Build a prompt for scoring one (trajectory, document) pair.
+
+        Changed: prepend few-shot ICL examples to the user message.
+        Why: Agrawal et al. (2024, "Many-Shot ICL") showed 16-shot overcomes
+        pre-training bias in binary classification. The few-shot block provides
+        calibration signal before the test case.
+        """
         final = records[-1] if records else {}
         cmd = final.get("input", {})
         out = final.get("output", {})
@@ -504,7 +675,7 @@ class LLMJudge:
         inv = _extract_field(cmd, "InvokingID") or _extract_field(cmd, "invokingID") or "unknown"
         status = _extract_field(out, "Status") or _extract_field(out, "status") or "unknown"
 
-        user_msg = _SINGLE_DOC_TEMPLATE.format(
+        test_case_msg = _SINGLE_DOC_TEMPLATE.format(
             spec_chunk=spec_chunk,
             trajectory_summary=format_trajectory_context(records),
             final_command=json.dumps(cmd, indent=2, default=str)[:3000],
@@ -513,6 +684,13 @@ class LLMJudge:
             method=method,
             invoking=inv,
         )
+        # Changed: prepend few-shot examples before the test case in the user message.
+        # Why: the model sees labeled examples first, then the test case — matching
+        # the standard ICL format from Agrawal et al. (2024).
+        if self._few_shot_block:
+            user_msg = self._few_shot_block + test_case_msg
+        else:
+            user_msg = test_case_msg
         messages = [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": user_msg},
@@ -610,7 +788,13 @@ class LLMJudge:
     # ── Fallback: generation-based judge (with thinking mode) ─────────────
 
     def judge_generate(self, records: list[Json], spec_chunks: list[str]) -> str:
-        """Fallback: concatenate chunks, generate with thinking mode, parse answer."""
+        """Fallback: concatenate chunks, generate with thinking mode, parse answer.
+
+        Changed: prepend few-shot ICL examples to the user message.
+        Why: same rationale as _build_prompt — Agrawal et al. (2024) few-shot
+        overcomes pre-training bias. Generation mode benefits even more because
+        the model can reason about the pattern in the examples.
+        """
         if not self.available:
             return "pass"
         import torch
@@ -623,7 +807,7 @@ class LLMJudge:
         status = _extract_field(out, "Status") or _extract_field(out, "status") or "unknown"
 
         spec_context = "\n\n---\n\n".join(spec_chunks[:8]) if spec_chunks else "None available."
-        user_msg = _SINGLE_DOC_TEMPLATE.format(
+        test_case_msg = _SINGLE_DOC_TEMPLATE.format(
             spec_chunk=spec_context,
             trajectory_summary=format_trajectory_context(records),
             final_command=json.dumps(cmd, indent=2, default=str)[:3000],
@@ -632,6 +816,12 @@ class LLMJudge:
             method=method,
             invoking=inv,
         )
+        # Changed: prepend few-shot block before the test case.
+        # Why: few-shot examples calibrate the model's pass/fail threshold.
+        if self._few_shot_block:
+            user_msg = self._few_shot_block + test_case_msg
+        else:
+            user_msg = test_case_msg
         messages = [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": user_msg},
@@ -725,6 +915,7 @@ class RAGSolver:
         chunk_size: int = 1000,
         overlap: int = 200,
         top_k: int = 8,
+        few_shot_root: Path | str | None = None,
     ) -> None:
         self.top_k = top_k
         self.chunks: list[SpecChunk] = []
@@ -746,8 +937,20 @@ class RAGSolver:
         else:
             logger.warning("Spec root %s not found — RAG disabled", spec_root)
 
+        # Changed: load few-shot ICL examples from public labeled data.
+        # Why: Agrawal et al. (2024, "Many-Shot ICL", NeurIPS) showed that
+        # 16-shot examples overcome pre-training bias in binary classification
+        # (Code Verification task). Our Cycle 2 confirmed severe pass-bias
+        # (fail recall 0%) with zero-shot scoring. The 20 public cases provide
+        # a balanced set (10 pass, 10 fail) for in-context calibration.
+        # Gracefully skips if /dl2026/dataset/ doesn't exist (local dev).
+        few_shot_examples = load_few_shot_examples(few_shot_root)
+
         try:
-            self.llm = LLMJudge(model_name=model_name)
+            self.llm = LLMJudge(
+                model_name=model_name,
+                few_shot_examples=few_shot_examples,
+            )
             if not self.llm.available:
                 self.llm = None
         except Exception as exc:
