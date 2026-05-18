@@ -420,9 +420,39 @@ https://arxiv.org/abs/2404.11018
 - Public 20개 case를 in-context examples로 추가
 - Logit scoring + generation mode 양쪽에 적용
 
+### 확인: Few-Shot ICL Logit Mode (252건)
+
+```
+=== FEW-SHOT ICL LOGIT MODE on 252 cases ===
+accuracy=80.6% (203/252)
+precision(fail)=0.0000 recall(fail)=0.0000 f1(fail)=0.0000
+tp=0 fp=0 fn=49 tn=203
+time=3823.7s (15.2s/case)
+```
+
+**20-shot ICL을 추가해도 logit scoring의 fail recall = 0%. Zero-shot과 동일.**
+Few-shot examples는 logit 분포를 변경하지 못함.
+
+### 분석: 왜 few-shot이 logit mode에서 효과 없나
+
+1. **Logit scoring은 첫 토큰만 봄**: 모델이 20개 예시를 읽어도, 최종 logit 계산에서
+   "pass" token이 항상 "fail" token보다 높은 확률을 받음
+2. **Agrawal et al.의 Code Verification은 다른 방식 사용**:
+   `IP(Yes) = exp(L_Yes) / (exp(L_Yes) + exp(L_No))` — 이것은 logit 방식이지만,
+   논문에서는 128-256 shot에서 효과를 봄. 우리는 20-shot으로 부족할 수 있음
+3. **또는 generation mode가 필요**: 모델이 reasoning을 거친 후 답변해야
+   few-shot 패턴을 제대로 활용할 수 있음
+
+### 결론: Logit mode 폐기, Generation mode + Few-shot으로 전환
+
+| Mode | Zero-shot | 20-shot ICL | 비고 |
+|------|-----------|-------------|------|
+| Logit | fail recall=0% | fail recall=0% | **폐기** |
+| Generation | 67% (6건) | **미측정** | **다음 cycle** |
+
 ### 다음 TODO
-1. Few-shot ICL 구현 완료 확인
-2. 서버에 배포 → 252건 test set 재평가
+1. RAGSolver.predict()를 generation mode로 전환 (이미 judge_generate 코드 존재)
+2. 252건 test set으로 generation + few-shot 평가
 3. Leaderboard 제출
 4. 결과에 따라 Reinforced ICL 적용 검토
 
