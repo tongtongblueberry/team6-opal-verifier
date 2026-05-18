@@ -340,9 +340,31 @@ Errors: 2 false negatives (pass→fail) — LLM incorrectly judges valid errors 
 | Generation+thinking | DEFAULT_PASS 6건 | 67% | 0% (fail case 미도달) | 407s | 느림, fail case 부족 |
 | Rule engine | public 20 | 100% | 100% | 0.01s | hidden에서 71.50 |
 
-### Logit mode (206건) 미실행
-- GPU 점유 + 서버 rate limit으로 미실행
-- 다음 세션에서 실행 필요 (~14분 예상)
+### Logit mode 252건 최종 결과
+
+```
+=== LOGIT MODE on 252 DEFAULT_PASS TEST SET ===
+accuracy=80.6% (203/252)
+precision(fail)=0.0000 recall(fail)=0.0000 f1(fail)=0.0000
+tp=0 fp=0 fn=49 tn=203
+time=965.7s (3.8s/case)
+
+All 49 fail cases predicted as pass. Zero fail detection.
+All 203 pass cases correctly predicted. 100% pass accuracy.
+```
+
+### 결론: LLM logit scoring은 fail을 전혀 감지하지 못함
+
+Logit mode의 pass-bias는 치명적. FEVER 논문 기준 fail 비율 ~20%에서도 recall=0%.
+이 결과는 Cycle 2 (public 55%)와 일관: LLM이 zero-shot으로 "이 에러가 잘못됐다"고 판단하기 매우 어려움.
+
+### 근본 원인 분석
+
+1. **LLM의 default behavior가 "에러는 valid"**: spec에서 에러가 필요한 상황이 많으므로,
+   모호한 경우 pass로 기울어짐
+2. **Logit scoring의 구조적 한계**: 첫 토큰 logit만으로는 복잡한 state reasoning 불가
+3. **Zero-shot의 한계**: FEVER에서 RAG가 89.5%를 달성한 건 fine-tuned BART (400M)를 사용.
+   우리는 zero-shot 27B — parameter가 크지만 task-specific 학습 없음
 
 ## 다음 TODO
 

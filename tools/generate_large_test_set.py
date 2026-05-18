@@ -82,9 +82,10 @@ def _startsession(state: dict) -> Json:
 
 
 def _method_step(method: str, obj_name: str, obj_uid: str, status: str,
-                 columns: str = "", values: dict | None = None) -> Json:
+                 columns: str = "", values: dict | None = None,
+                 return_values: Any = None) -> Json:
     optional: dict[str, Any] = {}
-    rv: Any = []
+    rv: Any = return_values if return_values is not None else []
     if method == "Get":
         if columns:
             parts = columns.split("-")
@@ -195,13 +196,93 @@ def generate_gap3_data_commands() -> list[dict[str, Any]]:
     return cases
 
 
+def generate_fail_cases() -> list[dict[str, Any]]:
+    """Generate DEFAULT_PASS cases where the correct answer is FAIL.
+
+    Changed: add fail cases to reach ~30-50% fail ratio.
+    Why: FEVER dataset has 27-50% REFUTES in 2-way; our public has 50% fail.
+    1.5% fail (3/206) is statistically useless. Need balanced evaluation.
+
+    Fail = the error response is WRONG (operation should have succeeded).
+    """
+    cases: list[dict[str, Any]] = []
+
+    # ── Pattern A: Authenticated session + known object → error (should succeed) ──
+    # If authenticated with RW session, operations on known objects should succeed.
+    # Getting an error is suspicious → fail.
+
+    for (obj_name, obj_uid) in UNKNOWN_OBJECTS:
+        for status in ["NOT_AUTHORIZED", "FAIL"]:
+            # Authenticated RW + Get/Set → error is suspicious
+            steps = [_startsession({"label": "auth_rw", "write": 1, "auth": True}),
+                     _method_step("Get", obj_name, obj_uid, status, columns="0-3")]
+            cases.append({
+                "steps": steps,
+                "expected": "fail",
+                "description": f"auth_rw+Get({obj_name})→{status} (should succeed with auth)",
+                "gap": "fail_auth_error",
+            })
+
+    # ── Pattern B: Write success + Read fail (contradiction) ──
+    for lba in ["0 ~ 7", "80 ~ 87", "100 ~ 107", "200 ~ 207", "1000 ~ 1007",
+                "50 ~ 57", "150 ~ 157", "300 ~ 307", "500 ~ 507", "2000 ~ 2007"]:
+        for status in ["FAIL", "NOT_AUTHORIZED"]:
+            steps = [
+                _startsession({"label": "auth_rw", "write": 1, "auth": True}),
+                {"input": {"command": "Write", "args": {"LBA": lba, "pattern": "0xDD"}},
+                 "output": {"command": "Write", "status_codes": "Success"}},
+                {"input": {"command": "Read", "args": {"LBA": lba}},
+                 "output": {"command": "Read", "args": {"result": ""}, "status_codes": status}},
+            ]
+            cases.append({
+                "steps": steps,
+                "expected": "fail",
+                "description": f"Write+Read(LBA={lba})→{status} (should return written data)",
+                "gap": "fail_data_contradiction",
+            })
+
+    # ── Pattern C: Success operation with empty/wrong result ──
+    for (obj_name, obj_uid) in UNKNOWN_OBJECTS[:6]:
+        # Get SUCCESS but completely empty result → suspicious
+        steps = [_startsession({"label": "auth_rw", "write": 1, "auth": True}),
+                 _method_step("Get", obj_name, obj_uid, "Success", columns="0-5",
+                              return_values=[])]
+        cases.append({
+            "steps": steps,
+            "expected": "fail",
+            "description": f"auth+Get({obj_name})→SUCCESS(empty) (should have data)",
+            "gap": "fail_empty_success",
+        })
+
+    # ── Pattern D: Unauthenticated session + Locking/MBRControl Set → SUCCESS ──
+    # These are known objects where the rule engine has rules, but if the object type
+    # is slightly different (unknown UID), it falls to DEFAULT_PASS.
+    for (obj_name, obj_uid) in [
+        ("LockingInfo", "00 00 08 01 00 00 00 01"),
+        ("SPInfo_Locking", "00 00 02 05 00 00 00 03"),
+        ("TPerInfo", "00 00 02 01 00 00 00 01"),
+    ]:
+        steps = [_startsession({"label": "unauth_rw", "write": 1, "auth": False}),
+                 _method_step("Set", obj_name, obj_uid, "Success",
+                              values={"0x05": 1})]
+        cases.append({
+            "steps": steps,
+            "expected": "fail",
+            "description": f"unauth+Set({obj_name})→SUCCESS (should need auth)",
+            "gap": "fail_unauth_success",
+        })
+
+    return cases
+
+
 def main() -> None:
     from src.solver import StatefulOpalVerifier
 
     g1 = generate_gap1_unknown_objects()
     g2 = generate_gap2_non_msid_cpin()
     g3 = generate_gap3_data_commands()
-    all_cases = g1 + g2 + g3
+    g_fail = generate_fail_cases()
+    all_cases = g1 + g2 + g3 + g_fail
 
     print(f"Generated: gap1={len(g1)} gap2={len(g2)} gap3={len(g3)} total={len(all_cases)}")
 
