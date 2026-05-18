@@ -103,12 +103,22 @@ class EmbeddingClassifier:
         # Load model
         self._load_model()
 
-        # Load training data and train classifier
-        if dataset_root is None:
-            dataset_root = Path(os.environ.get("RAG_FEWSHOT_ROOT", "/dl2026/dataset"))
+        # Changed: try to load pre-trained classifier from artifacts/ first.
+        # Why: project.pdf allows artifacts/ with trained model weights.
+        # The classifier trained on 2163 cases (tools/train_embedding_classifier.py)
+        # is saved to artifacts/embedding_classifier.pkl. Loading it avoids
+        # retraining on just 20 public cases at evaluation time.
+        artifacts_dir = Path(__file__).resolve().parent.parent / "artifacts"
+        pkl_path = artifacts_dir / "embedding_classifier.pkl"
+        if pkl_path.exists():
+            self._load_pretrained(pkl_path)
         else:
-            dataset_root = Path(dataset_root)
-        self._train_classifier(dataset_root)
+            # Fallback: train on public labeled data
+            if dataset_root is None:
+                dataset_root = Path(os.environ.get("RAG_FEWSHOT_ROOT", "/dl2026/dataset"))
+            else:
+                dataset_root = Path(dataset_root)
+            self._train_classifier(dataset_root)
 
     def _load_model(self) -> None:
         try:
@@ -135,6 +145,18 @@ class EmbeddingClassifier:
             logger.warning("Failed to load embedding model: %s", exc)
             self.model = None
             self.tokenizer = None
+
+    def _load_pretrained(self, pkl_path: Path) -> None:
+        """Load pre-trained classifier from artifacts/."""
+        import pickle
+        try:
+            with pkl_path.open("rb") as f:
+                data = pickle.load(f)
+            self.classifier = data["classifier"]
+            logger.info("Loaded pre-trained classifier from %s (n_train=%d, cv_acc=%.3f)",
+                        pkl_path, data.get("n_train", 0), data.get("cv_accuracy", 0))
+        except Exception as exc:
+            logger.warning("Failed to load pre-trained classifier: %s", exc)
 
     @property
     def available(self) -> bool:
