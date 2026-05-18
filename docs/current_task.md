@@ -1,6 +1,11 @@
 # 현재 진행 중인 작업 (5분마다 업데이트)
 
-최종 갱신: 2026-05-18 ~14:30 ~06:00
+최종 갱신: 2026-05-19 ~00:15
+
+## LEADERBOARD 결과: 68.00 (이전 71.50에서 하락)
+- Embedding classifier가 rule engine 기본값(pass)보다 나쁜 성능
+- Synthetic training data distribution이 hidden test와 달라서
+- DEFAULT_PASS case에서 classifier가 잘못 판정 → 점수 하락 ~06:00
 
 ## 최상위 목표
 leaderboard accuracy 71.50 → ≥ 85.00 (LLM 필수)
