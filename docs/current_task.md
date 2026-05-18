@@ -61,7 +61,31 @@ pass precision = 100% (no false positives)
 **tp=1 달성!** Case 12 (Write+Read→FAIL contradiction)에서 최초로 fail 감지.
 Status prediction이 유일하게 효과 있는 변경. Task reframing이 핵심.
 
-### 다음 Cycle 9: fail recall을 20% → 더 높이기
+### Cycle 10: Embedding + Ridge Regression (Buckmann & Hill, 2024)
+
+**선정 논문**: "Logistic Regression makes small LLMs strong tens-of-shot classifiers"
+arXiv:2408.03414, Bank of England Working Paper, August 2024.
+
+**핵심**: LLM embedding (penultimate layer) + ridge regression = 10-shot으로 GPT-4 수준
+- 17 tasks에서 mean acc 0.80 (PLR-E) vs 0.77 (GPT-4 zero-shot)
+- Binary tasks에서 2-10 samples/class로 충분
+- PLR-E >> PLR-L (logit) — 우리의 logit 실패와 일치
+
+**적용 계획 (artifacts/ 활용)**:
+1. Rule engine으로 수천 개 synthetic training data 생성 (various scenarios + labels)
+2. 각 trajectory를 Qwen3.5-4B/9B에 넣어서 penultimate layer embedding 추출
+3. Embedding + labels로 ridge regression 학습
+4. 학습된 classifier를 `artifacts/classifier.pkl`로 저장
+5. Evaluation 시: Qwen3.5 embedding 추출 → classifier.pkl 로드 → predict
+
+**핵심 변화**: training data가 20개 → 수천 개. Buckmann & Hill 논문에서
+sample 수 증가 → accuracy 증가가 확인됨 (100 samples/class에서 0.82).
+
+**장점**:
+- LLM 사용 (과제 필수)
+- Training data 제한 없음 (rule engine = oracle)
+- 학습된 모델 제출 가능 (artifacts/)
+- 논문 검증됨 (17 tasks, mean acc 0.80)
 - 현재: "이 에러가 valid인가?" (pass/fail) → LLM은 항상 "valid" (pass)
 - 대안 1: "이 에러의 원인은 무엇인가?" (open-ended) → LLM에게 원인을 설명하게 하고, 원인이 spec에 없으면 fail
 - 대안 2: "이 명령이 성공해야 하는가?" (inverted question) → 성공해야 하는데 에러면 fail

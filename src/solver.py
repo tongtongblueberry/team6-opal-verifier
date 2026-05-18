@@ -1196,16 +1196,27 @@ class Solver:
     # RAG retrieves relevant spec passages and an LLM judges those cases.
     def __init__(self) -> None:
         self.verifier = StatefulOpalVerifier()
+        self.embedding_clf = None
         self.rag_solver = None
-        # Changed: lazy-import RAGSolver so local dev (no torch/transformers) still works.
-        # Why: the server has PyTorch + transformers installed; local macOS does not.
+        # Changed: use embedding classifier (Buckmann & Hill, 2024) as primary LLM fallback.
+        # Why: Cycles 1-9 showed RAG generation/logit approaches fail (fail recall ≤ 20%).
+        # Embedding + ridge regression achieves GPT-4 accuracy with 10 samples/class.
         try:
-            from src.rag import RAGSolver
-            self.rag_solver = RAGSolver()
-            if not self.rag_solver.available:
-                self.rag_solver = None
+            from src.embedding_classifier import EmbeddingClassifier
+            self.embedding_clf = EmbeddingClassifier()
+            if not self.embedding_clf.available:
+                self.embedding_clf = None
         except Exception:
-            self.rag_solver = None
+            self.embedding_clf = None
+        # Fallback: RAG solver (kept for cases where embedding classifier is unavailable)
+        if self.embedding_clf is None:
+            try:
+                from src.rag import RAGSolver
+                self.rag_solver = RAGSolver()
+                if not self.rag_solver.available:
+                    self.rag_solver = None
+            except Exception:
+                self.rag_solver = None
 
     def predict(self, dataset: Any) -> dict[str, str]:
         if not isinstance(dataset, list):
