@@ -931,6 +931,23 @@ class LLMJudge:
 
     # ── Status Prediction mode (Cycle 8: task reframing) ────────────────
 
+    @staticmethod
+    def _parse_status(text: str) -> str:
+        """Parse a status code from text. Returns 'unknown' if not found."""
+        text = text.lower().strip()
+        # Check last 200 chars for the status
+        tail = text[-200:] if len(text) > 200 else text
+        for candidate in ["success", "notauthorized", "not_authorized", "not authorized",
+                          "invalidparameter", "invalid_parameter", "invalid parameter", "fail"]:
+            if candidate in tail:
+                norm = candidate.replace("_", "").replace(" ", "")
+                if "authorized" in norm:
+                    return "notauthorized"
+                if "parameter" in norm:
+                    return "invalidparameter"
+                return norm
+        return "unknown"
+
     _STATUS_PREDICT_PROMPT = """\
 You are a TCG Storage/Opal protocol expert. Given a command trajectory and specification excerpts, predict what the CORRECT status code should be for the final command.
 
@@ -1017,17 +1034,40 @@ Answer with one status code: Success, NOT_AUTHORIZED, INVALID_PARAMETER, or FAIL
         else:
             answer = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip().lower()
 
-        # Parse predicted status
+        # Changed: improved status parsing with thinking fallback.
+        # Why: Cycle 8 showed 4B model's thinking often diverges, leaving answer_part empty.
+        # 4/5 fail cases were missed because of "ambiguous" parsing failure.
+        # Fix: search thinking content for status conclusion when answer is ambiguous.
         actual_lower = actual_status.lower().replace("_", "")
-        predicted_status = "unknown"
-        for candidate in ["success", "notauthorized", "not_authorized", "invalidparameter",
-                          "invalid_parameter", "fail"]:
-            if candidate in answer[-100:]:
-                predicted_status = candidate.replace("_", "")
-                break
+        actual_norm = actual_lower.replace("_", "")
+
+        # Try answer_part first
+        predicted_status = self._parse_status(answer)
+
+        # Fallback: search thinking content for conclusion patterns
+        if predicted_status == "unknown" and "</think>" in raw:
+            thinking = raw.split("</think>")[0].lower()
+            # Look for conclusion patterns in thinking
+            conclusion_patterns = [
+                r"the correct status (?:should be|is|would be)[:\s]*(success|not.?authorized|invalid.?parameter|fail)",
+                r"status[:\s]*(success|not.?authorized|invalid.?parameter|fail)",
+                r"should return[:\s]*(success|not.?authorized|invalid.?parameter|fail)",
+                r"expected[:\s]*(success|not.?authorized|invalid.?parameter|fail)",
+                r"answer[:\s]*(success|not.?authorized|invalid.?parameter|fail)",
+            ]
+            for pattern in conclusion_patterns:
+                m = re.search(pattern, thinking)
+                if m:
+                    predicted_status = m.group(1).replace("_", "").replace(" ", "").replace("-", "")
+                    # Normalize
+                    if "authorized" in predicted_status:
+                        predicted_status = "notauthorized"
+                    elif "parameter" in predicted_status:
+                        predicted_status = "invalidparameter"
+                    logger.info("Status extracted from thinking: %s", predicted_status)
+                    break
 
         # Compare: if predicted matches actual, pass; otherwise fail
-        actual_norm = actual_lower.replace("_", "")
         if predicted_status == "unknown":
             logger.warning("Status prediction ambiguous: %r — defaulting to pass", answer[-200:])
             return "pass"

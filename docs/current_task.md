@@ -49,7 +49,19 @@ leaderboard accuracy 71.50 → ≥ 85.00 (LLM 필수)
 - Spec context를 정확히 제공해도 "fail"이라고 말하지 못함
 - → **문제는 retrieval이나 scoring이 아님. LLM의 판단 task 자체의 framing이 잘못됨**
 
-### 다음 Cycle: Task Framing 재설계
+### Cycle 8 결과: Status Prediction — BREAKTHROUGH
+
+```
+4B + status prediction + improved retrieval + few-shot (15 cases):
+acc=73.3% tp=1 fp=0 fn=4 tn=10
+fail recall = 20% (1/5) ← Cycle 1-7에서 0%였던 것이 최초 개선
+pass precision = 100% (no false positives)
+```
+
+**tp=1 달성!** Case 12 (Write+Read→FAIL contradiction)에서 최초로 fail 감지.
+Status prediction이 유일하게 효과 있는 변경. Task reframing이 핵심.
+
+### 다음 Cycle 9: fail recall을 20% → 더 높이기
 - 현재: "이 에러가 valid인가?" (pass/fail) → LLM은 항상 "valid" (pass)
 - 대안 1: "이 에러의 원인은 무엇인가?" (open-ended) → LLM에게 원인을 설명하게 하고, 원인이 spec에 없으면 fail
 - 대안 2: "이 명령이 성공해야 하는가?" (inverted question) → 성공해야 하는데 에러면 fail
