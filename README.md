@@ -1,109 +1,69 @@
-<!-- Changed: update README to reflect rule engine + LoRA override architecture. -->
-<!-- Why: RAG hybrid is no longer used. Current approach is rule engine (71.50 base) + LoRA fine-tuned override for false positives. -->
 # Team 6 Opal Verifier
 
-A **rule engine + LoRA override** solver for SSD TCG/Opal command-response trajectory pass/fail
-classification.
+SSD TCG/Opal command-response trajectory pass/fail classification.
+SNU Introduction to Deep Learning (M2177.0043) | Due: 2026-06-08
+
+## Leaderboard
+
+| Score | Method | Commit | Date |
+|-------|--------|--------|------|
+| **71.50** | Rule engine (UNEXPECTED_ERROR_STATUS) | `2df1e71` | 2026-05-18 |
+| 69.50 | Rule engine (field semantics) | `c613397` | 2026-05-18 |
+| 68.00 | Rule engine (spec index) | `fd43bd5` | 2026-05-17 |
+| 60.50 | Rule engine (initial) | `872f31d` | 2026-05-17 |
+
+Best branch: `best-71.50`
 
 ## Architecture
 
-The entry point is `src/solver.py::Solver.predict(dataset)`, which returns `{id: "pass"/"fail"}`.
-
 ```
-Trajectory --> Rule Engine (StatefulOpalVerifier) --> prediction + rule_id
-                                                         |
-                        SPECIFIC RULE FIRED <------------+
-                        (high confidence)                |
-                             |               UNEXPECTED_ERROR_STATUS
-                             |               (aggressive: unexplained error = fail)
-                             |                           |
-                             |               LoRA Override (Qwen3.5-4B + LoRA adapter)
-                             |               "Is this really a fail, or a false positive?"
-                             |                           |
-                             |               LoRA says pass --> override to pass
-                             |               LoRA says fail --> keep fail
-                             |                           |
-                             +---------- final prediction <--------+
+Trajectory
+    |
+[1] Rule Engine (StatefulOpalVerifier) -- best-71.50 base
+    |
+    +-- Specific rule matched --> Use rule prediction (pass or fail)
+    |
+    +-- UNEXPECTED_ERROR_STATUS --> "fail" (aggressive: all unexplained errors)
+            |
+        [2] LoRA Override (Qwen3.5-4B + LoRA adapter)
+            |
+            +-- LoRA says "pass" --> Override to pass (rescue false positive)
+            +-- LoRA says "fail" --> Keep fail
 ```
 
-- **High confidence cases** (~70%): deterministic rule engine, no LLM needed
-- **UNEXPECTED_ERROR_STATUS cases** (~30%): rule engine says "fail" (all unexplained errors),
-  LoRA fine-tuned model reviews to rescue false positives
+**Key discovery**: `UNEXPECTED_ERROR_STATUS` (모든 unexplained error = fail)이 71.50의 핵심.
+이것을 `DEFAULT_PASS`(= pass)로 바꾸면 68.00으로 하락. LoRA는 이 중 false positive만 선별 rescue.
 
-The rule engine handles all protocol-specific checks (session tracking, authentication, field
-semantics, payload validation). The key to 71.50 is `UNEXPECTED_ERROR_STATUS` -- an aggressive
-rule that flags any unexplained error status as "fail". The LoRA adapter corrects false positives
-where the error was actually valid.
+## LoRA 4B v2 Results (synthetic 252 cases)
 
-### Key Discovery
+| Metric | Value |
+|--------|-------|
+| Fail precision | **100%** (0 false positives) |
+| Fail recall | **46.9%** (23/49) |
+| Accuracy | **89.7%** (226/252) |
 
-The 71.50 score comes from the aggressive `UNEXPECTED_ERROR_STATUS` approach: any error status
-that the rule engine cannot explain is classified as "fail". This is correct for most hidden test
-cases. Post-71.50 attempts to soften this (changing to `DEFAULT_PASS`) caused a regression to 68.00.
+## Current: HP Sweep
 
-### LoRA Fine-Tuning (4B v2)
+서버에서 LoRA hyperparameter sweep 실행 중.
+- LR: {5e-5, 1e-4, 2e-4, 5e-4, 1e-3}
+- Rank, alpha, dropout, max_length 순차 sweep
+- Scheduler: cosine, Optimizer: AdamW, Batch: 8 (VRAM 94%)
+- 상세: `docs/sweep_plan.md`
 
-- **Base model**: Qwen/Qwen3.5-4B
-- **Method**: LoRA (Hu et al., ICLR 2022) on attention projections (q, k, v, o)
-- **Training data**: 2163 cases (rule-engine-generated metamorphic + synthetic + public)
-- **Format**: Rich format with full trajectory (table/column/UID/payload)
-- **Label masking**: Loss computed only on answer tokens ("pass" / "fail")
-- **Best result**: fail precision 100%, fail recall 46.9%, accuracy 89.7% on synthetic test set
+## Files
 
-[EXTERNAL KNOWLEDGE] Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., & Chen, W. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR 2022. https://arxiv.org/abs/2106.09685
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/solver.py` | Entry point. Rule engine (best-71.50 base) + LoRA override for UNEXPECTED_ERROR_STATUS |
+| File | Role |
+|------|------|
+| `src/solver.py` | Rule engine (best-71.50) + LoRA override |
 | `src/lora_solver.py` | LoRA adapter loading and prediction |
-| `src/rag.py` | BM25 retrieval + LLM judge (legacy, not used in submission) |
-| `tools/finetune_lora_v2.py` | LoRA training with rich format + label masking |
-| `tools/sweep_lora.py` | Hyperparameter sweep script |
-| `tools/eval_lora.py` | LoRA evaluation on synthetic test set |
-| `tools/intermediate_eval.py` | Public train/dev evaluation |
-| `tools/mutation_eval.py` | Mutation testing adequacy framework |
-| `artifacts/lora_adapter_v2/` | Trained 4B LoRA adapter (~32MB) |
+| `tools/sweep_lora.py` | HP sweep script |
+| `tools/finetune_lora_v2.py` | LoRA training (rich format + label masking) |
+| `tools/eval_lora.py` | LoRA evaluation |
+| `PROGRESS.md` | Full experiment log (Cycle 1-15) |
+| `docs/sweep_plan.md` | HP sweep plan (architecture, loss, metrics) |
+| `docs/archive/` | Historical docs |
 
-## Data Boundary
+## References
 
-No dataset files are committed here.
-
-- Public labeled files under `/dl2026/dataset` are treated as train/dev only.
-- Leaderboard feedback must be treated as a separate validation signal, not training labels.
-- Private test data is never inspected and must only be used by the official evaluator.
-- Heavy pretrained models (Qwen etc.) are not committed. They are downloaded on the server only.
-- LoRA adapters are committed in `artifacts/` (< 12GB total).
-
-## Commands
-
-Local (no GPU needed -- pure rule engine):
-```bash
-bash setup.sh
-python3 -m compileall src tools
-```
-
-Server setup (first time):
-```bash
-bash setup.sh   # includes peft installation
-```
-
-Server evaluation:
-```bash
-python3 tools/intermediate_eval.py --dataset-root /dl2026/dataset
-```
-
-LoRA hyperparameter sweep:
-```bash
-nohup python3 tools/sweep_lora.py > /workspace/team6/sweep.log 2>&1 &
-```
-
-LoRA main training (after sweep):
-```bash
-nohup python3 tools/sweep_lora.py --main > /workspace/team6/main_train.log 2>&1 &
-```
-
-## Project State
-
-See `TODO.md` for the current handoff state, recent leaderboard result, and next actions.
+- Hu, E. J. et al. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR.
+- Lewis, P. et al. (2020). *RAG for Knowledge-Intensive NLP Tasks*. NeurIPS.

@@ -33,8 +33,12 @@ class SweepConfig:
     lora_dropout: float = 0.05
     num_epochs: int = 5
     max_length: int = 1024
-    batch_size: int = 1
-    grad_accum: int = 8
+    # Changed: batch_size=8 to target ~90% VRAM utilization (46GB × 90% = 41GB).
+    # 4B + LoRA + fp16 + grad_ckpt + bs=8 + max_len=1024 ≈ 38-42GB.
+    # Cushion ~5GB (10-20% recommended per PyTorch best practices).
+    # If OOM, script catches RuntimeError and retries with smaller bs.
+    batch_size: int = 8
+    grad_accum: int = 1  # effective batch = 8, no accumulation needed
     target_modules: str = "q_proj,v_proj,k_proj,o_proj"
     run_name: str = "default"
 
@@ -233,7 +237,22 @@ def run_single(config: SweepConfig, train_data, val_cases):
 
     trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
     t0 = time.time()
-    train_result = trainer.train()
+    try:
+        train_result = trainer.train()
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower() and config.batch_size > 1:
+            # Auto-reduce batch size on OOM and retry
+            logger.warning("  OOM at bs=%d, retrying with bs=%d",
+                          config.batch_size, config.batch_size // 2)
+            del trainer, dataset, model, tokenizer
+            gc.collect()
+            import torch as _t; _t.cuda.empty_cache()
+            time.sleep(5)
+            config.batch_size = config.batch_size // 2
+            config.grad_accum = max(1, 8 // config.batch_size)
+            config.run_name = config.run_name + f"_bs{config.batch_size}"
+            return run_single(config, train_data, val_cases)  # retry
+        raise
     train_time = time.time() - t0
     train_loss = train_result.training_loss
 
@@ -288,9 +307,11 @@ def main():
     train_data, val_cases = prepare_data(base_config)
 
     # ── Step 1: LR Sweep ──────────────────────────────────────
+    # LoRA standard LR is ~2e-4 (10x full FT). Previous 2e-5 was too low.
+    # "Learning Rate Matters" (arXiv 2602.04998): start at 2e-4.
     logger.info("\n>>> STEP 1: LR Sweep <<<")
     step1_results = []
-    for lr in [5e-6, 1e-5, 2e-5, 5e-5, 1e-4]:
+    for lr in [5e-5, 1e-4, 2e-4, 5e-4, 1e-3]:
         cfg = SweepConfig(lr=lr, run_name=f"s1_lr_{lr:.0e}")
         r = run_single(cfg, train_data, val_cases)
         save_result(r)
@@ -353,43 +374,24 @@ def main():
     best_ml = best5["max_length"]
     logger.info(">>> Best max_length: %d (recall=%.2f)", best_ml, best5["fail_recall"])
 
-    # ── Step 6: Batch Size Sweep ──────────────────────────────
-    logger.info("\n>>> STEP 6: Batch Size Sweep <<<")
+    # Batch size is NOT a sweep target — fixed to max VRAM allows (bs=4 for 4B, bs=2 for 9B).
+    best_bs = best5.get("batch_size", 4)
+    best_ga = best5.get("grad_accum", 2)
+
+    # ── Step 6: Model Size ────────────────────────────────────
+    # batch size adapts to model: 4B→bs=8, 9B→bs=4 (target 90% of 46GB)
+    logger.info("\n>>> STEP 6: Model Size <<<")
     step6_results = []
-    for bs, ga in [(1, 8), (2, 4), (4, 2), (2, 8), (4, 4)]:
-        cfg = SweepConfig(lr=best_lr, lora_rank=best_rank, lora_alpha=best_alpha,
+    for model_name, m_bs, m_ga in [("Qwen/Qwen3.5-4B", 8, 1), ("Qwen/Qwen3.5-9B", 4, 1)]:
+        cfg = SweepConfig(model_name=model_name, lr=best_lr,
+                          lora_rank=best_rank, lora_alpha=best_alpha,
                           lora_dropout=best_dropout, max_length=best_ml,
-                          batch_size=bs, grad_accum=ga,
-                          run_name=f"s6_bs{bs}_ga{ga}")
+                          batch_size=m_bs, grad_accum=m_ga,
+                          run_name=f"s6_{model_name.split('/')[-1]}")
         try:
             r = run_single(cfg, train_data, val_cases)
             save_result(r)
             step6_results.append(r)
-        except RuntimeError as e:
-            if "out of memory" in str(e).lower():
-                logger.warning("  OOM for bs=%d ga=%d, skipping", bs, ga)
-                gc.collect()
-                import torch; torch.cuda.empty_cache()
-            else:
-                raise
-    best6 = pick_best(step6_results) if step6_results else best5
-    best_bs = best6.get("batch_size", 1)
-    best_ga = best6.get("grad_accum", 8)
-    logger.info(">>> Best batch: bs=%d ga=%d (recall=%.2f)", best_bs, best_ga, best6["fail_recall"])
-
-    # ── Step 7: Model Size ────────────────────────────────────
-    logger.info("\n>>> STEP 7: Model Size <<<")
-    step7_results = []
-    for model_name in ["Qwen/Qwen3.5-4B", "Qwen/Qwen3.5-9B"]:
-        cfg = SweepConfig(model_name=model_name, lr=best_lr,
-                          lora_rank=best_rank, lora_alpha=best_alpha,
-                          lora_dropout=best_dropout, max_length=best_ml,
-                          batch_size=best_bs, grad_accum=best_ga,
-                          run_name=f"s7_{model_name.split('/')[-1]}")
-        try:
-            r = run_single(cfg, train_data, val_cases)
-            save_result(r)
-            step7_results.append(r)
         except RuntimeError as e:
             if "out of memory" in str(e).lower():
                 logger.warning("  OOM for %s, skipping", model_name)
@@ -397,9 +399,11 @@ def main():
                 import torch; torch.cuda.empty_cache()
             else:
                 raise
-    best7 = pick_best(step7_results) if step7_results else best6
-    best_model = best7.get("model_name", "Qwen/Qwen3.5-4B")
-    logger.info(">>> Best model: %s (recall=%.2f)", best_model, best7["fail_recall"])
+    best6 = pick_best(step6_results) if step6_results else best5
+    best_model = best6.get("model_name", "Qwen/Qwen3.5-4B")
+    best_bs = best6.get("batch_size", 4)
+    best_ga = best6.get("grad_accum", 2)
+    logger.info(">>> Best model: %s (recall=%.2f)", best_model, best6["fail_recall"])
 
     # ── Final Summary ─────────────────────────────────────────
     logger.info("\n" + "=" * 60)
@@ -411,7 +415,7 @@ def main():
     logger.info("  dropout   = %.2f", best_dropout)
     logger.info("  max_length= %d", best_ml)
     logger.info("  batch     = %d × %d = %d", best_bs, best_ga, best_bs * best_ga)
-    logger.info("  recall    = %.2f (prec >= 0.9)", best7["fail_recall"])
+    logger.info("  recall    = %.2f (prec >= 0.9)", best6["fail_recall"])
     logger.info("=" * 60)
 
     best_cfg = {"model": best_model, "lr": best_lr, "rank": best_rank,
