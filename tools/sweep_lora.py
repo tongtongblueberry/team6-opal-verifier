@@ -33,28 +33,35 @@ class SweepConfig:
     lora_dropout: float = 0.05
     num_epochs: int = 5
     max_length: int = 1024
-    # Changed: batch_size=8 to target ~90% VRAM utilization (46GB × 90% = 41GB).
-    # 4B + LoRA + fp16 + grad_ckpt + bs=8 + max_len=1024 ≈ 38-42GB.
-    # Cushion ~5GB (10-20% recommended per PyTorch best practices).
-    # If OOM, script catches RuntimeError and retries with smaller bs.
+    # batch_size=8: target 90% VRAM (41GB / 46GB). OOM auto-retries with bs//2.
     batch_size: int = 8
-    grad_accum: int = 1  # effective batch = 8, no accumulation needed
+    grad_accum: int = 1
     target_modules: str = "q_proj,v_proj,k_proj,o_proj"
     run_name: str = "default"
 
 
 def prepare_data(config: SweepConfig):
-    """Load training data + validation split."""
+    """Load spec-based training data + public ground truth + validation split.
+
+    Changed: use spec-based data (high-confidence labels) instead of noisy metamorphic data.
+    Why: metamorphic labels from rule engine have ~29% noise. Spec labels are ground truth.
+    Reference: "Analyzing the Effect of Noise in LLM Fine-tuning" (arXiv 2604.12469).
+    """
     from tools.finetune_lora_v2 import format_for_training_v2
 
-    training_path = Path("/workspace/team6/training_data/training_cases.json")
-    test_path = Path("/workspace/team6/large_dp_test_set.json")
+    train_path = Path("/workspace/team6/training_data/spec_train.json")
+    val_path = Path("/workspace/team6/training_data/spec_val.json")
 
-    all_cases = json.loads(training_path.read_text())
-    test_cases = json.loads(test_path.read_text())
+    # Train: spec-based (889 = 869 spec + 20 public ground truth)
+    all_cases = json.loads(train_path.read_text()) if train_path.exists() else []
+    logger.info("Training data: %d cases", len(all_cases))
 
-    # Validation: last 52 cases (idx 200-251: includes 49 fail + 3 pass)
-    val_cases_raw = test_cases[200:]
+    # Val: spec-based (283 cases, separate from train)
+    val_cases_raw = []
+    if val_path.exists():
+        val_data = json.loads(val_path.read_text())
+        for c in val_data:
+            val_cases_raw.append({"steps": c["records"], "expected": c["label"]})
 
     # Format training data
     train_data = []
@@ -379,7 +386,7 @@ def main():
     best_ga = best5.get("grad_accum", 2)
 
     # ── Step 6: Model Size ────────────────────────────────────
-    # batch size adapts to model: 4B→bs=8, 9B→bs=4 (target 90% of 46GB)
+    # batch size adapts to model: 4B→bs=8, 9B→bs=4 (target 90% VRAM)
     logger.info("\n>>> STEP 6: Model Size <<<")
     step6_results = []
     for model_name, m_bs, m_ga in [("Qwen/Qwen3.5-4B", 8, 1), ("Qwen/Qwen3.5-9B", 4, 1)]:
