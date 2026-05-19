@@ -76,29 +76,35 @@ Post-71.50에서 `UNEXPECTED_ERROR_STATUS`(모든 unexplained error → fail)를
 - Public 20/20 유지 확인
 - 제출 한도 초과
 
-### Cycle 15: HP Sweep (진행 중)
-- 데이터: spec-based 1,435건 (이전 metamorphic 2,163건은 ~29% noise → 폐기)
-- Split: train 869 / val 283 / test 283 (60/20/20)
-- 수정: LR 범위 5e-5~1e-3 (이전 5e-6~1e-4는 너무 낮았음)
-- 수정: batch_size=8 (VRAM 94% 활용, 이전 bs=1은 30%만 사용)
-- Scheduler: cosine, Optimizer: AdamW 고정
-- Sweep: LR → rank → alpha → dropout → max_length → model → final test eval
-- HP selection: val fail_recall (precision ≥ 0.9), final: test set unbiased estimate
-- 서버에서 실행 중 (Step 1: LR sweep, 2/5 완료)
+### Cycle 15: HP Sweep Phase 1 — LR sweep 완료
+- 데이터: spec-based 1,435건 (train 869 / val 283 / test 283)
+- 5 epochs, batch_size=8, cosine scheduler, AdamW
 
-초기 결과 (spec-based data, val 283건 기준):
+LR Sweep 결과 (5 ep, val 283건, rank=16, alpha=32):
 
-| LR | Acc | Fail Prec | Fail Rec | F1 | Loss |
-|----|-----|-----------|----------|-----|------|
-| 5e-5 | 76.3% | 0.77 | 0.74 | 0.75 | 0.199 |
-| 1e-4 | 77.0% | 0.77 | 0.76 | 0.76 | 0.177 |
+| LR | Acc | Fail Prec | Fail Rec | F1 | TP | FP | FN | TN |
+|----|-----|-----------|----------|-----|----|----|----|----|
+| 5e-5 | 76.3% | 0.77 | 0.74 | 0.75 | 102 | 31 | 36 | 114 |
+| 1e-4 | 77.0% | 0.77 | 0.76 | 0.76 | 105 | 32 | 33 | 113 |
+| 2e-4 | 78.1% | 0.77 | 0.78 | 0.78 | 108 | 32 | 30 | 113 |
+| **5e-4** | **79.5%** | **0.77** | **0.83** | **0.80** | 115 | 35 | 23 | 110 |
+| 1e-3 | 78.8% | 0.74 | 0.88 | 0.80 | 121 | 43 | 17 | 102 |
+
+분석:
+- Recall 단조증가 (0.74→0.88), precision은 5e-4까지 안정 (0.77) 후 1e-3에서 하락 (0.74)
+- 5e-4가 accuracy 기준 best. 1e-3은 recall↑ but FP 급증 (35→43)
+- 5 epochs에서 단조증가 → 수렴 전 비교일 가능성. Phase 2 (20 ep)에서 재검증 필요
 
 ### Cycle 15b: 코드 정리
 - 폐기 파일 12개 삭제 (rag.py, embedding_classifier.py, v1 scripts 등)
 - tools/ 서브디렉토리 재구성: training/, eval/, datagen/, analysis/
 - lora_solver.py v1 fallback 제거 (v2 전용)
-- sweep_lora.py: test set 평가 추가 (val로 HP 선택 후 test로 unbiased estimate)
-- sweep_lora.py: adapter 저장 기능 추가 (main training 후 artifacts/에 저장)
+- sweep_lora.py: test set 평가 + adapter 저장 + extra_eval 추가
+
+### Cycle 15c: 2-Phase Sweep (진행 중)
+- Phase 1 (5 ep): sequential — LR, rank, max_length, dropout 후보 좁히기
+- Phase 2 (20 ep): grid — LR(2) × rank(2) × alpha_ratio(2) × dropout(2) = 16 runs
+- Why: sequential sweep은 HP 상호작용 놓침. 20 ep은 수렴 후 비교 가능
 
 ---
 

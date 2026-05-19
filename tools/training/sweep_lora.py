@@ -354,164 +354,205 @@ def pick_best(results, key="fail_recall", constraint_key="fail_precision", const
     return max(valid, key=lambda r: r.get(key, 0))
 
 
+# Changed: added pick_top_n for 2-phase sweep.
+# Why: Phase 1 narrows candidates, Phase 2 tests interactions among top-N.
+def pick_top_n(results, n=2, key="fail_recall", constraint_key="fail_precision", constraint_min=0.9):
+    """Pick top N results by key, subject to constraint."""
+    valid = [r for r in results if r.get(constraint_key, 0) >= constraint_min]
+    if not valid:
+        valid = results
+    return sorted(valid, key=lambda r: r.get(key, 0), reverse=True)[:n]
+
+
 def main():
+    # Changed: 2-phase sweep replacing sequential-only approach.
+    # Why: sequential sweep misses HP interactions (LR×rank, rank×dropout).
+    # Phase 1 (5 ep): narrow candidates quickly.
+    # Phase 2 (20 ep): focused grid on top candidates to capture interactions.
     logger.info("=" * 60)
-    logger.info("FULL LORA HYPERPARAMETER SWEEP")
-    logger.info("Fixed: scheduler=cosine, optimizer=NAdam")
+    logger.info("2-PHASE LORA HYPERPARAMETER SWEEP")
+    logger.info("Phase 1: sequential (5 ep) → narrow top-2 candidates")
+    logger.info("Phase 2: grid search (20 ep) → capture HP interactions")
     logger.info("=" * 60)
 
-    # Reset results
     if RESULTS_PATH.exists():
         RESULTS_PATH.rename(RESULTS_PATH.with_suffix(".json.bak"))
     RESULTS_PATH.write_text("[]")
 
     base_config = SweepConfig()
-    # Changed: unpack 3 sets. Why: test set added for unbiased final evaluation.
     train_data, val_cases, test_cases = prepare_data(base_config)
 
-    # ── Step 1: LR Sweep ──────────────────────────────────────
-    # LoRA standard LR is ~2e-4 (10x full FT). Previous 2e-5 was too low.
-    # "Learning Rate Matters" (arXiv 2602.04998): start at 2e-4.
-    logger.info("\n>>> STEP 1: LR Sweep <<<")
-    step1_results = []
+    # ════════════════════════════════════════════════════════════
+    # PHASE 1: Sequential sweep (5 epochs each) — narrow the range
+    # ════════════════════════════════════════════════════════════
+    P1_EPOCHS = 5
+    logger.info("\n" + "=" * 60)
+    logger.info("PHASE 1: Sequential sweep (%d epochs each)", P1_EPOCHS)
+    logger.info("=" * 60)
+
+    # ── P1-Step 1: LR Sweep ───────────────────────────────────
+    logger.info("\n>>> P1-1: LR Sweep <<<")
+    p1_lr_results = []
     for lr in [5e-5, 1e-4, 2e-4, 5e-4, 1e-3]:
-        cfg = SweepConfig(lr=lr, run_name=f"s1_lr_{lr:.0e}")
+        cfg = SweepConfig(lr=lr, num_epochs=P1_EPOCHS, run_name=f"p1_lr_{lr:.0e}")
         r = run_single(cfg, train_data, val_cases)
         save_result(r)
-        step1_results.append(r)
-    best1 = pick_best(step1_results)
-    best_lr = best1["lr"]
-    logger.info(">>> Best LR: %.1e (recall=%.2f, prec=%.2f)", best_lr, best1["fail_recall"], best1["fail_precision"])
+        p1_lr_results.append(r)
+    top2_lr = pick_top_n(p1_lr_results, n=2)
+    best_lr = top2_lr[0]["lr"]
+    logger.info(">>> Top-2 LR: %s (recall: %s)",
+                [r["lr"] for r in top2_lr],
+                [r["fail_recall"] for r in top2_lr])
 
-    # ── Step 2: Rank Sweep ────────────────────────────────────
-    logger.info("\n>>> STEP 2: Rank Sweep <<<")
-    step2_results = []
+    # ── P1-Step 2: Rank Sweep (alpha = 2×rank) ───────────────
+    logger.info("\n>>> P1-2: Rank Sweep <<<")
+    p1_rank_results = []
     for rank in [4, 8, 16, 32, 64]:
         cfg = SweepConfig(lr=best_lr, lora_rank=rank, lora_alpha=rank * 2,
-                          run_name=f"s2_r{rank}")
+                          num_epochs=P1_EPOCHS, run_name=f"p1_r{rank}")
         r = run_single(cfg, train_data, val_cases)
         save_result(r)
-        step2_results.append(r)
-    best2 = pick_best(step2_results)
-    best_rank = best2["lora_rank"]
-    logger.info(">>> Best rank: %d (recall=%.2f)", best_rank, best2["fail_recall"])
+        p1_rank_results.append(r)
+    top2_rank = pick_top_n(p1_rank_results, n=2)
+    best_rank = top2_rank[0]["lora_rank"]
+    logger.info(">>> Top-2 rank: %s (recall: %s)",
+                [r["lora_rank"] for r in top2_rank],
+                [r["fail_recall"] for r in top2_rank])
 
-    # ── Step 3: Alpha Sweep ───────────────────────────────────
-    logger.info("\n>>> STEP 3: Alpha Sweep <<<")
-    step3_results = []
-    for ratio in [1, 2, 4, 8]:
-        alpha = best_rank * ratio
-        cfg = SweepConfig(lr=best_lr, lora_rank=best_rank, lora_alpha=alpha,
-                          run_name=f"s3_a{alpha}")
-        r = run_single(cfg, train_data, val_cases)
-        save_result(r)
-        step3_results.append(r)
-    best3 = pick_best(step3_results)
-    best_alpha = best3["lora_alpha"]
-    logger.info(">>> Best alpha: %d (ratio=%.1f, recall=%.2f)", best_alpha, best_alpha / best_rank, best3["fail_recall"])
-
-    # ── Step 4: Dropout Sweep ─────────────────────────────────
-    logger.info("\n>>> STEP 4: Dropout Sweep <<<")
-    step4_results = []
-    for dropout in [0.0, 0.05, 0.1, 0.2]:
-        cfg = SweepConfig(lr=best_lr, lora_rank=best_rank, lora_alpha=best_alpha,
-                          lora_dropout=dropout, run_name=f"s4_d{dropout:.2f}")
-        r = run_single(cfg, train_data, val_cases)
-        save_result(r)
-        step4_results.append(r)
-    best4 = pick_best(step4_results)
-    best_dropout = best4["lora_dropout"]
-    logger.info(">>> Best dropout: %.2f (recall=%.2f)", best_dropout, best4["fail_recall"])
-
-    # ── Step 5: max_length Sweep ──────────────────────────────
-    logger.info("\n>>> STEP 5: max_length Sweep <<<")
-    step5_results = []
+    # ── P1-Step 3: max_length Sweep ───────────────────────────
+    # max_length has weak interaction with other HPs → pick best 1, no grid.
+    logger.info("\n>>> P1-3: max_length Sweep <<<")
+    p1_ml_results = []
     for ml in [512, 1024, 2048]:
-        cfg = SweepConfig(lr=best_lr, lora_rank=best_rank, lora_alpha=best_alpha,
-                          lora_dropout=best_dropout, max_length=ml,
-                          run_name=f"s5_ml{ml}")
+        cfg = SweepConfig(lr=best_lr, lora_rank=best_rank, lora_alpha=best_rank * 2,
+                          max_length=ml, num_epochs=P1_EPOCHS,
+                          run_name=f"p1_ml{ml}")
         r = run_single(cfg, train_data, val_cases)
         save_result(r)
-        step5_results.append(r)
-    best5 = pick_best(step5_results)
-    best_ml = best5["max_length"]
-    logger.info(">>> Best max_length: %d (recall=%.2f)", best_ml, best5["fail_recall"])
+        p1_ml_results.append(r)
+    best_ml = pick_best(p1_ml_results)["max_length"]
+    logger.info(">>> Best max_length: %d", best_ml)
 
-    # Batch size is NOT a sweep target — fixed to max VRAM allows (bs=4 for 4B, bs=2 for 9B).
-    best_bs = best5.get("batch_size", 4)
-    best_ga = best5.get("grad_accum", 2)
+    # ── P1-Step 4: Dropout Sweep ──────────────────────────────
+    logger.info("\n>>> P1-4: Dropout Sweep <<<")
+    p1_dropout_results = []
+    for dropout in [0.0, 0.05, 0.1, 0.2]:
+        cfg = SweepConfig(lr=best_lr, lora_rank=best_rank, lora_alpha=best_rank * 2,
+                          max_length=best_ml, lora_dropout=dropout,
+                          num_epochs=P1_EPOCHS, run_name=f"p1_d{dropout:.2f}")
+        r = run_single(cfg, train_data, val_cases)
+        save_result(r)
+        p1_dropout_results.append(r)
+    top2_dropout = pick_top_n(p1_dropout_results, n=2)
+    logger.info(">>> Top-2 dropout: %s (recall: %s)",
+                [r["lora_dropout"] for r in top2_dropout],
+                [r["fail_recall"] for r in top2_dropout])
 
-    # ── Step 6: Model Size ────────────────────────────────────
-    # batch size adapts to model: 4B→bs=8, 9B→bs=4 (target 90% VRAM)
-    logger.info("\n>>> STEP 6: Model Size <<<")
-    step6_results = []
-    for model_name, m_bs, m_ga in [("Qwen/Qwen3.5-4B", 8, 1), ("Qwen/Qwen3.5-9B", 4, 1)]:
-        cfg = SweepConfig(model_name=model_name, lr=best_lr,
-                          lora_rank=best_rank, lora_alpha=best_alpha,
-                          lora_dropout=best_dropout, max_length=best_ml,
-                          batch_size=m_bs, grad_accum=m_ga,
-                          run_name=f"s6_{model_name.split('/')[-1]}")
+    logger.info("\n>>> Phase 1 Summary <<<")
+    logger.info("  LR top-2:      %s", [r["lr"] for r in top2_lr])
+    logger.info("  Rank top-2:    %s", [r["lora_rank"] for r in top2_rank])
+    logger.info("  max_length:    %d (fixed)", best_ml)
+    logger.info("  Dropout top-2: %s", [r["lora_dropout"] for r in top2_dropout])
+
+    # ════════════════════════════════════════════════════════════
+    # PHASE 2: Focused grid search (20 epochs each) — HP interactions
+    # Grid: LR(2) × rank(2) × alpha_ratio(2) × dropout(2) = 16 runs
+    # Changed: 20 epochs for reliable ranking (5 ep was too short for convergence).
+    # Why: cosine scheduler at 5 ep means LR reaches ~0 before model converges.
+    # At 20 ep, relative ranking better predicts 50-ep main training performance.
+    # ════════════════════════════════════════════════════════════
+    P2_EPOCHS = 20
+    ALPHA_RATIOS = [2, 4]  # test standard vs aggressive scaling
+
+    grid_configs = []
+    for lr_r in top2_lr:
+        for rank_r in top2_rank:
+            for alpha_ratio in ALPHA_RATIOS:
+                for dropout_r in top2_dropout:
+                    grid_configs.append({
+                        "lr": lr_r["lr"],
+                        "rank": rank_r["lora_rank"],
+                        "alpha": rank_r["lora_rank"] * alpha_ratio,
+                        "alpha_ratio": alpha_ratio,
+                        "dropout": dropout_r["lora_dropout"],
+                    })
+
+    logger.info("\n" + "=" * 60)
+    logger.info("PHASE 2: Grid search (%d epochs each, %d configs)", P2_EPOCHS, len(grid_configs))
+    logger.info("  LR:          %s", sorted(set(c["lr"] for c in grid_configs)))
+    logger.info("  Rank:        %s", sorted(set(c["rank"] for c in grid_configs)))
+    logger.info("  Alpha ratio: %s", sorted(set(c["alpha_ratio"] for c in grid_configs)))
+    logger.info("  Dropout:     %s", sorted(set(c["dropout"] for c in grid_configs)))
+    logger.info("  max_length:  %d (fixed from P1)", best_ml)
+    logger.info("=" * 60)
+
+    p2_results = []
+    for i, gc_ in enumerate(grid_configs):
+        name = f"p2_{i:02d}_lr{gc_['lr']:.0e}_r{gc_['rank']}_a{gc_['alpha_ratio']}_d{gc_['dropout']:.2f}"
+        cfg = SweepConfig(
+            lr=gc_["lr"], lora_rank=gc_["rank"], lora_alpha=gc_["alpha"],
+            lora_dropout=gc_["dropout"], max_length=best_ml,
+            num_epochs=P2_EPOCHS, run_name=name)
         try:
             r = run_single(cfg, train_data, val_cases)
             save_result(r)
-            step6_results.append(r)
+            p2_results.append(r)
         except RuntimeError as e:
             if "out of memory" in str(e).lower():
-                logger.warning("  OOM for %s, skipping", model_name)
+                logger.warning("  OOM for %s, skipping", name)
                 gc.collect()
                 import torch; torch.cuda.empty_cache()
+                time.sleep(10)
             else:
                 raise
-    best6 = pick_best(step6_results) if step6_results else best5
-    best_model = best6.get("model_name", "Qwen/Qwen3.5-4B")
-    best_bs = best6.get("batch_size", 4)
-    best_ga = best6.get("grad_accum", 2)
-    logger.info(">>> Best model: %s (recall=%.2f)", best_model, best6["fail_recall"])
 
-    # ── Step 7: Final Confirmation (val + test) ─────────────
-    # Changed: single training run evaluates on both val and test via extra_eval.
-    # Why: val confirms consistency with sweep selection; test gives unbiased generalization estimate.
-    logger.info("\n>>> STEP 7: Final Confirmation (val + test) <<<")
+    best_p2 = pick_best(p2_results)
+    logger.info("\n>>> Phase 2 Best: lr=%.1e rank=%d alpha=%d dropout=%.2f → recall=%.2f prec=%.2f",
+                best_p2["lr"], best_p2["lora_rank"], best_p2["lora_alpha"],
+                best_p2["lora_dropout"], best_p2["fail_recall"], best_p2["fail_precision"])
+
+    # ── Final: Test evaluation (val + test) ───────────────────
+    logger.info("\n>>> FINAL: Confirmation (val + test, %d ep) <<<", P2_EPOCHS)
     final_cfg = SweepConfig(
-        model_name=best_model, lr=best_lr,
-        lora_rank=best_rank, lora_alpha=best_alpha,
-        lora_dropout=best_dropout, max_length=best_ml,
-        batch_size=best_bs, grad_accum=best_ga,
-        run_name="s7_final")
-    # Primary eval on val (consistency check), extra eval on test (unbiased)
+        lr=best_p2["lr"], lora_rank=best_p2["lora_rank"],
+        lora_alpha=best_p2["lora_alpha"], lora_dropout=best_p2["lora_dropout"],
+        max_length=best_ml, num_epochs=P2_EPOCHS,
+        run_name="final_test")
     final_result = run_single(final_cfg, train_data, val_cases,
                               extra_eval={"test": test_cases})
     final_result["eval_set"] = "val"
     save_result(final_result)
-
     test_metrics = final_result.get("extra_eval", {}).get("test", {})
 
-    # ── Final Summary ─────────────────────────────────────────
+    # ── Summary ───────────────────────────────────────────────
     logger.info("\n" + "=" * 60)
-    logger.info("SWEEP COMPLETE")
-    logger.info("  model     = %s", best_model)
-    logger.info("  lr        = %.1e", best_lr)
-    logger.info("  rank      = %d", best_rank)
-    logger.info("  alpha     = %d", best_alpha)
-    logger.info("  dropout   = %.2f", best_dropout)
+    logger.info("2-PHASE SWEEP COMPLETE")
+    logger.info("  lr        = %.1e", best_p2["lr"])
+    logger.info("  rank      = %d", best_p2["lora_rank"])
+    logger.info("  alpha     = %d (ratio=%.1f)", best_p2["lora_alpha"],
+                best_p2["lora_alpha"] / best_p2["lora_rank"])
+    logger.info("  dropout   = %.2f", best_p2["lora_dropout"])
     logger.info("  max_length= %d", best_ml)
-    logger.info("  batch     = %d × %d = %d", best_bs, best_ga, best_bs * best_ga)
-    logger.info("  val  recall = %.2f  prec = %.2f  (HP selection basis)",
+    logger.info("  val  recall = %.2f  prec = %.2f  (P2 selection basis)",
                 final_result["fail_recall"], final_result["fail_precision"])
     logger.info("  test recall = %.2f  prec = %.2f  (unbiased estimate)",
                 test_metrics.get("fail_recall", 0), test_metrics.get("fail_precision", 0))
     logger.info("=" * 60)
 
-    best_cfg = {"model": best_model, "lr": best_lr, "rank": best_rank,
-                "alpha": best_alpha, "dropout": best_dropout,
-                "max_length": best_ml, "batch_size": best_bs, "grad_accum": best_ga,
-                "val_recall": final_result["fail_recall"],
-                "val_precision": final_result["fail_precision"],
-                "test_recall": test_metrics.get("fail_recall", 0),
-                "test_precision": test_metrics.get("fail_precision", 0)}
+    best_cfg = {
+        "model": "Qwen/Qwen3.5-4B", "lr": best_p2["lr"],
+        "rank": best_p2["lora_rank"], "alpha": best_p2["lora_alpha"],
+        "dropout": best_p2["lora_dropout"], "max_length": best_ml,
+        "batch_size": best_p2.get("batch_size", 8),
+        "grad_accum": best_p2.get("grad_accum", 1),
+        "val_recall": final_result["fail_recall"],
+        "val_precision": final_result["fail_precision"],
+        "test_recall": test_metrics.get("fail_recall", 0),
+        "test_precision": test_metrics.get("fail_precision", 0),
+    }
     BEST_CONFIG_PATH.write_text(json.dumps(best_cfg, indent=2))
     logger.info("Saved to %s", BEST_CONFIG_PATH)
-    logger.info("Run main training: python3 tools/sweep_lora.py --main")
+    logger.info("Run main training: python3 tools/training/sweep_lora.py --main")
 
 
 def main_training():
