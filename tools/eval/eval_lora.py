@@ -6,7 +6,7 @@ from __future__ import annotations
 import json, sys, os, time, logging
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -39,34 +39,20 @@ def load_lora_model(base_model: str, adapter_path: str):
     return model, tokenizer
 
 
-def _get_format_fn(version: str):
-    """Return the appropriate format function for the given version."""
-    if version == "v2":
-        from tools.finetune_lora_v2 import format_trajectory_rich
-        return format_trajectory_rich, (
-            "You are a TCG/Opal SSD protocol compliance verifier. "
-            "Given a command-response trajectory with session state, "
-            "determine if the final response is consistent with the specification. "
-            "Answer exactly: pass or fail"
-        )
-    else:
-        from src.embedding_classifier import format_trajectory_for_embedding
-        def fmt_v1(records):
-            prompt = format_trajectory_for_embedding(records)
-            prompt = prompt.rstrip("(").rstrip()
-            if prompt.endswith("Answer:"):
-                prompt = prompt[:-len("Answer:")].rstrip()
-            return prompt
-        return fmt_v1, (
-            "You are a TCG/Opal protocol compliance checker. Given a command-response "
-            "trajectory, determine if the final response is consistent with the "
-            "specification. Answer with exactly one word: pass or fail"
-        )
+def _get_format_fn(version: str = "v2"):
+    """Return the format function and system prompt for v2."""
+    # Changed: removed v1 fallback. Why: embedding_classifier.py deleted, v1 format obsolete.
+    from tools.training.finetune_lora_v2 import format_trajectory_rich
+    return format_trajectory_rich, (
+        "You are a TCG/Opal SSD protocol compliance verifier. "
+        "Given a command-response trajectory with session state, "
+        "determine if the final response is consistent with the specification. "
+        "Answer exactly: pass or fail"
+    )
 
 
-# Changed: support v1/v2 format selection via global variable.
-_FORMAT_VERSION = "v1"
-_MAX_LENGTH = 512
+_FORMAT_VERSION = "v2"
+_MAX_LENGTH = 1024
 
 
 def predict_single(model, tokenizer, records: list, max_new_tokens: int = 32) -> str:

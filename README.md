@@ -25,7 +25,7 @@ Trajectory
     |
     +-- UNEXPECTED_ERROR_STATUS --> "fail" (aggressive: all unexplained errors)
             |
-        [2] LoRA Override (Qwen3.5-4B + LoRA adapter)
+        [2] LoRA Override (Qwen3.5-4B + LoRA adapter v2)
             |
             +-- LoRA says "pass" --> Override to pass (rescue false positive)
             +-- LoRA says "fail" --> Keep fail
@@ -34,36 +34,57 @@ Trajectory
 **Key discovery**: `UNEXPECTED_ERROR_STATUS` (모든 unexplained error = fail)이 71.50의 핵심.
 이것을 `DEFAULT_PASS`(= pass)로 바꾸면 68.00으로 하락. LoRA는 이 중 false positive만 선별 rescue.
 
-## LoRA 4B v2 Results (synthetic 252 cases)
-
-| Metric | Value |
-|--------|-------|
-| Fail precision | **100%** (0 false positives) |
-| Fail recall | **46.9%** (23/49) |
-| Accuracy | **89.7%** (226/252) |
-
-## Current: HP Sweep
+## Current: HP Sweep (Cycle 15)
 
 서버에서 LoRA hyperparameter sweep 실행 중.
-- LR: {5e-5, 1e-4, 2e-4, 5e-4, 1e-3}
-- Rank, alpha, dropout, max_length 순차 sweep
-- Scheduler: cosine, Optimizer: AdamW, Batch: 8 (VRAM 94%)
+- Data: spec-based 1,435건 (train 869 / val 283 / test 283)
+- Sweep: LR → rank → alpha → dropout → max_length → model size → final test eval
+- HP selection: val fail_recall (precision ≥ 0.9), final: test set unbiased estimate
+- Fixed: cosine scheduler, AdamW, batch=8 (VRAM 94%)
 - 상세: `docs/sweep_plan.md`
 
-## Files
+초기 결과 (Step 1 LR sweep):
 
-| File | Role |
-|------|------|
-| `src/solver.py` | Rule engine (best-71.50) + LoRA override |
-| `src/lora_solver.py` | LoRA adapter loading and prediction |
-| `tools/sweep_lora.py` | HP sweep script |
-| `tools/finetune_lora_v2.py` | LoRA training (rich format + label masking) |
-| `tools/eval_lora.py` | LoRA evaluation |
-| `PROGRESS.md` | Full experiment log (Cycle 1-15) |
-| `docs/sweep_plan.md` | HP sweep plan (architecture, loss, metrics) |
-| `docs/archive/` | Historical docs |
+| LR | Accuracy | Fail Precision | Fail Recall | F1 |
+|----|----------|----------------|-------------|-----|
+| 5e-5 | 76.3% | 0.77 | 0.74 | 0.75 |
+| 1e-4 | 77.0% | 0.77 | 0.76 | 0.76 |
+
+## Project Structure
+
+```
+src/                          # Submission code (제출용)
+├── solver.py                 # Rule engine + Solver (best-71.50 base)
+└── lora_solver.py            # LoRA adapter inference (v2 only)
+
+tools/
+├── training/                 # Training pipeline
+│   ├── sweep_lora.py         # HP sweep (LR→rank→alpha→dropout→len→model)
+│   ├── finetune_lora_v2.py   # Rich format + label masking
+│   └── build_training_data.py
+├── eval/                     # Evaluation
+│   ├── eval_lora.py          # LoRA model evaluation
+│   ├── metamorphic_eval.py   # Metamorphic/synthetic test generation
+│   └── mutation_eval.py      # Mutation testing for rule adequacy
+├── datagen/                  # Data generation
+│   └── generate_spec_data.py # Spec-based training data (1,435 cases)
+└── analysis/                 # Diagnostics
+    ├── rule_coverage.py      # Rule/spec coverage analysis
+    ├── metamorphic_coverage.py
+    ├── intermediate_eval.py
+    └── test_fail_dp_cases.py
+
+artifacts/                    # Model artifacts (generated, not in git until trained)
+└── lora_adapter_v2/          # LoRA adapter weights (~12MB)
+
+docs/
+├── sweep_plan.md             # HP sweep plan (architecture, loss, metrics)
+├── spec_rules.md             # Spec-derived rules
+└── archive/                  # Historical docs
+```
 
 ## References
 
 - Hu, E. J. et al. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR.
-- Lewis, P. et al. (2020). *RAG for Knowledge-Intensive NLP Tasks*. NeurIPS.
+- TOGLL (ASE 2024): Fine-tuned small models beat large zero-shot 3.8x.
+- Zhang et al. (ICLR 2024): Model scaling > data scaling for fine-tuning.

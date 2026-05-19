@@ -10,14 +10,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     # Changed: support direct server execution from tools/.
     # Why: these diagnostics run outside package-installed contexts.
     sys.path.insert(0, str(ROOT))
 
 from src.solver import RULE_SPEC_QUERIES, StatefulOpalVerifier, _invoking_name, _method_name, _status_name
-from tools.metamorphic_eval import build_synthetic_cases, load_public_cases
+from tools.eval.metamorphic_eval import build_synthetic_cases, load_public_cases
 
 
 Json = dict[str, Any]

@@ -12,7 +12,7 @@ import json, sys, pickle
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -25,7 +25,7 @@ def main() -> None:
     logger = logging.getLogger(__name__)
 
     from src.solver import StatefulOpalVerifier
-    from tools.metamorphic_eval import build_synthetic_cases, load_public_cases
+    from tools.eval.metamorphic_eval import build_synthetic_cases, load_public_cases
 
     dataset_root = Path("/dl2026/dataset")
     output_dir = Path("/workspace/team6/training_data")

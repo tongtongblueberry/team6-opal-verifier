@@ -77,21 +77,41 @@ Post-71.50에서 `UNEXPECTED_ERROR_STATUS`(모든 unexplained error → fail)를
 - 제출 한도 초과
 
 ### Cycle 15: HP Sweep (진행 중)
+- 데이터: spec-based 1,435건 (이전 metamorphic 2,163건은 ~29% noise → 폐기)
+- Split: train 869 / val 283 / test 283 (60/20/20)
 - 수정: LR 범위 5e-5~1e-3 (이전 5e-6~1e-4는 너무 낮았음)
 - 수정: batch_size=8 (VRAM 94% 활용, 이전 bs=1은 30%만 사용)
 - Scheduler: cosine, Optimizer: AdamW 고정
-- 서버에서 실행 중
+- Sweep: LR → rank → alpha → dropout → max_length → model → final test eval
+- HP selection: val fail_recall (precision ≥ 0.9), final: test set unbiased estimate
+- 서버에서 실행 중 (Step 1: LR sweep, 2/5 완료)
+
+초기 결과 (spec-based data, val 283건 기준):
+
+| LR | Acc | Fail Prec | Fail Rec | F1 | Loss |
+|----|-----|-----------|----------|-----|------|
+| 5e-5 | 76.3% | 0.77 | 0.74 | 0.75 | 0.199 |
+| 1e-4 | 77.0% | 0.77 | 0.76 | 0.76 | 0.177 |
+
+### Cycle 15b: 코드 정리
+- 폐기 파일 12개 삭제 (rag.py, embedding_classifier.py, v1 scripts 등)
+- tools/ 서브디렉토리 재구성: training/, eval/, datagen/, analysis/
+- lora_solver.py v1 fallback 제거 (v2 전용)
+- sweep_lora.py: test set 평가 추가 (val로 HP 선택 후 test로 unbiased estimate)
+- sweep_lora.py: adapter 저장 기능 추가 (main training 후 artifacts/에 저장)
 
 ---
 
-## Training Data
+## Training Data (current: spec-based)
 
-| Source | Pass | Fail | Total |
-|--------|------|------|-------|
-| metamorphic | 650 | 1241 | 1891 |
-| default_pass (synthetic) | 203 | 49 | 252 |
-| public | 10 | 10 | 20 |
-| **Total** | **863** | **1300** | **2163** |
+| Set | Pass | Fail | Total | 용도 |
+|-----|------|------|-------|------|
+| train | 486 | 383 | 869 | 모델 학습 |
+| val | 145 | 138 | 283 | HP selection (sweep) |
+| test | 157 | 126 | 283 | Unbiased final estimate |
+| **Total** | **788** | **647** | **1,435** | |
+
+이전 데이터 (metamorphic 2,163건, ~29% label noise)는 폐기.
 
 ---
 

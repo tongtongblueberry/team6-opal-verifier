@@ -1,10 +1,7 @@
-# Changed: LoRA-based solver for DEFAULT_PASS cases.
-# Why: zero-shot/few-shot LLM approaches all failed (fail recall ≤ 20%).
-# Fine-tuned LoRA model can learn task-specific patterns from 2163 training examples.
-# Papers: TOGLL (ASE 2024) shows fine-tuned small models beat large zero-shot 3.8x.
-#
-# Integration: Solver class loads LoRA adapter from artifacts/ and uses it
-# for DEFAULT_PASS cases instead of (or alongside) RAG.
+# Changed: LoRA-based solver for UNEXPECTED_ERROR_STATUS override.
+# Why: rule engine aggressively marks unexplained errors as fail. LoRA can selectively correct.
+# Changed: removed v1 format/adapter support. Why: v1 (0.8B, compressed) had 0% fail recall.
+# Only v2 (4B, rich format) is used.
 
 from __future__ import annotations
 
@@ -18,39 +15,33 @@ logger = logging.getLogger(__name__)
 
 Json = dict[str, Any]
 
+SYSTEM_PROMPT = (
+    "You are a TCG/Opal SSD protocol compliance verifier. "
+    "Given a command-response trajectory with session state, "
+    "determine if the final response is consistent with the specification. "
+    "Answer exactly: pass or fail"
+)
+
 
 class LoRASolver:
-    """Fine-tuned LoRA model for pass/fail classification of DEFAULT_PASS cases."""
+    """Fine-tuned LoRA model for pass/fail classification."""
 
     def __init__(self, adapter_path: str | None = None, base_model: str | None = None):
         self.model = None
         self.tokenizer = None
         self.available = False
-        self._format_version = "v1"  # default; overridden if v2 adapter exists
 
-        # Changed: auto-detect adapter path from artifacts/.
         root = Path(__file__).resolve().parents[1]
         if adapter_path is None:
-            # Try v2 first, then v1
-            v2_path = root / "artifacts" / "lora_adapter_v2"
-            v1_path = root / "artifacts" / "lora_adapter"
-            if v2_path.exists() and (v2_path / "adapter_config.json").exists():
-                adapter_path = str(v2_path)
-                self._format_version = "v2"
-            elif v1_path.exists() and (v1_path / "adapter_config.json").exists():
-                adapter_path = str(v1_path)
-                self._format_version = "v1"
+            adapter_dir = root / "artifacts" / "lora_adapter_v2"
+            if adapter_dir.exists() and (adapter_dir / "adapter_config.json").exists():
+                adapter_path = str(adapter_dir)
             else:
-                logger.info("No LoRA adapter found in artifacts/")
+                logger.info("No LoRA adapter found in artifacts/lora_adapter_v2/")
                 return
 
         if base_model is None:
-            # Changed: default to 4B for v2 adapter, 0.8B for v1.
-            # Why: 4B v2 achieves fail precision=100% on synthetic test set.
-            if self._format_version == "v2":
-                base_model = os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-4B")
-            else:
-                base_model = os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-0.8B")
+            base_model = os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-4B")
 
         try:
             self._load(adapter_path, base_model)
@@ -63,8 +54,7 @@ class LoRASolver:
         from peft import PeftModel
 
         t0 = time.time()
-        logger.info("Loading LoRA: base=%s, adapter=%s, format=%s",
-                     base_model, adapter_path, self._format_version)
+        logger.info("Loading LoRA: base=%s, adapter=%s", base_model, adapter_path)
 
         self.tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
         if self.tokenizer.pad_token is None:
@@ -82,43 +72,18 @@ class LoRASolver:
 
         logger.info("LoRA model loaded in %.1fs", time.time() - t0)
 
-    def _format_records(self, records: list[Json]) -> str:
-        """Format records using the appropriate version."""
-        if self._format_version == "v2":
-            from tools.finetune_lora_v2 import format_trajectory_rich
-            return format_trajectory_rich(records)
-        else:
-            from src.embedding_classifier import format_trajectory_for_embedding
-            prompt = format_trajectory_for_embedding(records)
-            prompt = prompt.rstrip("(").rstrip()
-            if prompt.endswith("Answer:"):
-                prompt = prompt[:-len("Answer:")].rstrip()
-            return prompt
-
-    def _get_system_prompt(self) -> str:
-        if self._format_version == "v2":
-            return (
-                "You are a TCG/Opal SSD protocol compliance verifier. "
-                "Given a command-response trajectory with session state, "
-                "determine if the final response is consistent with the specification. "
-                "Answer exactly: pass or fail"
-            )
-        return (
-            "You are a TCG/Opal protocol compliance checker. Given a command-response "
-            "trajectory, determine if the final response is consistent with the "
-            "specification. Answer with exactly one word: pass or fail"
-        )
-
     def predict(self, records: list[Json], trace: list[Json] | None = None) -> str:
         """Predict pass/fail for a single trajectory."""
         if not self.available or not records:
-            return "pass"  # fallback
+            return "pass"
 
         import torch
+        # Changed: import path updated after tools/ restructuring.
+        from tools.training.finetune_lora_v2 import format_trajectory_rich
 
-        prompt = self._format_records(records)
+        prompt = format_trajectory_rich(records)
         messages = [
-            {"role": "system", "content": self._get_system_prompt()},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
@@ -132,8 +97,7 @@ class LoRASolver:
                 messages, tokenize=False, add_generation_prompt=True,
             )
 
-        max_len = 1024 if self._format_version == "v2" else 512
-        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=max_len)
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=1024)
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         with torch.no_grad():

@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     # Changed: make direct `python tools/intermediate_eval.py` execution work on the server.
     # Why: Python otherwise searches from tools/ and cannot import the submission `src` package.

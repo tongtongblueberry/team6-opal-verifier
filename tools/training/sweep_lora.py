@@ -9,7 +9,7 @@ import json, sys, os, time, logging, math, gc
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -41,27 +41,38 @@ class SweepConfig:
 
 
 def prepare_data(config: SweepConfig):
-    """Load spec-based training data + public ground truth + validation split.
+    """Load spec-based training data + validation + test splits.
 
     Changed: use spec-based data (high-confidence labels) instead of noisy metamorphic data.
     Why: metamorphic labels from rule engine have ~29% noise. Spec labels are ground truth.
     Reference: "Analyzing the Effect of Noise in LLM Fine-tuning" (arXiv 2604.12469).
+
+    Changed: added test set loading for unbiased final evaluation.
+    Why: val is used for HP selection → optimistic bias. Test gives unbiased generalization estimate.
     """
-    from tools.finetune_lora_v2 import format_for_training_v2
+    from tools.training.finetune_lora_v2 import format_for_training_v2
 
     train_path = Path("/workspace/team6/training_data/spec_train.json")
     val_path = Path("/workspace/team6/training_data/spec_val.json")
+    # Changed: added test set path. Why: separate unbiased evaluation after HP selection on val.
+    test_path = Path("/workspace/team6/training_data/spec_test.json")
 
-    # Train: spec-based (889 = 869 spec + 20 public ground truth)
+    # Train: spec-based (869 spec + 20 public ground truth)
     all_cases = json.loads(train_path.read_text()) if train_path.exists() else []
     logger.info("Training data: %d cases", len(all_cases))
 
-    # Val: spec-based (283 cases, separate from train)
-    val_cases_raw = []
-    if val_path.exists():
-        val_data = json.loads(val_path.read_text())
-        for c in val_data:
-            val_cases_raw.append({"steps": c["records"], "expected": c["label"]})
+    def _load_eval_set(path):
+        cases = []
+        if path.exists():
+            data = json.loads(path.read_text())
+            for c in data:
+                cases.append({"steps": c["records"], "expected": c["label"]})
+        return cases
+
+    # Val: for HP selection during sweep (283 cases)
+    val_cases_raw = _load_eval_set(val_path)
+    # Test: for unbiased final evaluation only (283 cases)
+    test_cases_raw = _load_eval_set(test_path)
 
     # Format training data
     train_data = []
@@ -73,11 +84,15 @@ def prepare_data(config: SweepConfig):
             continue
         train_data.append(format_for_training_v2(records, case["label"]))
 
-    logger.info("Train: %d | Val: %d (pass=%d, fail=%d)",
-                len(train_data), len(val_cases_raw),
+    logger.info("Train: %d | Val: %d (p=%d, f=%d) | Test: %d (p=%d, f=%d)",
+                len(train_data),
+                len(val_cases_raw),
                 sum(1 for c in val_cases_raw if c["expected"] == "pass"),
-                sum(1 for c in val_cases_raw if c["expected"] == "fail"))
-    return train_data, val_cases_raw
+                sum(1 for c in val_cases_raw if c["expected"] == "fail"),
+                len(test_cases_raw),
+                sum(1 for c in test_cases_raw if c["expected"] == "pass"),
+                sum(1 for c in test_cases_raw if c["expected"] == "fail"))
+    return train_data, val_cases_raw, test_cases_raw
 
 
 def build_dataset(train_data, tokenizer, max_length):
@@ -131,7 +146,7 @@ def build_dataset(train_data, tokenizer, max_length):
 def evaluate_model(model, tokenizer, val_cases, max_length):
     """Evaluate on validation set, return metrics dict."""
     import torch
-    from tools.finetune_lora_v2 import format_trajectory_rich
+    from tools.training.finetune_lora_v2 import format_trajectory_rich
     from src.solver import StatefulOpalVerifier
 
     model.eval()
@@ -189,8 +204,20 @@ def evaluate_model(model, tokenizer, val_cases, max_length):
             "tp": tp, "fp": fp, "fn": fn, "tn": tn}
 
 
-def run_single(config: SweepConfig, train_data, val_cases):
-    """Train one config, evaluate, return full result dict."""
+def run_single(config: SweepConfig, train_data, val_cases, extra_eval=None, save_adapter=None):
+    """Train one config, evaluate, return full result dict.
+
+    Changed: added extra_eval parameter for evaluating on additional sets before GPU cleanup.
+    Why: avoids retraining to evaluate on multiple sets (e.g., 50-epoch main training needs both val and test).
+
+    Changed: added save_adapter parameter to save LoRA adapter weights before GPU cleanup.
+    Why: sweep doesn't need to save (metrics only), but main training must save for submission.
+
+    Args:
+        extra_eval: optional dict of {set_name: cases_list}. Evaluated after primary val_cases.
+                    Results stored in full_result["extra_eval"][set_name].
+        save_adapter: optional path (str/Path) to save LoRA adapter + tokenizer. None = don't save.
+    """
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
     from peft import LoraConfig, get_peft_model, TaskType
@@ -258,7 +285,9 @@ def run_single(config: SweepConfig, train_data, val_cases):
             config.batch_size = config.batch_size // 2
             config.grad_accum = max(1, 8 // config.batch_size)
             config.run_name = config.run_name + f"_bs{config.batch_size}"
-            return run_single(config, train_data, val_cases)  # retry
+            # Changed: pass extra_eval and save_adapter through OOM retry.
+            return run_single(config, train_data, val_cases,
+                              extra_eval=extra_eval, save_adapter=save_adapter)  # retry
         raise
     train_time = time.time() - t0
     train_loss = train_result.training_loss
@@ -271,10 +300,36 @@ def run_single(config: SweepConfig, train_data, val_cases):
                 metrics["fail_recall"], metrics["f1_fail"],
                 metrics["tp"], metrics["fp"], metrics["fn"], metrics["tn"])
 
+    # Changed: evaluate on additional sets before GPU cleanup.
+    # Why: model is deleted after this block, so all evaluations must happen here.
+    extra_results = {}
+    if extra_eval:
+        for set_name, cases in extra_eval.items():
+            logger.info("  EXTRA EVAL [%s]: %d cases", set_name, len(cases))
+            em = evaluate_model(model, tokenizer, cases, config.max_length)
+            extra_results[set_name] = em
+            logger.info("  RESULT [%s]: acc=%.1f%% prec=%.2f rec=%.2f f1=%.2f | tp=%d fp=%d fn=%d tn=%d",
+                        set_name, em["accuracy"] * 100, em["fail_precision"],
+                        em["fail_recall"], em["f1_fail"],
+                        em["tp"], em["fp"], em["fn"], em["tn"])
+
+    # Changed: save LoRA adapter before GPU cleanup if requested.
+    # Why: model is deleted after this block. Must save here for submission use.
+    if save_adapter:
+        save_path = Path(save_adapter)
+        save_path.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(str(save_path))
+        tokenizer.save_pretrained(str(save_path))
+        logger.info("  SAVED adapter to %s", save_path)
+
     full_result = {**asdict(config), **metrics,
                    "train_loss": round(train_loss, 5),
                    "train_time_s": round(train_time),
                    "trainable_params": trainable}
+    if extra_results:
+        full_result["extra_eval"] = extra_results
+    if save_adapter:
+        full_result["adapter_path"] = str(save_adapter)
 
     # Cleanup GPU
     del model, trainer, dataset, tokenizer
@@ -311,7 +366,8 @@ def main():
     RESULTS_PATH.write_text("[]")
 
     base_config = SweepConfig()
-    train_data, val_cases = prepare_data(base_config)
+    # Changed: unpack 3 sets. Why: test set added for unbiased final evaluation.
+    train_data, val_cases, test_cases = prepare_data(base_config)
 
     # ── Step 1: LR Sweep ──────────────────────────────────────
     # LoRA standard LR is ~2e-4 (10x full FT). Previous 2e-5 was too low.
@@ -412,6 +468,24 @@ def main():
     best_ga = best6.get("grad_accum", 2)
     logger.info(">>> Best model: %s (recall=%.2f)", best_model, best6["fail_recall"])
 
+    # ── Step 7: Final Confirmation (val + test) ─────────────
+    # Changed: single training run evaluates on both val and test via extra_eval.
+    # Why: val confirms consistency with sweep selection; test gives unbiased generalization estimate.
+    logger.info("\n>>> STEP 7: Final Confirmation (val + test) <<<")
+    final_cfg = SweepConfig(
+        model_name=best_model, lr=best_lr,
+        lora_rank=best_rank, lora_alpha=best_alpha,
+        lora_dropout=best_dropout, max_length=best_ml,
+        batch_size=best_bs, grad_accum=best_ga,
+        run_name="s7_final")
+    # Primary eval on val (consistency check), extra eval on test (unbiased)
+    final_result = run_single(final_cfg, train_data, val_cases,
+                              extra_eval={"test": test_cases})
+    final_result["eval_set"] = "val"
+    save_result(final_result)
+
+    test_metrics = final_result.get("extra_eval", {}).get("test", {})
+
     # ── Final Summary ─────────────────────────────────────────
     logger.info("\n" + "=" * 60)
     logger.info("SWEEP COMPLETE")
@@ -422,12 +496,19 @@ def main():
     logger.info("  dropout   = %.2f", best_dropout)
     logger.info("  max_length= %d", best_ml)
     logger.info("  batch     = %d × %d = %d", best_bs, best_ga, best_bs * best_ga)
-    logger.info("  recall    = %.2f (prec >= 0.9)", best6["fail_recall"])
+    logger.info("  val  recall = %.2f  prec = %.2f  (HP selection basis)",
+                final_result["fail_recall"], final_result["fail_precision"])
+    logger.info("  test recall = %.2f  prec = %.2f  (unbiased estimate)",
+                test_metrics.get("fail_recall", 0), test_metrics.get("fail_precision", 0))
     logger.info("=" * 60)
 
     best_cfg = {"model": best_model, "lr": best_lr, "rank": best_rank,
                 "alpha": best_alpha, "dropout": best_dropout,
-                "max_length": best_ml, "batch_size": best_bs, "grad_accum": best_ga}
+                "max_length": best_ml, "batch_size": best_bs, "grad_accum": best_ga,
+                "val_recall": final_result["fail_recall"],
+                "val_precision": final_result["fail_precision"],
+                "test_recall": test_metrics.get("fail_recall", 0),
+                "test_precision": test_metrics.get("fail_precision", 0)}
     BEST_CONFIG_PATH.write_text(json.dumps(best_cfg, indent=2))
     logger.info("Saved to %s", BEST_CONFIG_PATH)
     logger.info("Run main training: python3 tools/sweep_lora.py --main")
@@ -455,20 +536,28 @@ def main_training():
         lora_dropout=dropout, max_length=ml, batch_size=bs, grad_accum=ga,
         num_epochs=epochs, run_name=f"main_{epochs}ep")
 
-    train_data, val_cases = prepare_data(config)
-    result = run_single(config, train_data, val_cases)
+    # Changed: unpack 3 sets. Why: test set for unbiased final evaluation after main training.
+    train_data, val_cases, test_cases = prepare_data(config)
+
+    # Changed: single training run, evaluate on both val and test, save adapter for submission.
+    # Why: avoids training 50 epochs twice. Adapter saved to artifacts/ for lora_solver.py to load.
+    adapter_save_path = "/workspace/team6/team6-opal-verifier/artifacts/lora_adapter_v2"
+    logger.info(">>> Main training: %d epochs, eval on val + test, save to %s <<<",
+                epochs, adapter_save_path)
+    result = run_single(config, train_data, val_cases,
+                        extra_eval={"test": test_cases},
+                        save_adapter=adapter_save_path)
+    result["eval_set"] = "val"
     save_result(result)
 
-    # Save adapter to artifacts
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from peft import PeftModel
+    test_metrics = result.get("extra_eval", {}).get("test", {})
 
-    adapter_src = Path(f"/workspace/team6/sweep_runs/{config.run_name}")
-    # The model was already cleaned up in run_single, need to re-save
-    # Actually run_single doesn't save adapter. Let me fix: save in run_single is needed for main.
-    logger.info("Main training result: %s", json.dumps(result, indent=2))
-    logger.info("NOTE: Re-run with --main-save to load and save the adapter after training.")
+    logger.info("=" * 60)
+    logger.info("MAIN TRAINING COMPLETE")
+    logger.info("  val  recall = %.2f  prec = %.2f", result["fail_recall"], result["fail_precision"])
+    logger.info("  test recall = %.2f  prec = %.2f  (unbiased)",
+                test_metrics.get("fail_recall", 0), test_metrics.get("fail_precision", 0))
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":

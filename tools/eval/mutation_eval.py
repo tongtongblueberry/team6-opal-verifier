@@ -12,11 +12,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.metamorphic_eval import SyntheticCase, build_synthetic_cases, load_public_cases
+from tools.eval.metamorphic_eval import SyntheticCase, build_synthetic_cases, load_public_cases
 
 Json = dict[str, Any]
 
