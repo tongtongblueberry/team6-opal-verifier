@@ -1129,19 +1129,20 @@ class Solver:
             result = self.verifier.verify_with_trace(steps)
             prediction = result["prediction"]
 
-            # Changed: LoRA override for UNEXPECTED_ERROR_STATUS false positives.
-            # Why: rule engine says "fail" for ALL unexplained errors.
-            # LoRA model can distinguish: is this error actually valid (pass) or inconsistent (fail)?
-            if (
-                self.lora_solver
-                and prediction == "fail"
-                and self._is_unexpected_error(result.get("trace", []))
-            ):
+            # Changed: bidirectional LoRA ensemble.
+            # Why: previous override-only (fail→pass) scored 71.50 = no improvement.
+            # Now: LoRA can also add "fail" when rule engine says "pass" (catch missed fails).
+            # Strategy: rule engine "pass" + LoRA "fail" → "fail" (LoRA catches what rules miss)
+            #           rule engine "fail" + LoRA "pass" + UNEXPECTED_ERROR → "pass" (rescue FP)
+            if self.lora_solver:
                 records = self.verifier._records(steps)
                 if records:
                     lora_pred = self.lora_solver.predict(records)
-                    if lora_pred == "pass":
-                        prediction = "pass"  # Override: LoRA says error is valid
+                    if prediction == "pass" and lora_pred == "fail":
+                        prediction = "fail"  # LoRA detects violation rules missed
+                    elif (prediction == "fail" and lora_pred == "pass"
+                          and self._is_unexpected_error(result.get("trace", []))):
+                        prediction = "pass"  # Rescue UNEXPECTED_ERROR false positive
 
             predictions[case_id] = prediction
         return predictions
