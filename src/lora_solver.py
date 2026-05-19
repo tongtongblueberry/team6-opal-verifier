@@ -73,12 +73,15 @@ class LoRASolver:
         logger.info("LoRA model loaded in %.1fs", time.time() - t0)
 
     def predict(self, records: list[Json], trace: list[Json] | None = None) -> str:
-        """Predict pass/fail for a single trajectory."""
+        # Changed: switched from generation to logit comparison.
+        # Why: generation produces random trajectory text instead of "pass"/"fail".
+        # Logit comparison directly compares P(pass) vs P(fail) at the next token — matches sweep evaluation.
+        """Predict pass/fail using logit comparison (not generation)."""
         if not self.available or not records:
             return "pass"
 
+        import math
         import torch
-        # Changed: import path updated after tools/ restructuring.
         from tools.training.finetune_lora_v2 import format_trajectory_rich
 
         prompt = format_trajectory_rich(records)
@@ -101,21 +104,16 @@ class LoRASolver:
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=16,
-                do_sample=False,
-                temperature=1.0,
-                pad_token_id=self.tokenizer.pad_token_id,
-            )
+            logits = self.model(**inputs).logits[0, -1, :]
 
-        generated = outputs[0][inputs["input_ids"].shape[1]:]
-        answer = self.tokenizer.decode(generated, skip_special_tokens=True).strip().lower()
+        # Changed: compare logits for "pass" vs "fail" tokens directly.
+        # Why: this matches sweep_lora.py evaluate_model() — same method that achieved 80%+ val acc.
+        pass_ids = self.tokenizer.encode("pass", add_special_tokens=False)
+        fail_ids = self.tokenizer.encode("fail", add_special_tokens=False)
+        p_logit = logits[pass_ids[0]].item()
+        f_logit = logits[fail_ids[0]].item()
 
-        if "fail" in answer:
-            return "fail"
-        elif "pass" in answer:
-            return "pass"
-        else:
-            logger.warning("Ambiguous LoRA answer: %r → default pass", answer)
-            return "pass"
+        mx = max(p_logit, f_logit)
+        p_fail = math.exp(f_logit - mx) / (math.exp(p_logit - mx) + math.exp(f_logit - mx))
+
+        return "fail" if p_fail > 0.5 else "pass"
