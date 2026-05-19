@@ -1,19 +1,20 @@
-<!-- Changed: refresh handoff after RAG+LLM hybrid solver implementation. -->
-<!-- Why: architecture changed from pure rule engine to confidence-gated hybrid (rule + RAG/LLM). -->
+<!-- Changed: update handoff to reflect LoRA override architecture and current project state. -->
+<!-- Why: RAG hybrid is no longer used. Architecture is rule engine (71.50 base) + LoRA override. -->
 
 # TODO / Handoff
 
-작성일: 2026-05-18
+작성일: 2026-05-19
 
 ## 프로젝트 한 줄 요약
 
-SSD TCG/Opal command-response trajectory에서 마지막 response가 명세와 현재 상태에 부합하는지 `pass`/`fail`로 판정하는 과제다. 현재 접근은 **confidence-gated hybrid solver**: 확신이 높은 case는 deterministic rule engine, 확신이 낮은 case (DEFAULT_PASS)는 **RAG (BM25 over spec chunks) + LLM (Qwen3.5-27B-FP8)** 판정이다.
+SSD TCG/Opal command-response trajectory에서 마지막 response가 명세와 현재 상태에 부합하는지 `pass`/`fail`로 판정하는 과제다. 현재 접근은 **rule engine (71.50 base, UNEXPECTED_ERROR_STATUS) + LoRA fine-tuned override**: 규칙 엔진이 unexplained error를 aggressive하게 fail로 판정하고, LoRA adapter가 false positive를 rescue한다.
 
 ## 현재 저장소 상태
 
 - Local path: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team`
 - GitHub: `https://github.com/tongtongblueberry/team6-opal-verifier`
 - Main branch: `main`
+- Best branch: `best-71.50` (commit `2df1e71`, 안전한 제출 코드)
 - Server clone path used: `/workspace/team6/team6-opal-verifier`
 - Clean submission paths used: `/workspace/team6/submission-<commit>`
 - Server non-secret access memo: `server_access.md`
@@ -21,130 +22,81 @@ SSD TCG/Opal command-response trajectory에서 마지막 response가 명세와 �
 
 ## 현재 성능
 
-- Latest code commit: `54b1b2d`
-- Latest submitted job:
-  - Job ID: `107`
-  - Submission ID: `1871750633c343ccb8f2bc7af1fd0665`
-  - Job Name: `team6-locking-2df1e71`
-  - Score: `71.50`
-- Current best leaderboard score: `71.50`
-- Pending submission (daily limit exceeded): commit `54b1b2d` (auth fix + mutation score 1.0)
-- Server diagnostics for `54b1b2d`:
-  - Public train/dev: `100.00` (`20/20`)
-  - Metamorphic/property diagnostics: `1891/1891`
-  - Mutation score: `1.0000` (`11/11` mutants killed)
-  - Surviving mutants: `0`
+- Best leaderboard score: **71.50** (pure rule engine, commit `2df1e71`, branch `best-71.50`)
+- Latest submissions:
+  - Job 185: 68.00 (post-71.50 rule engine changes caused regression)
+  - Job 186: 68.00 (embedding classifier -- regression)
+  - Job 187: 71.50 (revert to best-71.50 confirmed)
+  - Job 188: 71.50 (auth rule addition on 71.50 base)
+- LoRA 4B v2 (synthetic test set): fail precision 100%, fail recall 46.9%, accuracy 89.7%
+- HP sweep: currently running on server
 
-### 최근 solver 변경사항 (미제출)
+### CRITICAL: 71.50 base만 사용
 
-1. **Authentication tracking fix**: StartSession without HostSigningAuthority → unauthenticated
-2. **C_PIN access control**: MSID (Anybody) vs non-MSID (auth-required) 구분
-3. **UNEXPECTED_ERROR_STATUS 제거**: 모델링하지 못하는 error는 pass로 default
-4. **C_PIN secret tracking from Get**: Get으로 읽은 PIN도 known_secrets에 추가
-5. **StartSession with unknown secrets**: 알려진 credential 없으면 NOT_AUTHORIZED를 valid로 처리
-6. **RAG+LLM hybrid solver**: DEFAULT_PASS (low confidence) case를 BM25 spec retrieval + Qwen3.5-27B-FP8로 판정
+- Post-71.50 rule engine 변경은 **3.5점 regression** 유발 (71.50 -> 68.00)
+- 핵심 차이: `UNEXPECTED_ERROR_STATUS` (모든 unexplained error -> fail) vs `DEFAULT_PASS` (-> pass)
+- 71.50의 aggressive 접근이 hidden test에서 더 정확
+- 이후 모든 작업은 `best-71.50` branch를 base로 사용
 
-### 새 아키텍처: Confidence-Gated Hybrid
+### 아키텍처: Rule Engine + LoRA Override
 
 ```
 Input trajectory
-       ↓
+       |
 [1] Rule Engine (StatefulOpalVerifier.verify_with_trace)
-       ↓
-  prediction + trace (rule_id 포함)
-       ↓
-  HIGH confidence (rule_id != DEFAULT_PASS)?
-       YES → rule prediction 그대로 사용
-       NO  → RAG-Sequence marginalization
-              ↓
-[2] Query 추출 (method, object, status, trace context)
-       ↓
-[3] BM25 Retrieval → top-K spec chunks + BM25 scores
-       ↓
-[4] Per-document logit scoring (Qwen3.5-27B-FP8)
-    For each z_i: p("pass"|x, z_i) = softmax(logit_pass, logit_fail)
-       ↓
-[5] RAG-Sequence marginalization:
-    p("pass"|x) = Σ w_i · p("pass"|x, z_i)
-    w_i = softmax(BM25_score_i)
-       ↓
-  "pass" if p > 0.5, else "fail"
+       |
+  prediction + rule_id
+       |
+  rule_id == UNEXPECTED_ERROR_STATUS?
+       NO  -> rule prediction 그대로 사용 (high confidence)
+       YES -> LoRA 4B override 적용
+              |
+[2] Qwen3.5-4B + LoRA adapter (artifacts/lora_adapter_v2/)
+       |
+  LoRA says "pass" -> override to pass (rescue false positive)
+  LoRA says "fail" -> keep fail
 ```
 
-[EXTERNAL KNOWLEDGE] Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). *Retrieval-augmented generation for knowledge-intensive NLP tasks*. Advances in Neural Information Processing Systems, 33, 9459-9474. https://arxiv.org/abs/2005.11401
+### LoRA 4B v2 결과 (synthetic test set, 252 cases)
 
-[EXTERNAL KNOWLEDGE] Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter, B., Xia, F., Chi, E., Le, Q., & Zhou, D. (2022). *Chain-of-thought prompting elicits reasoning in large language models*. Advances in Neural Information Processing Systems, 35. https://arxiv.org/abs/2201.11903
-
-### Metric 정의 (Lewis et al., 2020 기반)
-
-1. **Accuracy** (= Exact Match for classification): $Acc = \frac{1}{N}\sum_{i=1}^{N} \mathbf{1}\{\hat{y}_i = y_i\}$
-   - project.pdf p.8 공식 평가 metric
-   - FEVER 2-way에서 RAG가 BART 대비 +8.4%p (81.1 → 89.5)
-
-2. **Retrieval Recall@K**: $R@K = \frac{|\{q : relevant\_chunk \in top\text{-}K(q)\}|}{|Q|}$
-   - FEVER에서 top-1: 71%, top-10: 90%
-   - BM25가 FEVER에서 DPR보다 강함 (75.1 vs 72.5)
-
-3. **F1 (fail class)**: $F1 = \frac{2 \cdot P_{fail} \cdot R_{fail}}{P_{fail} + R_{fail}}$
-   - false positive (잘못된 fail)와 false negative (놓친 fail) 균형
-
-4. **Total Latency**: $T = T_{init} + \sum_{i=1}^{N} t_i$
-   - 제약: $T < 10{,}800$초 (project.pdf p.10)
+| Metric | 값 |
+|--------|---|
+| Accuracy | 89.7% |
+| Fail Precision | 100% |
+| Fail Recall | 46.9% |
+| False Positives (pass->fail) | 0 |
+| False Negatives (fail->pass) | 26/49 |
 
 ### 목표
 
 | Metric | 현재 | 목표 | 근거 |
 |--------|------|------|------|
-| Leaderboard Accuracy | 71.50 | **≥ 85.00** | FEVER 2-way: BART-400M이 89.5%. 27B model(67x)로 DEFAULT_PASS ~30개 오류 중 80-90% 수정 기대. 71.50 + 24~31 = 83.5~88.0 |
-| Retrieval R@8 | 미측정 | **≥ 0.85** | FEVER top-10: 90%. BM25가 keyword-centric task에서 DPR보다 강함 (75.1 vs 72.5). 우리 task도 method/object/status keyword 중심 |
-| F1 (fail class) | 미측정 | **≥ 0.80** | accuracy 85% 수준에서 FEVER minority class F1 ~0.85 참고. fail class 비율 고려하여 하향 |
-| Total Latency | ~10ms | **< 3,600s** | K=8 forward passes × ~60 cases × ~2s = 960s ≈ 16분. 3시간 한도의 1.5%. 충분한 마진 |
+| Leaderboard Accuracy | 71.50 | >= 85.00 | LoRA가 UNEXPECTED_ERROR_STATUS FP를 ~50% 제거하면 +7~14점 |
+| Fail Precision | 100% | >= 90% | FP 방지가 핵심 -- rule engine이 맞춘 것을 뒤집으면 안 됨 |
+| Fail Recall | 46.9% | >= 70% | HP sweep + 50-epoch 학습으로 향상 기대 |
 
 ## 중요한 해석
 
-public 100점, metamorphic 100%, coverage low-confidence 0은 모두 필요하지만 충분하지 않다.
-
-- `public=100`: public 20개에 대한 sanity check다. 20개가 너무 작아서 hidden 일반화를 보장하지 않는다. public을 더 올릴 여지도 없고, public/leaderboard feedback에 맞춰 계속 고치면 holdout feedback에 적응하는 위험이 있다.
-- `coverage low_confidence=0`: 우리가 정의한 coverage grid 안에서는 더 이상 generic/unsupported final trace가 없다는 뜻이다. 하지만 rule universe 자체가 빠져 있으면 100% coverage는 착시가 된다.
-- `metamorphic=100`: 현재 생성한 property case를 모두 통과했다는 뜻이다. 논문 기준으로 더 중요한 값은 pass rate가 아니라 **mutation score**, 즉 rule을 삭제/약화한 mutant를 현재 테스트가 얼마나 잡는지다.
-
-[EXTERNAL KNOWLEDGE] Roelofs, R., Shankar, V., Recht, B., Fridovich-Keil, S., Hardt, M., Miller, J., & Schmidt, L. (2019). *A meta-analysis of overfitting in machine learning*. Advances in Neural Information Processing Systems, 32. https://papers.nips.cc/paper/9117-a-meta-analysis
-
-[EXTERNAL KNOWLEDGE] Blum, A., & Hardt, M. (2015). *The ladder: A reliable leaderboard for machine learning competitions*. Proceedings of Machine Learning Research, 37, 1006-1014. https://proceedings.mlr.press/v37/blum15.html
-
-[EXTERNAL KNOWLEDGE] Chen, J., Wang, Y., Guo, Y., & Jiang, M. (2019). A metamorphic testing approach for event sequences. *PLOS ONE, 14*(2), e0212476. https://doi.org/10.1371/journal.pone.0212476
-
-[EXTERNAL KNOWLEDGE] Saha, P., & Kanewala, U. (2019). *Fault detection effectiveness of metamorphic relations developed for testing supervised classifiers*. arXiv. https://doi.org/10.48550/arXiv.1904.07348
-
-[EXTERNAL KNOWLEDGE] Ba, J., Jiang, Y., & Rigger, M. (2025). *Metamorphic coverage*. arXiv. https://doi.org/10.48550/arXiv.2508.16307
-
-논문 기준 요약:
-
-- Roelofs et al.은 public leaderboard와 private/final 평가 사이의 적응 문제를 Kaggle 대회 다수에서 분석했다.
-- Blum and Hardt는 반복 제출 feedback이 holdout 추정치를 편향시킬 수 있음을 이론화했다.
-- Chen et al.의 event-sequence metamorphic testing에서는 전체 MR 조합이 한 실험에서 mutant의 `39.23%`를 잡았고, 개별 MR은 `0.91%`부터 `16.79%`까지 크게 갈렸다. 다른 시나리오에서는 강한 MR이 `80-90%` 근처까지 갔지만 약한 MR은 훨씬 낮았다.
-- Saha and Kanewala는 supervised classifier용 기존 MR들이 reachable mutant `709`개 중 `14.8%`만 잡았다고 보고했다.
-- Ba et al.은 일반 code coverage가 metamorphic test의 실제 검증 정도를 잘 못 재며, pairwise/differential 관점의 metamorphic coverage가 더 유효할 수 있다고 본다.
-
-따라서 다음 개선은 `metamorphic 1821 -> 5000`처럼 case 수만 늘리는 것이 아니다. **solver mutant를 만들고 현재 public/synthetic suite가 mutant를 잡는지 보는 mutation-style adequacy 평가**가 우선이다.
+- **UNEXPECTED_ERROR_STATUS가 71.50의 핵심**: 모든 unexplained error를 fail로 판정하는 aggressive 규칙이 hidden test에서 정확
+- **LoRA의 역할은 false positive rescue**: rule engine이 "fail"이라고 한 것 중 실제로는 "pass"인 case를 LoRA가 교정
+- **Post-71.50 regression 원인 확정**: UNEXPECTED_ERROR_STATUS를 DEFAULT_PASS로 변경한 것이 3.5점 하락의 원인
+- Public 100점은 hidden 일반화를 보장하지 않는다
 
 ## 주요 파일
 
-- `src/solver.py`: 제출 solver. `Solver.predict(dataset)`가 공식 entrypoint다. Confidence-gated hybrid: rule engine + RAG/LLM.
-- `src/rag.py`: **신규**. BM25 retrieval + Qwen3.5-27B-FP8 LLM judge. DEFAULT_PASS case에만 사용.
-- `tools/intermediate_eval.py`: public train/dev 중간평가 도구.
-- `tools/build_spec_index.py`: 서버 guidebook chunk index 생성.
-- `tools/download_model.py`: **신규**. 서버에서 Qwen3.5-27B-FP8 사전 다운로드.
-- `tools/rule_coverage.py`: trace 기반 rule/state/spec coverage matrix 생성.
-- `tools/metamorphic_eval.py`: public seed에서 생성한 synthetic positive/negative property tests.
-- `tools/metamorphic_coverage.py`: Ba et al. 2025 Metamorphic Coverage를 solver trace feature에 이식한 differential coverage 도구.
-- `tools/mutation_eval.py`: mutation testing adequacy framework.
-- `docs/submission_log.md`: commit-level leaderboard 기록. hidden sample label 추정은 기록하지 않는다.
-- `docs/rule_coverage_research_ko.md`: 관련 방법론 조사와 rule coverage 확장 계획.
-- `docs/metamorphic_coverage_application_ko.md`: 선택 논문의 metric/architecture/loss 부재와 프로젝트 적용 방식.
-- `docs/methodology_survey_ko.md`: 초기 관련 방법론 조사.
-- `docs/data_protocol.md`: train/leaderboard/test 분리 원칙.
-- `project_analysis_ko.md`: 프로젝트 상태 요약.
+- `src/solver.py`: 제출 solver. Rule engine (best-71.50 base) + LoRA override
+- `src/lora_solver.py`: LoRA model loading and prediction
+- `src/rag.py`: BM25 retrieval + LLM judge (legacy, 제출에 미사용)
+- `tools/finetune_lora_v2.py`: 4B LoRA training (rich format + label masking)
+- `tools/sweep_lora.py`: HP sweep script (LR, rank, alpha, dropout, max_length, batch)
+- `tools/eval_lora.py`: LoRA evaluation
+- `tools/intermediate_eval.py`: public train/dev 중간평가 도구
+- `tools/mutation_eval.py`: mutation testing adequacy framework
+- `artifacts/lora_adapter_v2/`: 4B LoRA adapter (~32MB)
+- `docs/submission_log.md`: commit-level leaderboard 기록
+- `docs/sweep_plan.md`: HP sweep 계획 및 architecture 상세
+- `docs/rag_cycle_log.md`: RAG 실험 Cycle 1-10 상세 기록 (legacy)
+- `docs/current_task.md`: 세션 이어받기용 상태 문서
 
 ## 이미 해결한 문제
 
@@ -157,36 +109,31 @@ public 100점, metamorphic 100%, coverage low-confidence 0은 모두 필요하�
 - `Set`이 쓴 object column 값을 `object_fields`로 추적하고, `Get` payload를 requested column/known field와 비교.
 - DATA_COMMAND `Read` 결과에서 old pattern visibility를 정규화해 검사.
 - invalid `Get` Cellblock range에 대해 expected `INVALID_PARAMETER` rule 추가.
-- guidebook chunk index와 rule coverage matrix 도구 추가.
-- trace mode 추가:
-  - `rule_id`
-  - `state_reads`
-  - `state_writes`
-  - `spec_ref_candidates`
-- `tools/metamorphic_eval.py` 추가.
-- `GenKey`, `Set`, `EndSession`, `Activate` 성공 response의 empty-result invariant 추가.
-- `Set(C_PIN.Values[3])`를 `known_secrets`로 추적하고 `StartSession.HostChallenge`와 연결.
-- `Set` duplicate RowValues column을 `INVALID_PARAMETER`로 검증.
-- structured empty result인 `{"required": {}, "optional": {}}`를 정상 empty payload로 정규화.
-- synthetic-inclusive rule coverage를 추가하고 method-specific applicable columns로 false gap을 줄임.
-- `StartSession` success response가 `SyncSession`, `HostSessionID` echo, `SPSessionID`를 만족하는지 검증.
-- `Properties` target을 Session Manager로 제한하고 `Get` no-session precondition synthetic tests 추가.
-- DATA_COMMAND `Read/Write` response command identity와 payload presence invariant 추가.
-- `Locking`, `MBRControl`, `Authority.Enabled`, `C_PIN`의 known field access/value semantics를 추가해 low-confidence 4개를 제거.
+- Locking ReadLocked/WriteLocked DATA_COMMAND 접근 제어 추가 (71.50의 핵심 규칙).
+- C_PIN secret tracking -> StartSession authentication 연결.
+- Mutation testing framework (MS=1.0, 11/11 killed).
+- RAG hybrid solver 구현 (legacy, 현재 LoRA override로 전환).
+- LoRA 4B v2 fine-tuning (fail precision 100%, fail recall 46.9%).
+- Regression 원인 확정: UNEXPECTED_ERROR_STATUS -> DEFAULT_PASS 변경이 원인.
 
 ## 제출 이력 요약
 
-| Commit | Key change | Server diagnostics | Leaderboard |
-|---|---|---|---|
-| `872f31d` | initial state verifier | public 20/20 | 60.50 |
-| `fd43bd5` | spec index, coverage, Get field/data rules | public 20/20 | 68.00 |
-| `0c5e6d8` | metamorphic/property diagnostics, GenKey empty result | public 20/20, metamorphic 174/174 | 68.00 |
-| `bf6c40b` | C_PIN secret tracking for StartSession | public 20/20, metamorphic 474/474 | 69.00 |
-| `bcfdc94` | Set duplicate column and empty result | public 20/20, metamorphic 576/576 | 69.00 |
-| `fc0289e` | latest submitted docs/code after daily limit | public 20/20, metamorphic 970/970 | 69.00 |
-| `67cd09d` | method-specific coverage gaps closed | public 20/20, metamorphic 1453/1453 | 69.50 |
-| `c613397` | known field semantics and low-confidence removal | public 20/20, metamorphic 1821/1821, low_confidence 0 | 69.50 |
-| `41b4df6` | Ba et al. 2025 MC metric/architecture applied | public 20/20, metamorphic 1821/1821, MC guidance pairs 1626 | 69.50 |
+| Commit | Key change | Leaderboard |
+|---|---|---|
+| `872f31d` | initial state verifier | 60.50 |
+| `fd43bd5` | spec index, coverage, Get field/data rules | 68.00 |
+| `0c5e6d8` | metamorphic/property diagnostics, GenKey empty result | 68.00 |
+| `bf6c40b` | C_PIN secret tracking for StartSession | 69.00 |
+| `bcfdc94` | Set duplicate column and empty result | 69.00 |
+| `fc0289e` | latest submitted docs/code after daily limit | 69.00 |
+| `67cd09d` | method-specific coverage gaps closed | 69.50 |
+| `c613397` | known field semantics and low-confidence removal | 69.50 |
+| `41b4df6` | Ba et al. 2025 MC metric/architecture applied | 69.50 |
+| `2df1e71` | Locking ReadLocked/WriteLocked rules | **71.50** (best) |
+| Job 185 | post-71.50 rule changes (regression) | 68.00 |
+| Job 186 | embedding classifier (regression) | 68.00 |
+| Job 187 | revert to best-71.50 | 71.50 |
+| Job 188 | auth rule on 71.50 base | 71.50 |
 
 ## 빠른 검증 명령
 
@@ -197,51 +144,23 @@ bash setup.sh
 python3 -m compileall src tools
 ```
 
-서버 모델 사전 다운로드 (최초 1회):
-
-```bash
-python3 tools/download_model.py --model Qwen/Qwen3.5-27B-FP8
-```
-
 서버 public 중간평가:
 
 ```bash
 python3 tools/intermediate_eval.py --dataset-root /dl2026/dataset
 ```
 
-서버 guidebook index:
+LoRA HP sweep:
 
 ```bash
-python3 tools/build_spec_index.py \
-  --spec-root /dl2026/skeleton/artifacts/documents \
-  --out artifacts/spec_index.jsonl
+nohup python3 tools/sweep_lora.py > /workspace/team6/sweep.log 2>&1 &
+tail -30 /workspace/team6/sweep.log  # 진행 확인
 ```
 
-서버 rule coverage matrix:
+LoRA 본 학습 (50 epochs, sweep 완료 후):
 
 ```bash
-python3 tools/rule_coverage.py \
-  --dataset-root /dl2026/dataset \
-  --spec-index artifacts/spec_index.jsonl \
-  --include-synthetic \
-  --out reports/rule_coverage_<commit>.json
-```
-
-서버 metamorphic/property diagnostics:
-
-```bash
-python3 tools/metamorphic_eval.py \
-  --dataset-root /dl2026/dataset \
-  --jsonl-out reports/metamorphic_<commit>.jsonl
-```
-
-서버 Metamorphic Coverage diagnostics:
-
-```bash
-python3 tools/metamorphic_coverage.py \
-  --dataset-root /dl2026/dataset \
-  --out reports/metamorphic_coverage_<commit>.json \
-  --jsonl-out reports/metamorphic_coverage_<commit>.jsonl
+nohup python3 tools/sweep_lora.py --main > /workspace/team6/main_train.log 2>&1 &
 ```
 
 제출:
@@ -250,44 +169,32 @@ python3 tools/metamorphic_coverage.py \
 mkdir -p /workspace/team6/submission-<commit>
 git archive -o /workspace/team6/submission-<commit>.tar HEAD
 tar -xf /workspace/team6/submission-<commit>.tar -C /workspace/team6/submission-<commit>
-submit -d /workspace/team6/submission-<commit> -n team6-hybrid-<commit>
+submit -d /workspace/team6/submission-<commit> -n team6-lora-<commit>
 submit --list
-```
-
-RAG 환경변수 (선택):
-
-```bash
-export RAG_MODEL="Qwen/Qwen3.5-27B-FP8"              # 기본값 (변경 시)
-export RAG_SPEC_ROOT="/dl2026/skeleton/artifacts/documents"  # spec 문서 경로
 ```
 
 ## 다음 TODO
 
-1. ~~Mutation-style adequacy 평가를 추가한다.~~ **완료** (MS=1.0, 11/11 killed)
+### 즉시 (우선순위 순)
 
-2. ~~RAG+LLM hybrid solver를 구현한다.~~ **완료** (`src/rag.py` + `Solver` 수정)
+1. **HP sweep 완료 대기** -- 서버에서 `tools/sweep_lora.py` 실행 중 (26 runs, 각 ~56분)
+2. **Sweep best config로 50-epoch 본 학습** -- best (LR + rank + alpha + dropout + max_length + batch) 조합
+3. **Synthetic test set에서 검증** -- fail precision >= 90%, fail recall 최대화
+4. **Leaderboard 제출** -- 확실히 개선될 때만 (일일 한도 제한)
 
-3. 서버에서 RAG hybrid solver를 검증한다.
-   - `python3 tools/download_model.py` 실행하여 모델 캐시
-   - `python3 tools/intermediate_eval.py --dataset-root /dl2026/dataset` 실행하여 public 20/20 유지 확인
-   - DEFAULT_PASS case 중 LLM이 어떤 판정을 내리는지 로그 확인
+### 중기
 
-4. Hybrid solver를 leaderboard에 제출한다.
-   - 1차 목표: ≥ 78.00 (현재 71.50에서 +6.5)
-   - 2차 목표: ≥ 85.00
+5. **9B model로 확인** -- 4B vs 9B 비교 (같은 best config)
+6. **Rule engine 자체 확장** (71.50 base에서 안전한 규칙만)
+   - Set NOT_AUTHORIZED (column-level ACL) -- 10-20 hidden cases 추정
+   - Class authority INVALID_PARAMETER -- 5-15 cases
+   - Get silent column omit -- 5-15 cases
+   - Authenticate rules -- 5-10 cases
+   - SP_BUSY session exclusivity -- 5-10 cases
+7. **LoRA training data 개선** -- hidden distribution에 더 가까운 synthetic data 생성
 
-5. 결과에 따라 prompt/retrieval을 조정한다.
-   - Prompt 튜닝: system prompt의 "lean towards pass" 강도 조절
-   - Retrieval 튜닝: top_k (5→3 or 5→8), chunk_size (800→500 or 800→1200)
-   - 모델 변경: Qwen3.5-27B-FP8 → Qwen3-14B (FP16, ~28GB) 시도 가능
-   - Thinking mode 활성화: `enable_thinking=True` + `max_new_tokens=512`로 정확도 향상 시도
+### 장기
 
-6. Rule engine 자체도 계속 확장한다.
-   - Authenticate method (in-session auth) 지원 추가
-   - Byte table operations 지원
-   - Session type (Read-Only vs Read-Write) 구분
-   - Guidebook rule universe 확장: Revert/RevertSP, Random, Next, ACL/ACE
-
-7. 제출 로그 원칙을 유지한다.
-   - leaderboard 결과는 commit-level 점수만 기록한다.
-   - hidden sample-level label을 역추론하거나 rule에 직접 반영하지 않는다.
+8. **Spec mining으로 새 rule 발견** -- LLM이 spec을 읽고 미구현 규칙 제안
+9. **Multi-LoRA ensemble** -- 여러 adapter의 판정을 결합
+10. **제출 로그 원칙 유지** -- leaderboard 결과는 commit-level score만 기록

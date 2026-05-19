@@ -1,5 +1,5 @@
-<!-- Changed: formalize train/leaderboard/test separation. -->
-<!-- Why: the user explicitly required strict separation of leaderboard, train, and test data. -->
+<!-- Changed: update to reflect current architecture (rule engine + LoRA override, not RAG hybrid). -->
+<!-- Why: architecture evolved from RAG hybrid to rule engine (71.50) + LoRA override. -->
 # 데이터 분리 원칙
 
 ## 원천별 역할
@@ -15,17 +15,18 @@ test의 내용이나 추정 라벨을 기록하지 않는다.
 
 ## 구현 정책
 
-현재 solver는 **confidence-gated hybrid**다. 학습 기반 분류기가 아니라 상태 기반 verifier + RAG/LLM fallback이다.
+현재 solver는 **Rule Engine (71.50 base) + LoRA Override**다.
 
 1. JSON trajectory를 command/response event로 정규화한다.
 2. 마지막 이전 record들로 session, authentication, activation, write/read 상태를 갱신한다.
 3. 마지막 record의 command와 output이 현재 상태에서 가능한지 검사한다.
-4. Rule engine이 확신을 가지고 판단할 수 있으면 (specific rule): 직접 판정한다.
-5. Rule engine이 판단하지 못하면 (`DEFAULT_PASS`): BM25로 spec passage를 검색하고 LLM에게 묻는다.
-6. 최종 prediction을 반환한다.
+4. Rule engine이 specific rule로 판정하면: 그 판정을 그대로 사용한다.
+5. Rule engine이 `UNEXPECTED_ERROR_STATUS`로 fail 판정하면: LoRA 4B adapter가 override 여부를 결정한다.
+6. LoRA가 pass로 판정하면 override (false positive rescue), fail이면 유지.
+7. 최종 prediction을 반환한다.
 
-LLM은 학습 데이터를 기반으로 판단하는 것이 아니라, 검색된 spec 원문을 직접 읽고 판단한다. 따라서
-public 라벨을 외우는 방식이 아니며 data leakage 위험이 없다.
+LoRA adapter는 rule engine이 생성한 2163건의 synthetic training data로 학습되었다.
+Public 라벨을 직접 학습하지 않으며, rule engine의 판단을 보조하는 역할이다.
 
 ## 금지 사항
 

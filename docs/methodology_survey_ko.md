@@ -1,6 +1,11 @@
 <!-- Changed: external-method survey for choosing the Team 6 methodology. -->
 <!-- Why: we need to separate train/leaderboard/test data and understand how related work actually trains or avoids training. -->
 
+> **NOTE: This document reflects an earlier project phase (Cycle 1-3).** The RAG hybrid architecture
+> described here was subsequently abandoned (fail recall 0%). Current architecture is Rule Engine
+> (71.50 UNEXPECTED_ERROR_STATUS) + LoRA 4B override. See `PROGRESS.md` for current state.
+> The methodology survey content below remains valid as historical reference for architectural decisions.
+
 # 관련 방법론 조사: 학습, fine-tuning, 상태 추적, 명세 활용
 
 작성일: 2026-05-17

@@ -1,6 +1,11 @@
 <!-- Added: research-backed plan for expanding guidebook-grounded rule coverage. -->
 <!-- Why: leaderboard 68.00 after public 100 means hidden coverage gaps must be handled systematically, not by guessing labels. -->
 
+> **NOTE: This document reflects an earlier project phase (68.00 -> 71.50 journey).** The rule coverage
+> expansion plan described here was executed through Cycle 10, culminating in 71.50 (Locking access rules).
+> Post-71.50 rule changes caused regression (68.00); current approach is to keep 71.50 base unchanged
+> and use LoRA 4B override instead. See `PROGRESS.md` for current state.
+
 # Rule Coverage 확장 조사와 실행 계획
 
 작성일: 2026-05-17

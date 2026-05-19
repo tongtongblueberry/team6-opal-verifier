@@ -1,5 +1,5 @@
-<!-- Changed: update approach after RAG+LLM hybrid solver implementation. -->
-<!-- Why: architecture evolved from pure rule engine to confidence-gated hybrid. -->
+<!-- Changed: update approach to reflect current architecture (rule engine + LoRA override). -->
+<!-- Why: architecture evolved from RAG hybrid to rule engine (71.50 UNEXPECTED_ERROR_STATUS) + LoRA 4B override. -->
 # 접근 방식 요약
 
 ## 결론
@@ -8,9 +8,16 @@
 상태 의존적이라는 점이다. 같은 마지막 응답이라도 이전 `StartSession`, `Set`, `Activate`, `GenKey`,
 `Write` 이력에 따라 맞을 수도 있고 틀릴 수도 있다.
 
-Team 6의 접근은 **confidence-gated hybrid solver**다:
-- **확신이 높은 case**: deterministic rule engine이 직접 판정 (빠르고 정확)
-- **확신이 낮은 case**: RAG (BM25 spec retrieval) + LLM (Qwen3.5-27B-FP8)이 판정
+Team 6의 접근은 **Rule Engine (71.50 base) + LoRA Override**다:
+- **Rule engine**: deterministic state verifier가 모든 case를 판정. `UNEXPECTED_ERROR_STATUS`로 unexplained error를 aggressive하게 fail 처리 (이것이 71.50의 핵심)
+- **LoRA 4B override**: `UNEXPECTED_ERROR_STATUS` false positive를 감지하여 pass로 rescue
+
+## 아키텍처 변천
+
+1. **Pure rule engine** (Cycle 1-10): 60.50 -> 71.50. UNEXPECTED_ERROR_STATUS가 결정적.
+2. **RAG hybrid** (Cycle 1-6 LLM): BM25 + Qwen3.5-27B-FP8. Fail recall 0% (logit), 시간 초과 (generation). **폐기.**
+3. **Embedding classifier** (Cycle 10): Ridge regression on 9B embeddings. Leaderboard 68.00 regression. **폐기.**
+4. **LoRA 4B v2 override** (Cycle 12-15, 현재): Rich format + label masking. Fail precision 100%, recall 46.9%.
 
 ## 런타임 구조
 
@@ -23,29 +30,30 @@ Team 6의 접근은 **confidence-gated hybrid solver**다:
    - trace에 어떤 rule이 적용되었는지 기록한다.
 2. 마지막 trace의 `rule_id`를 확인한다.
    - specific rule (e.g., `STARTSESSION_FINAL`, `GET_PAYLOAD`): 그 판정을 그대로 사용한다.
-   - `DEFAULT_PASS` (unmodeled error): RAG+LLM fallback으로 넘긴다.
-3. RAG fallback (`src/rag.py`):
-   - trajectory에서 BM25 검색 query를 추출한다 (method, object, status, error context).
-   - 500+ TCG/Opal spec chunk에서 top-5 관련 passage를 검색한다.
-   - Qwen3.5-27B-FP8에게 trajectory + spec context를 주고 pass/fail을 묻는다.
+   - `UNEXPECTED_ERROR_STATUS`: LoRA override로 넘긴다.
+3. LoRA override (`src/lora_solver.py`):
+   - Qwen3.5-4B + LoRA adapter가 trajectory를 rich format으로 변환하여 판정한다.
+   - LoRA가 "pass"를 예측하면 -> rule engine의 fail을 pass로 override (false positive rescue)
+   - LoRA가 "fail"을 예측하면 -> rule engine의 fail을 유지
 4. 최종 prediction을 반환한다.
 
-[EXTERNAL KNOWLEDGE] Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., ... & Kiela, D. (2020). *Retrieval-Augmented Generation for Knowledge-Intensive Language Tasks*. NeurIPS 2020. https://arxiv.org/abs/2005.11401
+[EXTERNAL KNOWLEDGE] Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., & Chen, W. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR 2022. https://arxiv.org/abs/2106.09685
 
 ## 왜 이 방식인가
 
 1. **Rule engine alone**: 순수 rule engine은 public 20/20, leaderboard 71.50까지 도달했지만 plateau.
-   규칙을 수동으로 작성하는 것은 500+ spec 문서의 모든 edge case를 커버하기 어렵다.
+   `UNEXPECTED_ERROR_STATUS`가 hidden test에서 효과적이나 일부 false positive가 있음.
 
-2. **LLM alone**: LLM fine-tuning은 공개 라벨 20개로는 과적합 위험이 크다. 또한 200 case 전부를
-   LLM으로 처리하면 속도가 느려진다.
+2. **RAG+LLM alone**: Zero-shot logit scoring은 fail recall 0%. Generation mode는 13분/case로 3시간 초과.
+   Few-shot ICL도 logit mode에서 효과 없음. LLM의 zero-shot spec reasoning 능력이 부족하여 폐기.
 
-3. **Hybrid**: 확실한 case는 rule engine (빠르고 정확), 불확실한 case만 LLM (spec을 직접 참조).
-   이렇게 하면 regression을 최소화하면서 unmodeled case를 처리할 수 있다.
+3. **LoRA override**: Rule engine의 aggressive fail (UNEXPECTED_ERROR_STATUS)을 base로 두고,
+   LoRA fine-tuned model이 false positive만 rescue. False positive 0건 (synthetic), fail recall 46.9%.
+   이 조합이 regression 없이 점수 향상 가능성이 가장 높다.
 
 ## 서버 요구사항
 
-- GPU: NVIDIA L40S 46GB VRAM (27B FP8 = ~27GB, 여유 충분)
-- 모델: Qwen3.5-27B-FP8 (사전 다운로드: `python3 tools/download_model.py`)
+- GPU: NVIDIA L40S 48GB VRAM (4B LoRA adapter ~14GB, 여유 충분)
+- 모델: Qwen3.5-4B + LoRA adapter (artifacts/lora_adapter_v2/, ~32MB)
 - Spec 문서: `/dl2026/skeleton/artifacts/documents/` (500+ .txt files)
-- 로컬에서는 RAG 비활성화, 순수 rule engine으로 동작
+- 로컬에서는 LoRA 비활성화, 순수 rule engine으로 동작

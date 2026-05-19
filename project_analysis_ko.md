@@ -1,36 +1,32 @@
-<!-- Changed: update project analysis after RAG+LLM hybrid solver implementation. -->
-<!-- Why: architecture changed from pure rule engine to confidence-gated hybrid. -->
+<!-- Changed: update project analysis to reflect rule engine (71.50) + LoRA override architecture. -->
+<!-- Why: architecture evolved from RAG hybrid (fail recall 0%) to rule engine + LoRA 4B override. -->
 
 # Team 6 SSD TCG/Opal Verifier 현재 분석
 
-작성일: 2026-05-18
+작성일: 2026-05-18 | 최종 갱신: 2026-05-19
 
 ## 현재 결론
 
 이 프로젝트는 순수 AI classifier 문제라기보다 **spec-grounded state verifier** 문제다. 입력 trajectory 전체가 주어지므로, 마지막 command-response pair가 현재 SSD/TCG/Opal 상태에서 명세상 가능한 응답인지 판단하면 된다.
 
-현재 제출 solver는 **confidence-gated hybrid** 방식을 사용한다:
-- 확신이 높은 case: deterministic rule engine (`StatefulOpalVerifier`)이 직접 판정
-- 확신이 낮은 case (DEFAULT_PASS): RAG (BM25 over spec chunks) + LLM (Qwen3.5-27B-FP8)이 판정
+현재 제출 solver는 **Rule Engine (71.50 base) + LoRA Override** 방식을 사용한다:
+- Rule engine (`StatefulOpalVerifier`): `UNEXPECTED_ERROR_STATUS`로 unexplained error를 aggressive하게 fail 판정 (71.50의 핵심)
+- LoRA 4B adapter: `UNEXPECTED_ERROR_STATUS` false positive를 감지하여 pass로 rescue
 
-`src/solver.py`는 JSON command/response를 정규화하고, session/auth/SP/key/data/object-field 상태를 추적한 뒤, 마지막 record를 판정한다. Rule engine이 error status를 설명하지 못하면 (`DEFAULT_PASS`), spec 문서에서 관련 passage를 BM25로 검색하고 LLM에게 pass/fail을 묻는다.
+`src/solver.py`는 JSON command/response를 정규화하고, session/auth/SP/key/data/object-field 상태를 추적한 뒤, 마지막 record를 판정한다. Rule engine이 `UNEXPECTED_ERROR_STATUS`로 fail 판정하면 LoRA adapter가 override 여부를 결정한다.
 
-[EXTERNAL KNOWLEDGE] Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., ... & Kiela, D. (2020). *Retrieval-Augmented Generation for Knowledge-Intensive Language Tasks*. NeurIPS 2020. https://arxiv.org/abs/2005.11401
+[EXTERNAL KNOWLEDGE] Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., & Chen, W. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR 2022. https://arxiv.org/abs/2106.09685
 
 ## 현재 구현 상태
 
 - GitHub repo: `https://github.com/tongtongblueberry/team6-opal-verifier`
 - Main entrypoint: `src/solver.py::Solver.predict(dataset)`
-- Architecture: **Confidence-Gated Hybrid** (Rule Engine + RAG/LLM)
-- LLM: Qwen3.5-27B-FP8 (FP16, ~27GB VRAM FP8, 서버 전용)
-- Retrieval: BM25 over 500+ spec .txt chunks (from `/dl2026/skeleton/artifacts/documents/`)
-- Latest submitted commit: `2df1e71`
-- Latest submitted job:
-  - Job ID: `107`
-  - Submission ID: `1871750633c343ccb8f2bc7af1fd0665`
-  - Job Name: `team6-locking-2df1e71`
-  - Score: `71.50`
+- Architecture: **Rule Engine (71.50 base) + LoRA 4B Override**
+- LLM: Qwen3.5-4B + LoRA adapter (~14GB VRAM, 서버 전용)
+- LoRA adapter: `artifacts/lora_adapter_v2/` (~32MB)
+- Best submitted commit: `2df1e71` (branch `best-71.50`)
 - Current best leaderboard score: `71.50`
+- LoRA 4B v2 평가: fail precision 100%, fail recall 46.9% (synthetic 252건)
 - Server diagnostics (latest code):
   - Public train/dev score on `/dl2026/dataset`: `100.00` (`20/20`)
   - Metamorphic/property diagnostics: `1891/1891`
@@ -94,22 +90,27 @@ public, metamorphic, coverage 지표는 모두 필요하지만 hidden 성능을 
 
 ## 현재 방향
 
-순수 rule engine의 한계(71.50 plateau)를 넘기 위해 **confidence-gated hybrid** 아키텍처로 전환했다.
+순수 rule engine의 한계(71.50 plateau)를 넘기 위해 **LoRA 4B override** 아키텍처를 적용 중이다.
 
 현재 구조:
 
-1. `StatefulOpalVerifier`가 모든 case를 trace mode로 판정한다.
-2. 확신이 높은 case (specific rule fired): rule engine 결과를 그대로 사용한다.
-3. 확신이 낮은 case (`DEFAULT_PASS`): `src/rag.py`의 RAG pipeline이 처리한다.
-   - BM25로 spec chunk를 검색한다 (500+ guidebook .txt files).
-   - Qwen3.5-27B-FP8 (FP16)가 trajectory + spec context를 보고 pass/fail을 판정한다.
-4. 로컬에서는 RAG가 비활성화되고 순수 rule engine으로 동작한다 (torch/transformers 없음).
+1. `StatefulOpalVerifier`가 모든 case를 trace mode로 판정한다 (71.50 base).
+2. Specific rule로 판정된 case: rule engine 결과를 그대로 사용한다.
+3. `UNEXPECTED_ERROR_STATUS`로 fail 판정된 case: LoRA 4B adapter가 override 여부를 결정한다.
+   - LoRA가 "pass"를 예측하면 override (false positive rescue)
+   - LoRA가 "fail"을 예측하면 유지
+4. 로컬에서는 LoRA가 비활성화되고 순수 rule engine으로 동작한다.
+
+**이전 접근 (폐기됨):**
+- RAG hybrid (BM25 + Qwen3.5-27B-FP8): fail recall 0% (logit), 시간 초과 (generation)
+- Embedding classifier (9B + Ridge): leaderboard 68.00 regression
 
 다음 개선:
 
-1. 서버에서 hybrid solver 검증 후 leaderboard 제출
-2. Prompt/retrieval 튜닝 (top_k, chunk_size, system prompt 강도)
-3. Rule engine 자체 확장 (Authenticate, Byte table, Session type 등)
+1. HP sweep으로 LoRA fail recall 향상 (46.9% -> 60%+)
+2. Best config로 50-epoch 본 학습
+3. Leaderboard 제출 후 결과 확인
+4. 9B model 비교 (4B vs 9B)
 
 ## 데이터 분리 원칙
 

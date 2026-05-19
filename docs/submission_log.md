@@ -1,5 +1,5 @@
-<!-- Added: track leaderboard submissions without hidden-label inference. -->
-<!-- Why: only commit-level score feedback should be retained from leaderboard. -->
+<!-- Changed: add Job 185-188 submissions and update architecture note. -->
+<!-- Why: reflect post-71.50 regression, revert, and current LoRA override approach. -->
 
 # Submission Log
 
@@ -16,12 +16,34 @@
 | 2026-05-18 | `67cd09d` | 100 | `dcd43eb449a242e6a0cca623faae021f` | `team6-coverage-67cd09d` | 100.00 | 69.50 | Closed method-specific coverage gaps with synthetic-inclusive coverage, StartSession response validation, Properties/Get target/precondition tests, and DATA_COMMAND response invariants. Server diagnostics passed: metamorphic 1453/1453. |
 | 2026-05-18 | `c613397` | 102 | `3440cbdce03e48529eacb057a3c84b77` | `team6-field-semantics-c613397` | 100.00 | 69.50 | Added known field semantics for C_PIN, Authority, Locking, and MBRControl; server diagnostics passed: metamorphic 1821/1821, synthetic-inclusive low_confidence 0. Score plateau suggests diagnostics are saturated rather than solved hidden coverage. |
 | 2026-05-18 | `41b4df6` | 106 | `fcc52d52b98a437ca1afd7f3a9171f25` | `team6-mc-41b4df6` | 100.00 | 69.50 | Applied Ba et al. 2025 Metamorphic Coverage diagnostics to solver trace features. Server MC: pairs 1821, guidance pairs 1626, mean MC 5.67, zero-MC guidance pairs 245, MC CV 0.77 vs coverage CV 0.32. Solver behavior unchanged. |
-| 2026-05-18 | `2df1e71` | 107 | `1871750633c343ccb8f2bc7af1fd0665` | `team6-locking-2df1e71` | 100.00 | 71.50 | Redesigned MC source/follow-up pairing and added guidebook-backed Locking ReadLocked/WriteLocked DATA_COMMAND access rules. Server diagnostics passed: metamorphic 1839/1839, low_confidence 0, MC guidance pairs 1648, mean MC 14.81, zero-MC guidance pairs 86. |
+| 2026-05-18 | `2df1e71` | 107 | `1871750633c343ccb8f2bc7af1fd0665` | `team6-locking-2df1e71` | 100.00 | **71.50** | Redesigned MC source/follow-up pairing and added guidebook-backed Locking ReadLocked/WriteLocked DATA_COMMAND access rules. Server diagnostics passed: metamorphic 1839/1839, low_confidence 0, MC guidance pairs 1648, mean MC 14.81, zero-MC guidance pairs 86. **BEST SCORE.** Branch `best-71.50` created. |
+| 2026-05-19 | post-71.50 | 185 | - | - | 100.00 | 68.00 | Post-71.50 rule engine changes (UNEXPECTED_ERROR_STATUS removed, new rules added). **REGRESSION: -3.50 from best.** Root cause: changing UNEXPECTED_ERROR_STATUS to DEFAULT_PASS. |
+| 2026-05-19 | embedding | 186 | - | - | 100.00 | 68.00 | 9B embedding + ridge classifier for DEFAULT_PASS cases. **REGRESSION: -3.50 from best.** Synthetic training data distribution mismatch with hidden test. |
+| 2026-05-19 | revert | 187 | - | - | 100.00 | 71.50 | Reverted to `best-71.50` branch (commit `2df1e71`). **Score confirmed: 71.50.** |
+| 2026-05-19 | auth rule | 188 | - | - | 100.00 | 71.50 | Added authentication rule on 71.50 base. No improvement but no regression. |
 
-## Architecture Note (2026-05-18)
+## Architecture Note (2026-05-19 update)
 
-After `2df1e71` (71.50), the architecture transitioned from **pure rule engine** to **confidence-gated hybrid** (Lewis et al., 2020 — RAG):
-- High confidence cases: deterministic rule engine (unchanged)
-- Low confidence cases (`DEFAULT_PASS`): BM25 spec retrieval + Qwen3.5-27B-FP8 LLM judgment
+The architecture has evolved through three phases:
 
-New files: `src/rag.py`, `tools/download_model.py`. Next submission will use the hybrid solver.
+### Phase 1: Pure Rule Engine (up to 71.50)
+- Deterministic `StatefulOpalVerifier` with `UNEXPECTED_ERROR_STATUS`
+- All unexplained errors flagged as "fail" (aggressive approach)
+- This remains the best leaderboard score: **71.50**
+
+### Phase 2: RAG Hybrid (Cycle 1-6, abandoned)
+- Confidence-gated: rule engine high confidence cases + RAG (BM25 + Qwen3.5-27B-FP8) for DEFAULT_PASS
+- **Abandoned**: LLM zero-shot spec reasoning fail recall = 0% (logit mode), time exceeded (generation mode)
+
+### Phase 3: Rule Engine + LoRA Override (current)
+- Base: 71.50 rule engine with `UNEXPECTED_ERROR_STATUS`
+- Override: Qwen3.5-4B + LoRA adapter reviews UNEXPECTED_ERROR_STATUS cases
+- LoRA says "pass" -> override to pass (rescue false positive)
+- LoRA says "fail" -> keep fail
+- Best LoRA result: fail precision 100%, fail recall 46.9% on synthetic test set
+- **HP sweep in progress** (LR, rank, alpha, dropout, max_length, batch size)
+
+### Key Discovery: Regression Cause
+- Post-71.50 changes that replaced `UNEXPECTED_ERROR_STATUS` with `DEFAULT_PASS` caused 71.50 -> 68.00
+- The aggressive "unexplained error = fail" approach is correct for hidden test distribution
+- All future work must start from `best-71.50` branch (commit `2df1e71`)

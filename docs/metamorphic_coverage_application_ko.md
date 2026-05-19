@@ -1,6 +1,11 @@
 <!-- Added: document the selected paper and how its metrics/architecture map to this project. -->
 <!-- Why: the next improvement loop should follow one concrete paper instead of mixing methods loosely. -->
 
+> **NOTE: This document reflects an earlier project phase (pre-71.50).** The metamorphic coverage
+> metrics (MC, mutation score) described here were applied and contributed to reaching 71.50.
+> The diagnostic tools (`tools/metamorphic_coverage.py`, `tools/mutation_eval.py`) remain in use.
+> See `PROGRESS.md` for current state.
+
 # Metamorphic Coverage 논문 적용 계획
 
 작성일: 2026-05-18
