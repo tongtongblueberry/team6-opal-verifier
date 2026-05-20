@@ -275,12 +275,18 @@ def gen_all() -> list[dict]:
                 add([_ss(auth=False), _m("Get", n, u, e, cols=c)],
                     "pass", "5.1.5.2-unknown", f"unauth+Get({n},{c})->{e}")
 
-    # ── R19: Auth + unknown object + error (should succeed) ──
+    # ── R19: Auth + unknown object + error ──
+    # Changed: split by error type. NOT_AUTHORIZED on ACL-restricted objects is valid (→ pass).
+    # Why: noise analysis found ~120 cases with wrong "fail" labels. ACLs restrict per-object
+    # access even for authenticated authorities. Only FAIL status is genuinely wrong (→ fail).
     for n, u, _ in OBJECTS_UNKNOWN:
-        for e in ["NOT_AUTHORIZED", "FAIL"]:
-            for c in COL_RANGES[:4]:
-                add([_ss(auth=True), _m("Get", n, u, e, cols=c)],
-                    "fail", "5.3.4.2-unknown", f"auth+Get({n},{c})->{e}")
+        for c in COL_RANGES[:4]:
+            # NOT_AUTHORIZED: likely valid ACL restriction → pass
+            add([_ss(auth=True), _m("Get", n, u, "NOT_AUTHORIZED", cols=c)],
+                "pass", "5.3.4.2-unknown-acl", f"auth+Get({n},{c})->NA(ACL)")
+            # FAIL: genuinely wrong response for authenticated access → fail
+            add([_ss(auth=True), _m("Get", n, u, "FAIL", cols=c)],
+                "fail", "5.3.4.2-unknown", f"auth+Get({n},{c})->FAIL")
 
     # ── R20: Dup cols in Set → INVALID_PARAMETER (5.3.4.2.6) ──
     for n, u, _ in ALL[:10]:
