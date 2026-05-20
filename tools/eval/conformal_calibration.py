@@ -194,7 +194,8 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(
-        "Qwen/Qwen3.5-4B", torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
+        os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-4B"),
+        torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
     model = PeftModel.from_pretrained(model, adapter_path)
     model.eval()
 

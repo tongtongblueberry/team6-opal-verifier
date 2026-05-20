@@ -41,7 +41,9 @@ IGNORE_INDEX = -100
 
 @dataclass
 class Config:
-    model_name: str = "Qwen/Qwen3.5-4B"
+    # Changed: default to env var RAG_MODEL for easy 4B↔9B switching.
+    # Why: 9B feasibility confirmed (28-30GB train, 0.5s/case inference).
+    model_name: str = os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-4B")
     lr: float = 1e-3  # Changed: 1e-3 confirmed best from sweep3
     rank: int = 16
     alpha: int = 32
