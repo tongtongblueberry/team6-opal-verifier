@@ -912,6 +912,15 @@ class StatefulOpalVerifier:
                             detail=f"result={result_val}")
             return False  # SUCCESS with session = pass
 
+        # Changed: handle Revert/RevertSP — require session for success.
+        # Why: these methods modify SP state; without session → SUCCESS is invalid.
+        # Errors (NOT_AUTHORIZED, FAIL) without session are acceptable (spec-compliant rejection).
+        if method in {"revert", "revertsp"} and status == self.success_status and not state.active_sessions:
+            self._add_trace(state, step_index, "REVERT_NO_SESSION",
+                            reads=["active_sessions", "status"],
+                            detail=f"{method}_success_no_session")
+            return True
+
         self._add_trace(state, step_index, "DEFAULT_PASS", reads=["status"], detail=method)
         return False
 
