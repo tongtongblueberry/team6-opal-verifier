@@ -323,8 +323,14 @@ def train_and_evaluate(cfg: Config):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        cfg.model_name, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
+    # Changed: support max_memory to cap VRAM usage when sharing GPU.
+    # Why: server is shared; other processes may use GPU simultaneously.
+    max_mem_gb = int(os.environ.get("MAX_MEMORY_GB", "0"))
+    load_kwargs = dict(torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
+    if max_mem_gb > 0:
+        load_kwargs["max_memory"] = {0: f"{max_mem_gb}GiB", "cpu": "30GiB"}
+        logger.info("VRAM cap: %d GiB", max_mem_gb)
+    model = AutoModelForCausalLM.from_pretrained(cfg.model_name, **load_kwargs)
 
     lora_cfg = LoraConfig(
         task_type=TaskType.CAUSAL_LM, r=cfg.rank, lora_alpha=cfg.alpha,
