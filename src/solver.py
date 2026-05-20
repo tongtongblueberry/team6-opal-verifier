@@ -804,20 +804,9 @@ class StatefulOpalVerifier:
                         detail=f"expected_success={expected_success}, actual={status}",
                     )
                     return True
-                # Changed: NOT_AUTHORIZED in UNEXPECTED_ERROR_STATUS → pass.
-                # Why: NOT_AUTHORIZED is almost always a valid ACL rejection.
-                # Column-level ACL (spec Rules 02, 18, 21) means authenticated users
-                # can still get NOT_AUTHORIZED on objects outside their ACE scope.
-                # Treating these as "fail" caused false-fails on hidden test.
-                # Public 20: 0 UNEXPECTED_ERROR_STATUS cases → 0 regression risk.
-                if status == "notauthorized":
-                    self._add_trace(
-                        state, step_index,
-                        "UNEXPECTED_NA_ACCEPTED",
-                        reads=["status", "authenticated"],
-                        detail=f"NOT_AUTHORIZED accepted as valid ACL rejection",
-                    )
-                    return False  # pass — valid ACL rejection
+                # REVERTED: NOT_AUTHORIZED blanket acceptance caused regression (73.00→72.50).
+                # Leaderboard proves: some UNEXPECTED_ERROR_STATUS + NOT_AUTHORIZED ARE real fails.
+                # Need conditional ACL check, not blanket acceptance.
                 self._add_trace(
                     state,
                     step_index,
