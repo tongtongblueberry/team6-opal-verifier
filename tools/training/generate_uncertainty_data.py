@@ -152,6 +152,17 @@ def main():
                 logger.info("Training data from %s: %d cases", p, len(cases))
                 data_sources.extend(cases)
 
+    # Changed: auto-include gap data if available.
+    # Why: gap_cases.json covers 9 missing rule categories (SP_BUSY, AUTHORITY_LOCKED_OUT, etc.)
+    # that likely cause 35-50 of 57 hidden errors. Without these, LLM can't learn the patterns.
+    gap_path = Path("/workspace/team6/training_data/gap_cases.json")
+    if gap_path.exists():
+        gap_cases = json.loads(gap_path.read_text())
+        logger.info("Gap data: %d cases (auto-included)", len(gap_cases))
+        data_sources.extend(gap_cases)
+    else:
+        logger.info("No gap data found at %s — run generate_gap_data.py first", gap_path)
+
     # 2. Public 20 cases (with labels)
     pub_labels = {}
     label_path = Path("/dl2026/dataset/label.jsonl")
