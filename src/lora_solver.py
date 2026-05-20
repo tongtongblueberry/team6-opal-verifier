@@ -1,12 +1,12 @@
-# Changed: LoRA-based solver for UNEXPECTED_ERROR_STATUS override.
-# Why: rule engine aggressively marks unexplained errors as fail. LoRA can selectively correct.
-# Changed: removed v1 format/adapter support. Why: v1 (0.8B, compressed) had 0% fail recall.
-# Only v2 (4B, rich format) is used.
+# Changed: LoRA-based solver with confidence-gated predictions and self-contained format.
+# Why: submission environment may not have tools/ in path. Inlined format_trajectory_rich.
 
 from __future__ import annotations
 
 import logging
+import math
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -23,6 +23,125 @@ SYSTEM_PROMPT = (
 )
 
 
+def _compact_json(obj, max_depth=2, cur_depth=0) -> str:
+    if cur_depth >= max_depth:
+        if isinstance(obj, dict):
+            return "{...}"
+        elif isinstance(obj, list):
+            return "[...]"
+        return str(obj)
+    if isinstance(obj, dict):
+        parts = []
+        for k, v in obj.items():
+            parts.append(f"{k}={_compact_json(v, max_depth, cur_depth+1)}")
+        return "{" + ", ".join(parts) + "}"
+    elif isinstance(obj, list):
+        if len(obj) == 0:
+            return "[]"
+        if len(obj) <= 3:
+            return "[" + ", ".join(_compact_json(x, max_depth, cur_depth+1) for x in obj) + "]"
+        return f"[{_compact_json(obj[0], max_depth, cur_depth+1)}, ... ({len(obj)} items)]"
+    elif isinstance(obj, str) and len(obj) > 60:
+        return obj[:60] + "..."
+    return str(obj)
+
+
+def format_trajectory_rich(records: list) -> str:
+    """Format trajectory with full constraint-relevant information."""
+    if not records:
+        return ""
+
+    lines = []
+    session_active = False
+    authenticated = False
+    current_sp = ""
+
+    for i, step in enumerate(records):
+        if not isinstance(step, dict):
+            continue
+        cmd = step.get("input", {})
+        out = step.get("output", {})
+
+        method_obj = cmd.get("method", {})
+        method_name = method_obj.get("name", "") if isinstance(method_obj, dict) else str(method_obj)
+        method_args = method_obj.get("args", {}) if isinstance(method_obj, dict) else {}
+
+        inv_obj = cmd.get("invoking_id", {})
+        inv_name = inv_obj.get("name", "") if isinstance(inv_obj, dict) else str(inv_obj)
+        inv_uid = inv_obj.get("uid", "") if isinstance(inv_obj, dict) else ""
+
+        status = out.get("status_codes", out.get("status", ""))
+        if isinstance(status, dict):
+            status = status.get("Name", status.get("name", str(status)))
+        return_values = out.get("return_values", out.get("payload", None))
+
+        method_lower = str(method_name).lower()
+        status_lower = str(status).lower()
+        if method_lower == "startsession" and "success" in status_lower:
+            session_active = True
+            if isinstance(method_args, dict):
+                req = method_args.get("required", method_args)
+                if isinstance(req, dict):
+                    spid = req.get("SPID", "")
+                    write = req.get("Write", "")
+                    if spid:
+                        current_sp = f"SPID={spid}"
+                    if write:
+                        current_sp += f",Write={write}"
+            authenticated = True
+        elif method_lower == "endsession":
+            session_active = False
+            authenticated = False
+
+        is_final = (i == len(records) - 1)
+        prefix = "[FINAL] " if is_final else ""
+
+        args_str = ""
+        if method_args:
+            if isinstance(method_args, dict):
+                req = method_args.get("required", {})
+                if isinstance(req, dict) and req:
+                    args_str = _compact_json(req)
+                elif isinstance(method_args, dict) and not req:
+                    args_str = _compact_json(method_args)
+            else:
+                args_str = _compact_json(method_args)
+        if len(args_str) > 200:
+            args_str = args_str[:200] + "..."
+
+        rv_str = ""
+        if return_values is not None:
+            rv_str = _compact_json(return_values)
+            if len(rv_str) > 150:
+                rv_str = rv_str[:150] + "..."
+
+        line = f"{prefix}Step {i}: {method_name}"
+        if inv_name:
+            line += f" target={inv_name}"
+        if inv_uid:
+            line += f"[{inv_uid}]"
+        if args_str and args_str != "{}":
+            line += f" args={args_str}"
+        line += f" -> {status}"
+        if rv_str and rv_str != "[]" and rv_str != "{}":
+            line += f" payload={rv_str}"
+        lines.append(line)
+
+    state_line = f"SessionState: active={session_active}, auth={authenticated}"
+    if current_sp:
+        state_line += f", {current_sp}"
+
+    trajectory_text = "\n".join(lines)
+
+    prompt = (
+        "TCG/Opal SSD protocol trajectory verification.\n"
+        f"{state_line}\n\n"
+        f"{trajectory_text}\n\n"
+        "Is the final response consistent with the TCG/Opal specification? Answer: "
+    )
+    return prompt
+
+
 class LoRASolver:
     """Fine-tuned LoRA model for pass/fail classification."""
 
@@ -30,6 +149,8 @@ class LoRASolver:
         self.model = None
         self.tokenizer = None
         self.available = False
+        self._pass_id = None
+        self._fail_id = None
 
         root = Path(__file__).resolve().parents[1]
         if adapter_path is None:
@@ -70,19 +191,17 @@ class LoRASolver:
         self.model.eval()
         self.available = True
 
+        self._pass_id = self.tokenizer.encode("pass", add_special_tokens=False)[0]
+        self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
+
         logger.info("LoRA model loaded in %.1fs", time.time() - t0)
 
-    def predict(self, records: list[Json], trace: list[Json] | None = None) -> str:
-        # Changed: switched from generation to logit comparison.
-        # Why: generation produces random trajectory text instead of "pass"/"fail".
-        # Logit comparison directly compares P(pass) vs P(fail) at the next token — matches sweep evaluation.
-        """Predict pass/fail using logit comparison (not generation)."""
+    def predict_prob(self, records: list[Json]) -> float:
+        """Return P(fail) probability."""
         if not self.available or not records:
-            return "pass"
+            return 0.5
 
-        import math
         import torch
-        from tools.training.finetune_lora_v2 import format_trajectory_rich
 
         prompt = format_trajectory_rich(records)
         messages = [
@@ -106,14 +225,14 @@ class LoRASolver:
         with torch.no_grad():
             logits = self.model(**inputs).logits[0, -1, :]
 
-        # Changed: compare logits for "pass" vs "fail" tokens directly.
-        # Why: this matches sweep_lora.py evaluate_model() — same method that achieved 80%+ val acc.
-        pass_ids = self.tokenizer.encode("pass", add_special_tokens=False)
-        fail_ids = self.tokenizer.encode("fail", add_special_tokens=False)
-        p_logit = logits[pass_ids[0]].item()
-        f_logit = logits[fail_ids[0]].item()
+        p_logit = logits[self._pass_id].item()
+        f_logit = logits[self._fail_id].item()
 
         mx = max(p_logit, f_logit)
         p_fail = math.exp(f_logit - mx) / (math.exp(p_logit - mx) + math.exp(f_logit - mx))
+        return p_fail
 
+    def predict(self, records: list[Json], trace: list[Json] | None = None) -> str:
+        """Predict pass/fail (binary)."""
+        p_fail = self.predict_prob(records)
         return "fail" if p_fail > 0.5 else "pass"
