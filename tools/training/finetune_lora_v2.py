@@ -144,7 +144,7 @@ def format_trajectory_rich(records: list) -> str:
             line += f"[{inv_uid}]"
         if args_str and args_str != "{}":
             line += f" args={args_str}"
-        line += f" → {status}"
+        line += f" -> {status}"
         if rv_str and rv_str != "[]" and rv_str != "{}":
             line += f" payload={rv_str}"
         lines.append(line)
