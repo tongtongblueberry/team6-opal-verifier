@@ -28,7 +28,9 @@ ALPHA = 32
 DROPOUT = 0.2  # Changed: increased from 0.05. Why: reduce overconfidence on OOD patterns.
 MAX_LEN = 1024
 EPOCHS = 5
-BATCH = 8
+# Changed: batch 8→4 + grad_accum 2. Why: label smoothing requires log_softmax on full vocab → OOM at bs=8.
+BATCH = 4
+GRAD_ACCUM = 2
 LABEL_SMOOTHING = 0.1  # Changed: added label smoothing. Why: prevent extreme logit values.
 
 # Load augmented data
@@ -102,6 +104,7 @@ training_args = TrainingArguments(
     output_dir="/workspace/team6/sweep_runs/cycle3",
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH,
+    gradient_accumulation_steps=GRAD_ACCUM,
     learning_rate=LR,
     warmup_ratio=0.05,
     lr_scheduler_type="cosine",
