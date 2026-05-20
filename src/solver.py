@@ -1170,16 +1170,38 @@ TIER_THRESHOLDS = {
 
 
 class Solver:
+    # Changed: support both LoRA (logit) and LLM (generation) solvers.
+    # Why: LoRA failed 5 consecutive times on leaderboard (synthetic overfitting).
+    # LLM generation (zero-shot 9B) doesn't need training data → no distribution mismatch.
+    # Strategy: try LLM solver first (for LOW tier), fall back to LoRA, then rule engine.
     def __init__(self) -> None:
         self.verifier = StatefulOpalVerifier()
         self.lora_solver = None
-        try:
-            from src.lora_solver import LoRASolver
-            self.lora_solver = LoRASolver()
-            if not self.lora_solver.available:
+        self.llm_solver = None
+
+        # Changed: prefer LLM solver (generation) over LoRA (logit) for uncertain cases.
+        # Why: LoRA logit comparison is overconfident (p_fail=0.0 or 1.0) and never
+        # improved leaderboard. Zero-shot generation allows reasoning before decision.
+        use_llm = os.environ.get("USE_LLM", "1") == "1"
+        use_lora = os.environ.get("USE_LORA", "0") == "1"
+
+        if use_llm:
+            try:
+                from src.llm_solver import LLMSolver
+                self.llm_solver = LLMSolver()
+                if not self.llm_solver.available:
+                    self.llm_solver = None
+            except Exception:
+                self.llm_solver = None
+
+        if use_lora and self.llm_solver is None:
+            try:
+                from src.lora_solver import LoRASolver
+                self.lora_solver = LoRASolver()
+                if not self.lora_solver.available:
+                    self.lora_solver = None
+            except Exception:
                 self.lora_solver = None
-        except Exception:
-            self.lora_solver = None
 
     def predict(self, dataset: Any) -> dict[str, str]:
         if not isinstance(dataset, list):
@@ -1196,34 +1218,35 @@ class Solver:
 
             result = self.verifier.verify_with_trace(steps)
             prediction = result['prediction']
+            trace = result.get('trace', [])
+            rule_id = self._get_rule_id(trace)
+            tier = self._get_tier(rule_id)
 
-            # Changed: tier-based LoRA override with rule engine context.
-            # Why: LLM should have maximum influence on uncertain cases,
-            # and minimal influence on cases the rule engine handles well.
-            if self.lora_solver:
-                records = self.verifier._records(steps)
-                if records:
-                    trace = result.get('trace', [])
-                    rule_id = self._get_rule_id(trace)
-                    tier = self._get_tier(rule_id)
-                    thresholds = TIER_THRESHOLDS[tier]
+            # Changed: only use LLM for LOW confidence cases.
+            # Why: HIGH/MEDIUM rules are reliable (rule engine 100% on public 20).
+            # LOW = UNEXPECTED_ERROR_STATUS, DEFAULT_PASS, KNOWN_FIELD_EXPECTED_SUCCESS.
+            if tier == "low" and (self.llm_solver or self.lora_solver):
+                rule_context = {
+                    "rule_id": rule_id,
+                    "prediction": prediction,
+                    "tier": tier,
+                    "detail": trace[-1].get("detail", "") if trace else "",
+                }
 
-                    # Changed: pass rule engine context to LoRA for v3 format.
-                    # Why: neuro-symbolic approach — LLM uses rule analysis as signal.
-                    rule_context = {
-                        "rule_id": rule_id,
-                        "prediction": prediction,
-                        "tier": tier,
-                        "detail": trace[-1].get("detail", "") if trace else "",
-                    }
-                    p_fail = self.lora_solver.predict_prob(records, rule_context=rule_context)
-
-                    # Rescue: rule says fail but LoRA says pass
-                    if prediction == 'fail' and p_fail < thresholds["rescue"]:
-                        prediction = 'pass'
-                    # Detect: rule says pass but LoRA says fail
-                    elif prediction == 'pass' and p_fail > thresholds["detect"]:
-                        prediction = 'fail'
+                if self.llm_solver:
+                    # Zero-shot generation: let the model reason
+                    llm_pred = self.llm_solver.predict(steps, rule_context=rule_context)
+                    prediction = llm_pred
+                elif self.lora_solver:
+                    # LoRA logit comparison (fallback)
+                    records = self.verifier._records(steps)
+                    if records:
+                        p_fail = self.lora_solver.predict_prob(records, rule_context=rule_context)
+                        thresholds = TIER_THRESHOLDS[tier]
+                        if prediction == 'fail' and p_fail < thresholds["rescue"]:
+                            prediction = 'pass'
+                        elif prediction == 'pass' and p_fail > thresholds["detect"]:
+                            prediction = 'fail'
 
             predictions[case_id] = prediction
         return predictions
