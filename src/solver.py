@@ -1094,11 +1094,37 @@ def predict_one(testcase: Any) -> str:
 
 
 
-# Changed: confidence-gated LoRA override with tunable thresholds.
-# Why: binary LoRA at threshold 0.5 caused regressions on public test (20->18/20).
-# Confidence gating only overrides when LoRA is highly confident.
-RESCUE_THRESHOLD = float(os.environ.get('RESCUE_THRESHOLD', '0.15'))
-DETECT_THRESHOLD = float(os.environ.get('DETECT_THRESHOLD', '0.90'))
+# Changed: tier-based LoRA integration with rule engine confidence awareness.
+# Why: previous flat thresholds (0.15/0.90) made LoRA nearly useless.
+# New approach: rule engine confidence tier determines how much to trust LoRA.
+# - HIGH confidence rules: keep rule engine (LoRA can only override with extreme confidence)
+# - LOW confidence rules: trust LoRA more (threshold 0.5 = direct LoRA decision)
+# - MEDIUM confidence rules: moderate trust (threshold 0.65/0.35)
+HIGH_CONFIDENCE_RULES = {
+    "PARSE_FINAL_COMMAND", "PROPERTIES_TARGET", "PROPERTIES_PAYLOAD",
+    "STARTSESSION_FINAL", "PRECONDITION_EXPECTED_ERROR", "KNOWN_FIELD_INVALID_VALUE",
+    "LOCKING_DATA_ACCESS", "ACTIVATE_TARGET",
+}
+LOW_CONFIDENCE_RULES = {
+    "UNEXPECTED_ERROR_STATUS", "DEFAULT_PASS", "KNOWN_FIELD_EXPECTED_SUCCESS",
+}
+
+# Changed: per-tier thresholds (tunable via env vars).
+# Why: LOW confidence rules should defer to LLM at ~0.5, HIGH should almost never override.
+TIER_THRESHOLDS = {
+    "high": {
+        "rescue": float(os.environ.get("HIGH_RESCUE", "0.05")),   # very strict
+        "detect": float(os.environ.get("HIGH_DETECT", "0.95")),   # very strict
+    },
+    "medium": {
+        "rescue": float(os.environ.get("MED_RESCUE", "0.30")),
+        "detect": float(os.environ.get("MED_DETECT", "0.70")),
+    },
+    "low": {
+        "rescue": float(os.environ.get("LOW_RESCUE", "0.45")),    # nearly trust LLM
+        "detect": float(os.environ.get("LOW_DETECT", "0.55")),    # nearly trust LLM
+    },
+}
 
 
 class Solver:
@@ -1129,26 +1155,47 @@ class Solver:
             result = self.verifier.verify_with_trace(steps)
             prediction = result['prediction']
 
-            # Changed: confidence-gated bidirectional LoRA override.
-            # Why: threshold tuning prevents low-confidence overrides that caused regressions.
+            # Changed: tier-based LoRA override with rule engine context.
+            # Why: LLM should have maximum influence on uncertain cases,
+            # and minimal influence on cases the rule engine handles well.
             if self.lora_solver:
                 records = self.verifier._records(steps)
                 if records:
-                    p_fail = self.lora_solver.predict_prob(records)
-                    is_unexpected = self._is_unexpected_error(result.get('trace', []))
+                    trace = result.get('trace', [])
+                    rule_id = self._get_rule_id(trace)
+                    tier = self._get_tier(rule_id)
+                    thresholds = TIER_THRESHOLDS[tier]
 
-                    # Rescue: rule says fail (UNEXPECTED_ERROR) but LoRA confident pass
-                    if prediction == 'fail' and is_unexpected and p_fail < RESCUE_THRESHOLD:
+                    # Changed: pass rule engine context to LoRA for v3 format.
+                    # Why: neuro-symbolic approach — LLM uses rule analysis as signal.
+                    rule_context = {
+                        "rule_id": rule_id,
+                        "prediction": prediction,
+                        "tier": tier,
+                        "detail": trace[-1].get("detail", "") if trace else "",
+                    }
+                    p_fail = self.lora_solver.predict_prob(records, rule_context=rule_context)
+
+                    # Rescue: rule says fail but LoRA says pass
+                    if prediction == 'fail' and p_fail < thresholds["rescue"]:
                         prediction = 'pass'
-                    # Detect: rule says pass but LoRA confident fail
-                    elif prediction == 'pass' and p_fail > DETECT_THRESHOLD:
+                    # Detect: rule says pass but LoRA says fail
+                    elif prediction == 'pass' and p_fail > thresholds["detect"]:
                         prediction = 'fail'
 
             predictions[case_id] = prediction
         return predictions
 
     @staticmethod
-    def _is_unexpected_error(trace: list[Json]) -> bool:
+    def _get_rule_id(trace: list[Json]) -> str:
         if not trace:
-            return False
-        return trace[-1].get('rule_id', '') == 'UNEXPECTED_ERROR_STATUS'
+            return "UNKNOWN"
+        return trace[-1].get('rule_id', 'UNKNOWN')
+
+    @staticmethod
+    def _get_tier(rule_id: str) -> str:
+        if rule_id in HIGH_CONFIDENCE_RULES:
+            return "high"
+        elif rule_id in LOW_CONFIDENCE_RULES:
+            return "low"
+        return "medium"

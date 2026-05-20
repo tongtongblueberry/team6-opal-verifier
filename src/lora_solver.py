@@ -22,6 +22,16 @@ SYSTEM_PROMPT = (
     "Answer exactly: pass or fail"
 )
 
+# Changed: v3 system prompt includes rule engine awareness.
+# Why: LLM trained with rule engine context needs matching system prompt at inference.
+SYSTEM_PROMPT_V3 = (
+    "You are a TCG/Opal SSD protocol compliance verifier. "
+    "Given a command-response trajectory, session state, and a rule engine's analysis, "
+    "determine if the final response is consistent with the specification. "
+    "The rule engine may be wrong — use your understanding of the protocol to decide. "
+    "Answer exactly: pass or fail"
+)
+
 
 def _compact_json(obj, max_depth=2, cur_depth=0) -> str:
     if cur_depth >= max_depth:
@@ -154,7 +164,12 @@ class LoRASolver:
 
         root = Path(__file__).resolve().parents[1]
         if adapter_path is None:
+            # Changed: prefer v3 adapter (uncertainty resolver) over v2.
+            # Why: v3 is trained with rule engine context → better integration.
+            v3_dir = root / "artifacts" / "lora_adapter_v3"
             adapter_dir = root / "artifacts" / "lora_adapter_v2"
+            if v3_dir.exists() and (v3_dir / "adapter_config.json").exists():
+                adapter_dir = v3_dir
             if adapter_dir.exists() and (adapter_dir / "adapter_config.json").exists():
                 adapter_path = str(adapter_dir)
             else:
@@ -196,16 +211,29 @@ class LoRASolver:
 
         logger.info("LoRA model loaded in %.1fs", time.time() - t0)
 
-    def predict_prob(self, records: list[Json]) -> float:
-        """Return P(fail) probability."""
+    def predict_prob(self, records: list[Json], rule_context: dict | None = None) -> float:
+        """Return P(fail) probability.
+
+        Changed: support v3 format with rule engine context.
+        Why: neuro-symbolic approach — LLM uses rule engine analysis for better decisions.
+        Falls back to v2 format if no rule_context provided.
+        """
         if not self.available or not records:
             return 0.5
 
         import torch
 
-        prompt = format_trajectory_rich(records)
+        # Changed: build prompt based on format version.
+        # Why: v3 includes rule engine context, v2 is plain trajectory.
+        if rule_context:
+            prompt = self._format_v3_prompt(records, rule_context)
+            system_prompt = SYSTEM_PROMPT_V3
+        else:
+            prompt = format_trajectory_rich(records)
+            system_prompt = SYSTEM_PROMPT
+
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
 
@@ -231,6 +259,34 @@ class LoRASolver:
         mx = max(p_logit, f_logit)
         p_fail = math.exp(f_logit - mx) / (math.exp(p_logit - mx) + math.exp(f_logit - mx))
         return p_fail
+
+    def _format_v3_prompt(self, records: list[Json], rule_context: dict) -> str:
+        """Format trajectory with rule engine context (v3 neuro-symbolic format)."""
+        base_prompt = format_trajectory_rich(records)
+        if not base_prompt:
+            return ""
+
+        rule_id = rule_context.get("rule_id", "UNKNOWN")
+        rule_pred = rule_context.get("prediction", "unknown")
+        rule_detail = rule_context.get("detail", "")
+        tier = rule_context.get("tier", "unknown")
+
+        context = (
+            f"\n--- Rule Engine Analysis ---\n"
+            f"Rule: {rule_id}\n"
+            f"Prediction: {rule_pred}\n"
+            f"Detail: {rule_detail}\n"
+            f"Confidence: {tier}\n"
+            f"---\n\n"
+            f"The rule engine predicted '{rule_pred}' with {tier} confidence.\n"
+            f"Given the trajectory and this analysis, is the final response "
+            f"consistent with the TCG/Opal specification? Answer: "
+        )
+
+        base_parts = base_prompt.rsplit("Is the final response", 1)
+        if len(base_parts) == 2:
+            return base_parts[0] + context
+        return base_prompt + context
 
     def predict(self, records: list[Json], trace: list[Json] | None = None) -> str:
         """Predict pass/fail (binary)."""
