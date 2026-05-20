@@ -354,8 +354,20 @@ def train_and_evaluate(cfg: Config):
     adapter_dir = Path("/workspace/team6/adapters/uncertainty_resolver")
     adapter_dir.mkdir(parents=True, exist_ok=True)
 
+    # Changed: support resume from checkpoint if training was interrupted.
+    # Why: server is shared, training can be killed anytime.
+    # If checkpoints exist, automatically resume from the latest one.
+    checkpoint_dir = str(adapter_dir / "checkpoints")
+    resume_checkpoint = None
+    if Path(checkpoint_dir).exists():
+        checkpoints = sorted(Path(checkpoint_dir).glob("checkpoint-*"),
+                             key=lambda p: int(p.name.split("-")[-1]) if p.name.split("-")[-1].isdigit() else 0)
+        if checkpoints:
+            resume_checkpoint = str(checkpoints[-1])
+            logger.info("Resuming from checkpoint: %s", resume_checkpoint)
+
     training_args = TrainingArguments(
-        output_dir=str(adapter_dir / "checkpoints"),
+        output_dir=checkpoint_dir,
         num_train_epochs=cfg.epochs,
         per_device_train_batch_size=cfg.batch_size,
         gradient_accumulation_steps=cfg.grad_accum,
@@ -386,14 +398,16 @@ def train_and_evaluate(cfg: Config):
                 cfg.epochs, cfg.lr, cfg.rank, cfg.batch_size, cfg.grad_accum,
                 cfg.batch_size * cfg.grad_accum)
 
+    # Changed: always pass resume_from_checkpoint so interrupted training continues.
+    # Why: server is shared, training can be killed by other users at any time.
+    # Checkpoints are saved every epoch, so max loss is ~1 epoch of work.
     t0 = time.time()
     try:
-        result = trainer.train()
+        result = trainer.train(resume_from_checkpoint=resume_checkpoint)
         logger.info("Training done: %.0fs, loss=%.4f", time.time() - t0, result.training_loss)
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
             logger.error("OOM during training. Try reducing batch_size or max_length.")
-            # Changed: retry with smaller batch on OOM
             torch.cuda.empty_cache()
             gc.collect()
             cfg.batch_size = max(1, cfg.batch_size // 2)
@@ -407,7 +421,7 @@ def train_and_evaluate(cfg: Config):
                     model=model, args=training_args, train_dataset=dataset)
             else:
                 trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
-            result = trainer.train()
+            result = trainer.train(resume_from_checkpoint=resume_checkpoint)
             logger.info("Training done (retry): %.0fs, loss=%.4f",
                         time.time() - t0, result.training_loss)
         else:
