@@ -53,16 +53,30 @@ class Config:
     label_smoothing: float = 0.05  # Changed: light smoothing (0.1 caused too much regularization)
     warmup_ratio: float = 0.05
     save_every_n_epochs: int = 5  # Changed: checkpoint every 5 epochs for selection
+    # Changed: SCL (Supervised Contrastive Learning) loss weight.
+    # Why: Gunel et al. (ICLR 2021) show SCL + CE improves few-shot by up to 10.7%.
+    # Paper: "Supervised Contrastive Learning for Pre-trained Language Model Fine-tuning"
+    # SCL pulls same-class representations together, pushes different-class apart.
+    scl_weight: float = float(os.environ.get("SCL_WEIGHT", "0.1"))
+    scl_temperature: float = 0.5  # Changed: τ=0.5 per Gunel et al. optimal for binary
 
 
 class MaskedDataset(torch.utils.data.Dataset):
-    """Dataset with label masking — only compute loss on assistant response tokens."""
+    """Dataset with label masking — only compute loss on assistant response tokens.
+
+    Changed: also stores class_label (0=pass, 1=fail) for SCL loss computation.
+    Why: SCL needs to know which examples share the same gold label within a batch.
+    """
 
     def __init__(self, examples, tokenizer, max_length):
         self.data = []
         skipped = 0
         for ex in examples:
             messages = ex["messages"]
+            # Changed: extract gold label for SCL loss.
+            gold = ex.get("gold", messages[-1]["content"])
+            class_label = 1 if gold == "fail" else 0
+
             try:
                 full = tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=False, enable_thinking=False)
@@ -88,7 +102,6 @@ class MaskedDataset(torch.utils.data.Dataset):
                 labels[:plen] = IGNORE_INDEX
             labels[mask == 0] = IGNORE_INDEX
 
-            # Check: labels should have at least 1 non-ignored token
             if (labels != IGNORE_INDEX).sum() == 0:
                 skipped += 1
                 continue
@@ -97,6 +110,7 @@ class MaskedDataset(torch.utils.data.Dataset):
                 "input_ids": ids,
                 "attention_mask": mask,
                 "labels": labels,
+                "class_labels": torch.tensor(class_label, dtype=torch.long),
             })
 
         if skipped:
@@ -107,6 +121,105 @@ class MaskedDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         return self.data[i]
+
+
+def supervised_contrastive_loss(hidden_states, attention_mask, class_labels, temperature=0.5):
+    """Compute SCL loss on last-token hidden states.
+
+    Changed: implements Gunel et al. (ICLR 2021) supervised contrastive loss.
+    Why: pulls same-class representations together, pushes different-class apart.
+    This improves binary classification especially with limited data.
+
+    Args:
+        hidden_states: (batch, seq_len, hidden_dim) from model output
+        attention_mask: (batch, seq_len)
+        class_labels: (batch,) — 0 for pass, 1 for fail
+        temperature: τ for scaling similarities
+    Returns:
+        scalar SCL loss
+    """
+    batch_size = hidden_states.size(0)
+    if batch_size < 2:
+        return torch.tensor(0.0, device=hidden_states.device)
+
+    # Changed: extract last non-padding token's hidden state as the representation.
+    # Why: in causal LM, the last token position aggregates all prior context.
+    seq_lengths = attention_mask.sum(dim=1) - 1  # (batch,)
+    reps = hidden_states[torch.arange(batch_size), seq_lengths]  # (batch, hidden_dim)
+
+    # L2 normalize
+    reps = torch.nn.functional.normalize(reps, p=2, dim=1)
+
+    # Pairwise cosine similarities / temperature
+    sim_matrix = torch.matmul(reps, reps.T) / temperature  # (batch, batch)
+
+    # Mask: same class = positive pair, different class = negative
+    labels_eq = class_labels.unsqueeze(0) == class_labels.unsqueeze(1)  # (batch, batch)
+    eye_mask = ~torch.eye(batch_size, dtype=torch.bool, device=hidden_states.device)
+
+    # For numerical stability
+    sim_max, _ = sim_matrix.max(dim=1, keepdim=True)
+    sim_matrix = sim_matrix - sim_max.detach()
+
+    # Compute log-sum-exp over all negatives + current positive
+    exp_sim = torch.exp(sim_matrix) * eye_mask.float()
+    log_sum_exp = torch.log(exp_sim.sum(dim=1, keepdim=True) + 1e-8)
+
+    # Positive pair log similarities
+    positive_mask = labels_eq & eye_mask
+    n_positives = positive_mask.sum(dim=1)
+
+    # Avoid division by zero for examples with no positive pairs
+    has_positives = n_positives > 0
+    if not has_positives.any():
+        return torch.tensor(0.0, device=hidden_states.device)
+
+    # SCL loss: -1/|P(i)| * Σ_{p∈P(i)} (sim(i,p)/τ - log_sum_exp)
+    log_prob = sim_matrix - log_sum_exp
+    scl_per_example = -(log_prob * positive_mask.float()).sum(dim=1)
+    scl_per_example = scl_per_example / n_positives.clamp(min=1).float()
+
+    return scl_per_example[has_positives].mean()
+
+
+class SCLTrainer(Trainer):
+    """Custom Trainer that adds SCL loss to standard CE loss.
+
+    Changed: adds supervised contrastive learning loss.
+    Why: Paper 5 (Gunel et al. ICLR 2021) shows +10.7% with 20 examples for binary classification.
+    L_total = (1 - scl_weight) * L_CE + scl_weight * L_SCL
+    """
+
+    def __init__(self, scl_weight=0.1, scl_temperature=0.5, **kwargs):
+        super().__init__(**kwargs)
+        self.scl_weight = scl_weight
+        self.scl_temperature = scl_temperature
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        class_labels = inputs.pop("class_labels", None)
+
+        # Standard forward pass
+        outputs = model(**inputs)
+        ce_loss = outputs.loss
+
+        # Changed: compute SCL loss if class labels available and weight > 0.
+        if self.scl_weight > 0 and class_labels is not None:
+            hidden_states = outputs.get("hidden_states", None)
+            if hidden_states is None:
+                # Need to re-run with output_hidden_states=True
+                with torch.no_grad():
+                    hs_outputs = model(**inputs, output_hidden_states=True)
+                hidden_states = hs_outputs.hidden_states[-1]  # last layer
+
+            scl_loss = supervised_contrastive_loss(
+                hidden_states, inputs["attention_mask"],
+                class_labels, self.scl_temperature)
+
+            total_loss = (1 - self.scl_weight) * ce_loss + self.scl_weight * scl_loss
+        else:
+            total_loss = ce_loss
+
+        return (total_loss, outputs) if return_outputs else total_loss
 
 
 def evaluate_model(model, tokenizer, eval_cases, max_length, device):
@@ -251,7 +364,15 @@ def train_and_evaluate(cfg: Config):
         label_smoothing_factor=cfg.label_smoothing,
     )
 
-    trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
+    # Changed: use SCLTrainer if scl_weight > 0, else standard Trainer.
+    # Why: SCL loss adds supervised contrastive learning (Gunel et al. ICLR 2021).
+    if cfg.scl_weight > 0:
+        trainer = SCLTrainer(
+            scl_weight=cfg.scl_weight, scl_temperature=cfg.scl_temperature,
+            model=model, args=training_args, train_dataset=dataset)
+        logger.info("Using SCLTrainer (weight=%.2f, temp=%.2f)", cfg.scl_weight, cfg.scl_temperature)
+    else:
+        trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
 
     logger.info("Starting training: %d epochs, lr=%s, rank=%d, bs=%d*%d=%d",
                 cfg.epochs, cfg.lr, cfg.rank, cfg.batch_size, cfg.grad_accum,
@@ -272,7 +393,12 @@ def train_and_evaluate(cfg: Config):
             logger.info("Retrying with bs=%d gacc=%d", cfg.batch_size, cfg.grad_accum)
             training_args.per_device_train_batch_size = cfg.batch_size
             training_args.gradient_accumulation_steps = cfg.grad_accum
-            trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
+            if cfg.scl_weight > 0:
+                trainer = SCLTrainer(
+                    scl_weight=cfg.scl_weight, scl_temperature=cfg.scl_temperature,
+                    model=model, args=training_args, train_dataset=dataset)
+            else:
+                trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
             result = trainer.train()
             logger.info("Training done (retry): %.0fs, loss=%.4f",
                         time.time() - t0, result.training_loss)

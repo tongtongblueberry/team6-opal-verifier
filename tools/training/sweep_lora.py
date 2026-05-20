@@ -486,17 +486,40 @@ def main():
     logger.info("  max_length:  %d (fixed from P1)", best_ml)
     logger.info("=" * 60)
 
+    # Changed: save every Phase 2 adapter for leaderboard submission during sweep.
+    # Why: model is deleted after eval in run_single, so we must save before cleanup.
+    # Each run saves to /workspace/team6/sweep_adapters/{run_name}/.
+    # Best adapter is copied to artifacts/lora_adapter_v2/ for submission.
+    ADAPTER_BASE = Path("/workspace/team6/sweep_adapters")
+    SUBMIT_ADAPTER = Path("/workspace/team6/team6-opal-verifier/artifacts/lora_adapter_v2")
+    best_p2_recall = -1.0
+    best_p2_adapter_path = None
     p2_results = []
     for i, gc_ in enumerate(grid_configs):
         name = f"p2_{i:02d}_lr{gc_['lr']:.0e}_r{gc_['rank']}_a{gc_['alpha_ratio']}_d{gc_['dropout']:.2f}"
+        adapter_path = str(ADAPTER_BASE / name)
         cfg = SweepConfig(
             lr=gc_["lr"], lora_rank=gc_["rank"], lora_alpha=gc_["alpha"],
             lora_dropout=gc_["dropout"], max_length=best_ml,
             num_epochs=P2_EPOCHS, run_name=name)
         try:
-            r = run_single(cfg, train_data, val_cases)
+            r = run_single(cfg, train_data, val_cases, save_adapter=adapter_path)
             save_result(r)
             p2_results.append(r)
+
+            # Track best and copy adapter to submission path
+            cur_recall = r.get("fail_recall", 0)
+            cur_prec = r.get("fail_precision", 0)
+            if cur_recall > best_p2_recall and cur_prec >= 0.7:
+                best_p2_recall = cur_recall
+                best_p2_adapter_path = adapter_path
+                # Copy best adapter to submission directory
+                import shutil
+                if SUBMIT_ADAPTER.exists():
+                    shutil.rmtree(SUBMIT_ADAPTER)
+                shutil.copytree(adapter_path, SUBMIT_ADAPTER)
+                logger.info("  ★ NEW BEST: recall=%.2f prec=%.2f → copied to %s",
+                            cur_recall, cur_prec, SUBMIT_ADAPTER)
         except RuntimeError as e:
             if "out of memory" in str(e).lower():
                 logger.warning("  OOM for %s, skipping", name)
