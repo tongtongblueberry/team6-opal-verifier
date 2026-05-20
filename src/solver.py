@@ -487,6 +487,9 @@ class ProtocolState:
     # Why: this is robust to tiny public labels and keeps hidden-data behavior spec-like.
     active_sessions: set[str] = field(default_factory=set)
     authenticated: bool = False
+    # Changed: track Read-Only vs Read-Write session state.
+    # Why: RO sessions should reject write methods (Set, GenKey, Activate, Write).
+    session_write: bool = True  # default: assume RW
     activated_sps: set[str] = field(default_factory=set)
     known_secrets: set[str] = field(default_factory=set)
     written_payloads: dict[str, str] = field(default_factory=dict)
@@ -594,14 +597,27 @@ class StatefulOpalVerifier:
         if method == "startsession":
             sid = _session_id(output) or _session_id(command) or str(len(state.active_sessions) + 1)
             state.active_sessions.add(sid)
-            state.authenticated = not _challenge_malformed(command)
+            # Changed: fix auth detection — empty challenge means no auth attempt.
+            # Why: _challenge_malformed("") returns False, causing `not False = True`.
+            # Noise analysis found 81 UNEXPECTED_ERROR_STATUS cases from this bug.
+            # Spec 5.2.3.1: HostSigningAuthority is optional; absence = no authentication.
+            challenge = _host_challenge(command)
+            state.authenticated = bool(challenge) and not _challenge_malformed(command)
+            # Changed: track Write flag for Read-Only session detection.
+            # Why: RO sessions should reject write methods with NOT_AUTHORIZED.
+            # Missing this caused 81 more UNEXPECTED_ERROR_STATUS false-fails.
+            write_flag = _find_first_key(self._input(record), {"write"})
+            if write_flag is not None:
+                state.session_write = _bool_truthy(write_flag)
+            else:
+                state.session_write = True  # default: assume RW
             self._add_trace(
                 state,
                 step_index,
                 "STARTSESSION_EFFECT",
-                reads=["HostChallenge"],
-                writes=["active_sessions", "authenticated"],
-                detail=f"sid={sid}",
+                reads=["HostChallenge", "Write"],
+                writes=["active_sessions", "authenticated", "session_write"],
+                detail=f"sid={sid}, auth={state.authenticated}, write={state.session_write}",
             )
             return
 
@@ -915,6 +931,11 @@ class StatefulOpalVerifier:
         ):
             return "notauthorized"
         if method in {"set", "activate", "genkey", "write"} and not data_command and not state.authenticated:
+            return "notauthorized"
+        # Changed: RO session write blocking (spec 3.3.7.1).
+        # Why: Read-Only sessions SHALL NOT make permanent changes.
+        # Noise analysis found 81 cases where NOT_AUTHORIZED is correct but rule engine missed.
+        if method in {"set", "activate", "genkey"} and not data_command and not state.session_write:
             return "notauthorized"
         if method == "get" and _cellblock_invalid(command):
             return "invalidparameter"
