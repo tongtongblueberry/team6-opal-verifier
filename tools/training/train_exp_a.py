@@ -50,7 +50,8 @@ logger = logging.getLogger("train_exp_a")
 # ============================================================
 # 모델 관련
 BASE_MODEL = "Qwen/Qwen3.5-4B"
-MODEL_CACHE = "/dl2026/skeleton/model_cache/"  # 서버 캐시 경로 (네트워크 없이 로드)
+# Changed: 경로 수정 — cache_dir는 models--* 폴더가 있는 hub/ 디렉토리를 가리켜야 함
+MODEL_CACHE = "/workspace/cache/hf_cache/hub"
 
 # LoRA 관련
 LORA_R = 4                # Changed: 4 (기존 16) — 파라미터 수 4배 축소, 과적합 방지
@@ -64,9 +65,10 @@ LR_B = 8e-4               # Changed: lora_B 학습률 (비율 16:1)
 WEIGHT_DECAY = 0.0        # Changed: 0 (LoRA 자체가 regularization)
 
 # 학습 관련
-NUM_EPOCHS = 3            # Changed: 3 (기존 5) — 과적합 방지
-BATCH_SIZE = 4            # Changed: 4 (기존 2) — L40S 48GB에서 가능
-GRAD_ACCUM = 2            # effective batch size = 4*2 = 8
+NUM_EPOCHS = 10           # Changed: 10 — r=4+NEFTune으로 과적합 억제되므로, 전체 학습 후 최적 체크포인트 선택
+# Changed: bs=4에서 OOM 발생 (모델 39GB + 활성화 메모리 초과) → bs=1, accum=8로 변경
+BATCH_SIZE = 1            # Changed: 1 (OOM 방지, 모델이 39GB 점유)
+GRAD_ACCUM = 8            # effective batch size = 1*8 = 8 (동일 유지)
 MAX_SEQ_LEN = 2048        # 긴 trajectory도 커버
 WARMUP_RATIO = 0.1        # Changed: 10% warmup (기존 5%)
 MAX_GRAD_NORM = 1.0       # gradient clipping
@@ -77,7 +79,7 @@ NEFTUNE_NOISE_ALPHA = 5.0  # Changed: 임베딩 노이즈 강도
 # 기타
 LOGGING_STEPS = 10
 SAVE_STRATEGY = "epoch"
-SAVE_TOTAL_LIMIT = 3
+SAVE_TOTAL_LIMIT = 10     # Changed: 모든 에폭 체크포인트 보존 (최적 선택용)
 MAX_CASES_DEFAULT = 210    # 기본 학습 데이터 수
 
 # 경로
