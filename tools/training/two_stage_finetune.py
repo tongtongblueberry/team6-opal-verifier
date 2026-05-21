@@ -35,9 +35,14 @@ def main():
     stage1_adapter = os.environ.get("STAGE1_ADAPTER",
         "/workspace/team6/adapters/uncertainty_resolver/final")
     base_model = os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-4B")
-    lr = float(os.environ.get("STAGE2_LR", "1e-5"))  # Very low LR for calibration
-    epochs = int(os.environ.get("STAGE2_EPOCHS", "10"))
-    max_length = 2048  # Longer to handle real trajectories (up to 39 steps)
+    # Changed: validated via literature search (a6c2fea36 agent, 2026-05-21).
+    # Papers: "Latitude Fine-tuning Best Practices", "LoRA Learns Less and Forgets Less" (arXiv 2405.09673)
+    # LR 1e-5: within recommended 5e-6~5e-5 range for Stage 2 calibration.
+    # Epochs 3: max 2-3 per literature. 10 was catastrophic overfitting risk.
+    # Rank 4: minimal capacity for calibration. r=8 too high for 20 examples.
+    lr = float(os.environ.get("STAGE2_LR", "1e-5"))
+    epochs = int(os.environ.get("STAGE2_EPOCHS", "3"))  # Literature: max 2-3
+    max_length = 2048
 
     SEP = "=" * 60
     logger.info(SEP)
@@ -153,8 +158,10 @@ def main():
         logger.warning("No Stage 1 adapter found at %s — training from base", stage1_adapter)
 
     # Add fresh LoRA for Stage 2 (lower rank for calibration)
+    # Changed: r=4 per literature validation. r=8 too high for 20 examples.
+    # "Start with small rank, 4 or 8" — for 20 examples, use minimum.
     lora_cfg = LoraConfig(
-        task_type=TaskType.CAUSAL_LM, r=8, lora_alpha=16,
+        task_type=TaskType.CAUSAL_LM, r=4, lora_alpha=8,
         lora_dropout=0.05, target_modules=["q_proj", "v_proj", "k_proj", "o_proj"])
     model = get_peft_model(model, lora_cfg)
     model.gradient_checkpointing_enable()
