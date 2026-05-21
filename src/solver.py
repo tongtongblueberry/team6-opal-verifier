@@ -3,7 +3,16 @@
 # decision should track protocol state instead of training on the tiny public set.
 
 from __future__ import annotations
+
+# Changed: USE_RULE_ENGINE 플래그 추가 — LLM을 메인 솔버로 전환.
+# Why: 딥러닝 과제 요구사항. LLM(LoRA 4B)이 primary, rule engine은 백업.
+# True로 설정하면 기존 rule engine 기반 Solver로 복귀 (73.00 backup).
+USE_RULE_ENGINE = False
+
 import os
+import logging
+import math
+import time
 
 import json
 import re
@@ -1179,20 +1188,315 @@ TIER_THRESHOLDS = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Changed: LLM(LoRA) 기반 format 함수를 solver.py에 인라인.
+# Why: lora_solver.py의 format_trajectory_rich와 동일한 함수를 여기에도 두어,
+#      학습 시와 추론 시 동일한 포맷을 사용하도록 보장.
+#      submission 환경에서 import 경로 문제를 피하기 위함.
+# ---------------------------------------------------------------------------
+_logger = logging.getLogger(__name__)
+
+# Changed: 시스템 프롬프트 — lora_solver.py와 동일.
+# Why: 학습 시 사용한 시스템 프롬프트와 추론 시 프롬프트가 일치해야 성능이 나옴.
+_SYSTEM_PROMPT = (
+    "You are a TCG/Opal SSD protocol compliance verifier. "
+    "Given a command-response trajectory with session state, "
+    "determine if the final response is consistent with the specification. "
+    "Answer exactly: pass or fail"
+)
+
+
+def _solver_compact_json(obj, max_depth=2, cur_depth=0) -> str:
+    """lora_solver.py의 _compact_json과 동일한 함수."""
+    if cur_depth >= max_depth:
+        if isinstance(obj, dict):
+            return "{...}"
+        elif isinstance(obj, list):
+            return "[...]"
+        return str(obj)
+    if isinstance(obj, dict):
+        parts = []
+        for k, v in obj.items():
+            parts.append(f"{k}={_solver_compact_json(v, max_depth, cur_depth+1)}")
+        return "{" + ", ".join(parts) + "}"
+    elif isinstance(obj, list):
+        if len(obj) == 0:
+            return "[]"
+        if len(obj) <= 3:
+            return "[" + ", ".join(_solver_compact_json(x, max_depth, cur_depth+1) for x in obj) + "]"
+        return f"[{_solver_compact_json(obj[0], max_depth, cur_depth+1)}, ... ({len(obj)} items)]"
+    elif isinstance(obj, str) and len(obj) > 60:
+        return obj[:60] + "..."
+    return str(obj)
+
+
+def format_trajectory_rich_inline(records: list) -> str:
+    """학습/추론 공용 trajectory 포맷 함수.
+
+    Changed: lora_solver.py의 format_trajectory_rich()를 그대로 인라인.
+    Why: 학습 시 사용한 포맷과 추론 시 포맷이 100% 동일해야 성능 보장.
+    """
+    if not records:
+        return ""
+
+    lines = []
+    session_active = False
+    authenticated = False
+    current_sp = ""
+
+    for i, step in enumerate(records):
+        if not isinstance(step, dict):
+            continue
+        cmd = step.get("input", {})
+        out = step.get("output", {})
+
+        # Changed: DATA_COMMAND 처리 (method 키 없이 command 키만 있는 경우).
+        # Why: tc10/tc20 pair에서 DATA_COMMAND Read 결과로만 구분됨.
+        data_cmd = cmd.get("command", "")
+        if data_cmd and not cmd.get("method"):
+            data_args = cmd.get("args", {})
+            data_result = out.get("args", {}).get("result", "")
+            data_out_cmd = out.get("command", data_cmd)
+
+            is_final = (i == len(records) - 1)
+            prefix = "[FINAL] " if is_final else ""
+
+            line = f"{prefix}Step {i}: DATA_COMMAND {data_cmd}"
+            if data_args:
+                line += f" args={_solver_compact_json(data_args)}"
+            line += f" -> {data_out_cmd}"
+            if data_result:
+                line += f" result={data_result}"
+            lines.append(line)
+            continue
+
+        method_obj = cmd.get("method", {})
+        method_name = method_obj.get("name", "") if isinstance(method_obj, dict) else str(method_obj)
+        method_args = method_obj.get("args", {}) if isinstance(method_obj, dict) else {}
+
+        inv_obj = cmd.get("invoking_id", {})
+        inv_name = inv_obj.get("name", "") if isinstance(inv_obj, dict) else str(inv_obj)
+        inv_uid = inv_obj.get("uid", "") if isinstance(inv_obj, dict) else ""
+
+        status = out.get("status_codes", out.get("status", ""))
+        if isinstance(status, dict):
+            status = status.get("Name", status.get("name", str(status)))
+        return_values = out.get("return_values", out.get("payload", None))
+
+        method_lower = str(method_name).lower()
+        status_lower = str(status).lower()
+        if method_lower == "startsession" and "success" in status_lower:
+            session_active = True
+            if isinstance(method_args, dict):
+                req = method_args.get("required", method_args)
+                if isinstance(req, dict):
+                    spid = req.get("SPID", "")
+                    write = req.get("Write", "")
+                    if spid:
+                        current_sp = f"SPID={spid}"
+                    if write:
+                        current_sp += f",Write={write}"
+            authenticated = True
+        elif method_lower == "endsession":
+            session_active = False
+            authenticated = False
+
+        is_final = (i == len(records) - 1)
+        prefix = "[FINAL] " if is_final else ""
+
+        # Changed: required + optional args 모두 포함 (특히 HostChallenge).
+        # Why: tc4/tc14 pair에서 optional HostChallenge로만 구분됨.
+        args_str = ""
+        if method_args:
+            if isinstance(method_args, dict):
+                req = method_args.get("required", {})
+                opt = method_args.get("optional", {})
+                parts = []
+                if isinstance(req, dict) and req:
+                    parts.append(_solver_compact_json(req))
+                if isinstance(opt, dict) and opt:
+                    parts.append("opt=" + _solver_compact_json(opt))
+                if parts:
+                    args_str = ", ".join(parts)
+                elif isinstance(method_args, dict) and not req and not opt:
+                    args_str = _solver_compact_json(method_args)
+            else:
+                args_str = _solver_compact_json(method_args)
+        if len(args_str) > 300:
+            args_str = args_str[:300] + "..."
+
+        rv_str = ""
+        if return_values is not None:
+            rv_str = _solver_compact_json(return_values)
+            if len(rv_str) > 150:
+                rv_str = rv_str[:150] + "..."
+
+        line = f"{prefix}Step {i}: {method_name}"
+        if inv_name:
+            line += f" target={inv_name}"
+        if inv_uid:
+            line += f"[{inv_uid}]"
+        if args_str and args_str != "{}":
+            line += f" args={args_str}"
+        line += f" -> {status}"
+        if rv_str and rv_str != "[]" and rv_str != "{}":
+            line += f" payload={rv_str}"
+        lines.append(line)
+
+    state_line = f"SessionState: active={session_active}, auth={authenticated}"
+    if current_sp:
+        state_line += f", {current_sp}"
+
+    trajectory_text = "\n".join(lines)
+
+    prompt = (
+        "TCG/Opal SSD protocol trajectory verification.\n"
+        f"{state_line}\n\n"
+        f"{trajectory_text}\n\n"
+        "Is the final response consistent with the TCG/Opal specification? Answer: "
+    )
+    return prompt
+
+
+def _parse_records(trajectory: Any) -> list[Json]:
+    """trajectory 입력에서 records 리스트를 추출.
+
+    Changed: StatefulOpalVerifier._records()와 동일한 로직을 독립 함수로 분리.
+    Why: LLM-only Solver에서 rule engine 없이 records를 파싱해야 함.
+    """
+    if isinstance(trajectory, (str, Path)):
+        with Path(trajectory).open("r", encoding="utf-8") as handle:
+            trajectory = json.load(handle)
+    if isinstance(trajectory, dict) and "records" in trajectory:
+        trajectory = trajectory["records"]
+    if not isinstance(trajectory, list):
+        return []
+    return [item for item in trajectory if isinstance(item, dict)]
+
+
+# ---------------------------------------------------------------------------
+# Solver 클래스: USE_RULE_ENGINE 플래그에 따라 분기
+# ---------------------------------------------------------------------------
 
 class Solver:
-    # Changed: support both LoRA (logit) and LLM (generation) solvers.
-    # Why: LoRA failed 5 consecutive times on leaderboard (synthetic overfitting).
-    # LLM generation (zero-shot 9B) doesn't need training data → no distribution mismatch.
-    # Strategy: try LLM solver first (for LOW tier), fall back to LoRA, then rule engine.
+    """평가 서버가 호출하는 메인 Solver 클래스.
+
+    Changed: LLM(LoRA 4B)을 primary solver로 전환.
+    Why: 딥러닝 과제 요구사항 — LLM이 메인이어야 함.
+         rule engine은 USE_RULE_ENGINE=True일 때만 사용 (73.00 backup).
+
+    인터페이스:
+        Solver()  — 모델 로드
+        solver.predict(dataset: list) -> dict[str, str]  — 예측
+    """
+
     def __init__(self) -> None:
+        if USE_RULE_ENGINE:
+            # Changed: rule engine 모드 — 기존 73.00 로직 그대로 사용.
+            # Why: USE_RULE_ENGINE=True일 때 안전한 backup.
+            self._init_rule_engine()
+        else:
+            # Changed: LLM primary 모드 — Qwen3.5-4B + LoRA adapter 로드.
+            # Why: LoRA logit 비교 방식이 public 85% (17/20) 달성.
+            self._init_lora()
+
+    def _init_lora(self) -> None:
+        """Qwen3.5-4B + LoRA adapter 로드.
+
+        Changed: lora_solver.py의 LoRASolver._load()와 동일한 로직.
+        Why: submission 환경에서 lora_solver.py import 없이도 동작하도록 자체 구현.
+             adapter는 artifacts/ 디렉토리에서 로드.
+        """
+        self.model = None
+        self.tokenizer = None
+        self._pass_id = None
+        self._fail_id = None
+        self._available = False
+
+        # Changed: adapter 경로 탐색 — v3 > v2 > 기본 순서.
+        # Why: v3 (uncertainty resolver)가 최신 학습 결과.
+        root = Path(__file__).resolve().parents[1]
+        adapter_path = None
+        for candidate in [
+            root / "artifacts" / "lora_adapter_v3",
+            root / "artifacts" / "lora_adapter_v2",
+            root / "artifacts" / "lora_adapter",
+        ]:
+            if candidate.exists() and (candidate / "adapter_config.json").exists():
+                adapter_path = str(candidate)
+                break
+
+        if adapter_path is None:
+            _logger.warning("LoRA adapter를 찾을 수 없음 (artifacts/ 디렉토리 확인 필요)")
+            # Changed: adapter 없으면 rule engine으로 fallback.
+            # Why: 제출 시 adapter가 없을 수 있음 — 안전한 fallback 필수.
+            _logger.info("Rule engine으로 fallback")
+            self._init_rule_engine()
+            self._available = False
+            return
+
+        # Changed: base model 경로 — 평가 서버의 캐시 경로 사용.
+        # Why: 평가 환경은 네트워크 없음. /dl2026/skeleton/model_cache/에 미리 캐시됨.
+        base_model = os.environ.get("RAG_MODEL", "Qwen/Qwen3.5-4B")
+
+        try:
+            self._load_model(adapter_path, base_model)
+        except Exception as e:
+            _logger.warning("LoRA 모델 로드 실패: %s — rule engine으로 fallback", e)
+            self._init_rule_engine()
+            self._available = False
+
+    def _load_model(self, adapter_path: str, base_model: str) -> None:
+        """모델과 tokenizer 로드.
+
+        Changed: lora_solver.py::LoRASolver._load()와 동일한 로직.
+        Why: 학습 시와 동일한 모델 설정 (float16, trust_remote_code) 사용해야 함.
+        """
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from peft import PeftModel
+
+        t0 = time.time()
+        _logger.info("LoRA 모델 로드: base=%s, adapter=%s", base_model, adapter_path)
+
+        # Changed: tokenizer는 adapter_path에서 로드 (학습 시 저장된 tokenizer 사용).
+        # Why: adapter 학습 시 tokenizer 설정이 base와 다를 수 있음.
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            adapter_path, trust_remote_code=True
+        )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        # Changed: float16 + device_map="auto"로 GPU에 자동 배치.
+        # Why: L40S 48GB에서 4B 모델은 ~8GB만 사용 — 충분.
+        self.model = AutoModelForCausalLM.from_pretrained(
+            base_model,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+        self.model = PeftModel.from_pretrained(self.model, adapter_path)
+        self.model.eval()
+
+        # Changed: pass/fail 토큰 ID 캐싱.
+        # Why: 매 케이스마다 encode하는 것보다 한 번 캐싱이 효율적.
+        self._pass_id = self.tokenizer.encode("pass", add_special_tokens=False)[0]
+        self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
+        self._available = True
+
+        _logger.info("LoRA 모델 로드 완료: %.1f초", time.time() - t0)
+
+    def _init_rule_engine(self) -> None:
+        """기존 rule engine 기반 초기화 (backup용).
+
+        Changed: 기존 Solver.__init__() 로직을 별도 메서드로 분리.
+        Why: USE_RULE_ENGINE=True 또는 LLM 로드 실패 시 사용.
+        """
+        self._rule_engine_mode = True
         self.verifier = StatefulOpalVerifier()
         self.lora_solver = None
         self.llm_solver = None
 
-        # Changed: prefer LLM solver (generation) over LoRA (logit) for uncertain cases.
-        # Why: LoRA logit comparison is overconfident (p_fail=0.0 or 1.0) and never
-        # improved leaderboard. Zero-shot generation allows reasoning before decision.
         use_llm = os.environ.get("USE_LLM", "1") == "1"
         use_lora = os.environ.get("USE_LORA", "0") == "1"
 
@@ -1215,9 +1519,116 @@ class Solver:
                 self.lora_solver = None
 
     def predict(self, dataset: Any) -> dict[str, str]:
+        """dataset의 각 케이스에 대해 pass/fail 예측.
+
+        Changed: LLM primary 모드와 rule engine 모드를 분기.
+        Why: USE_RULE_ENGINE 플래그에 따라 다른 예측 경로 사용.
+
+        Args:
+            dataset: 리스트 형태 [{id, steps}, ...] 또는 [{records: [...]}, ...]
+
+        Returns:
+            {case_id: "pass" or "fail", ...}
+        """
         if not isinstance(dataset, list):
             return {}
 
+        # Changed: LLM primary 모드인지 확인.
+        # Why: _available=True이면 LLM으로 예측, 아니면 rule engine fallback.
+        if hasattr(self, '_available') and self._available:
+            return self._predict_lora(dataset)
+        else:
+            return self._predict_rule_engine(dataset)
+
+    def _predict_lora(self, dataset: list) -> dict[str, str]:
+        """LLM(LoRA) primary 예측.
+
+        Changed: 전체 예측 로직을 LoRA logit 비교 기반으로 변경.
+        Why: 학습된 LoRA 모델이 pass/fail을 직접 판단 — rule engine 불필요.
+             format_trajectory_rich로 포맷 → chat template 적용 → logit 비교.
+        """
+        import torch
+
+        predictions: dict[str, str] = {}
+
+        for index, item in enumerate(dataset):
+            if isinstance(item, dict):
+                case_id = str(item.get('id', f'case_{index}'))
+                steps = item.get('steps', item)
+            else:
+                case_id = f'case_{index}'
+                steps = item
+
+            # Changed: records 파싱 — _parse_records()로 통일.
+            # Why: rule engine의 _records()와 동일한 파싱 로직.
+            records = _parse_records(steps)
+
+            if not records:
+                # Changed: records가 비어있으면 pass로 기본값.
+                # Why: 빈 trajectory는 오류 없음 → pass.
+                _logger.warning("케이스 %s: records가 비어있음 — pass로 기본값 사용", case_id)
+                predictions[case_id] = "pass"
+                continue
+
+            # Changed: format_trajectory_rich_inline()로 trajectory 포맷.
+            # Why: 학습 시 사용한 포맷과 동일해야 모델이 올바르게 예측.
+            prompt = format_trajectory_rich_inline(records)
+
+            # Changed: chat template 적용 (system + user 메시지).
+            # Why: Qwen3.5 모델은 chat template 형식으로 학습됨.
+            messages = [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ]
+
+            try:
+                text = self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                    enable_thinking=False,
+                )
+            except TypeError:
+                # Changed: enable_thinking 미지원 tokenizer 대응.
+                # Why: 일부 tokenizer 버전에서 enable_thinking 파라미터 없음.
+                text = self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                )
+
+            # Changed: tokenize + forward pass → logit 비교.
+            # Why: generation 대신 단일 forward pass로 pass/fail logit을 비교.
+            #      ~0.5초/케이스 — 200케이스 × 0.5초 = ~100초, 3시간 제한 내 충분.
+            # Changed: max_length 1024 → 2048 (학습 시 max_length=2048 사용하므로 inference도 동일하게 맞춤)
+            inputs = self.tokenizer(
+                text, return_tensors="pt", truncation=True, max_length=2048
+            )
+            inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+
+            with torch.no_grad():
+                logits = self.model(**inputs).logits[0, -1, :]
+
+            p_logit = logits[self._pass_id].item()
+            f_logit = logits[self._fail_id].item()
+
+            # Changed: softmax로 p_fail 확률 계산 후 0.5 threshold.
+            # Why: logit 차이를 확률로 변환 — 0.5 이상이면 fail.
+            mx = max(p_logit, f_logit)
+            p_fail = math.exp(f_logit - mx) / (
+                math.exp(p_logit - mx) + math.exp(f_logit - mx)
+            )
+
+            prediction = "fail" if p_fail > 0.5 else "pass"
+            _logger.info(
+                "케이스 %s: p_fail=%.4f → %s", case_id, p_fail, prediction
+            )
+            predictions[case_id] = prediction
+
+        return predictions
+
+    def _predict_rule_engine(self, dataset: list) -> dict[str, str]:
+        """기존 rule engine 기반 예측 (backup).
+
+        Changed: 기존 Solver.predict() 로직을 그대로 보존.
+        Why: USE_RULE_ENGINE=True이거나 LLM 로드 실패 시 73.00 성능 보장.
+        """
         predictions: dict[str, str] = {}
         for index, item in enumerate(dataset):
             if isinstance(item, dict):
@@ -1233,9 +1644,8 @@ class Solver:
             rule_id = self._get_rule_id(trace)
             tier = self._get_tier(rule_id)
 
-            # Changed: only use LLM for LOW confidence cases.
-            # Why: HIGH/MEDIUM rules are reliable (rule engine 100% on public 20).
-            # LOW = UNEXPECTED_ERROR_STATUS, DEFAULT_PASS, KNOWN_FIELD_EXPECTED_SUCCESS.
+            # Changed: LOW confidence 케이스만 LLM/LoRA에 위임.
+            # Why: HIGH/MEDIUM rules는 rule engine이 100% 정확 (public 20 기준).
             if tier == "low" and (self.llm_solver or self.lora_solver):
                 rule_context = {
                     "rule_id": rule_id,
@@ -1245,11 +1655,9 @@ class Solver:
                 }
 
                 if self.llm_solver:
-                    # Zero-shot generation: let the model reason
                     llm_pred = self.llm_solver.predict(steps, rule_context=rule_context)
                     prediction = llm_pred
                 elif self.lora_solver:
-                    # LoRA logit comparison (fallback)
                     records = self.verifier._records(steps)
                     if records:
                         p_fail = self.lora_solver.predict_prob(records, rule_context=rule_context)

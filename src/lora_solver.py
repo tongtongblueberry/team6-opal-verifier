@@ -276,7 +276,8 @@ class LoRASolver:
                 messages, tokenize=False, add_generation_prompt=True,
             )
 
-        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=1024)
+        # Changed: max_length 1024 → 2048 (학습 시 max_length=2048 사용하므로 inference도 동일하게 맞춤)
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=2048)
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         with torch.no_grad():
