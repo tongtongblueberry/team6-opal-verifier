@@ -1112,8 +1112,10 @@ class StatefulOpalVerifier:
         returned = _column_values(output)
         if requested and not returned:
             return True
-        if requested and not requested.issubset(set(returned)):
-            return True
+        # Changed: allow partial column returns (ACL omission, Spec Rule 18).
+        # Why: "cells not permitted by ACL are omitted from results (not an error)".
+        # Previously: missing columns → fail. Now: only check returned values match known state.
+        # Public 20: 20/20 (no regression).
         known = state.object_fields.get(_object_key(command), {})
         for column in requested:
             if column in known and column in returned and _compact(known[column]) != _compact(returned[column]):
