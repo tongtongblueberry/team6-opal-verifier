@@ -1,14 +1,18 @@
 # Changed: new spec-grounded solver using Qwen3.5-27B-FP8 with ACE tables in prompt.
 # Why: 27B-FP8 is the strongest reasoning model that fits in 48GB L40S (~27GB).
 # Design: Markdown-KV ACE table at prompt start (avoid lost-in-the-middle),
-# CoT with explicit field references (+10-20%), extract_relevant_steps to reduce noise,
-# enable_thinking=True for Qwen3.5 thinking mode (+18% on reasoning tasks).
-# This is the PRIMARY submission candidate — LLM-only, no rule engine at inference.
+# CoT with explicit field references (+10-20%), extract_relevant_steps to reduce noise.
+# Changed: default mode switched from generation to logit comparison.
+# Why: thinking+generation = 5.1h (exceeds 3h limit), generation = 1.5h (tight),
+# logit mode = 8min (optimal). Set USE_GENERATION=1 env var to use generation fallback.
+# Changed: enable_thinking=False by default in generation fallback.
+# Why: thinking mode doubles generation time (5.1h vs 1.5h) and exceeds the 3h limit.
 
 from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -422,14 +426,20 @@ class SpecSolver:
     Architecture:
     - System prompt: ACE table (top) + protocol rules (middle) + task instructions (end)
     - User prompt: filtered trajectory + session state + CoT trigger
-    - enable_thinking=True for Qwen3.5 thinking mode (+18% reasoning accuracy)
-    - do_sample=False for deterministic output
+    - Changed: default mode is now LOGIT (single forward pass, ~8min for 200 cases).
+    - Why: generation mode = 1.5h, thinking+generation = 5.1h (exceeds 3h limit).
+    - Set USE_GENERATION=1 env var to fall back to generation mode.
+    - do_sample=False for deterministic output (generation fallback only)
     """
 
     def __init__(self, model_name: str | None = None):
         self.model = None
         self.tokenizer = None
         self.available = False
+        # Changed: cache token IDs for logit mode (pass/fail comparison).
+        # Why: avoids re-encoding "pass"/"fail" on every call.
+        self._pass_id: int | None = None
+        self._fail_id: int | None = None
 
         if model_name is None:
             model_name = os.environ.get("SPEC_MODEL", DEFAULT_MODEL)
@@ -474,9 +484,15 @@ class SpecSolver:
         self.model.eval()
         self.available = True
 
+        # Changed: cache token IDs for "pass" and "fail" for logit mode.
+        # Why: single forward pass compares logits at these two token positions
+        # instead of autoregressive generation (8min vs 1.5h for 200 cases).
+        self._pass_id = self.tokenizer.encode("pass", add_special_tokens=False)[0]
+        self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
+
         logger.info(
-            "SpecSolver loaded in %.1fs (model=%s, dtype=%s)",
-            time.time() - t0, model_name, torch_dtype,
+            "SpecSolver loaded in %.1fs (model=%s, dtype=%s, pass_id=%s, fail_id=%s)",
+            time.time() - t0, model_name, torch_dtype, self._pass_id, self._fail_id,
         )
 
     def predict(self, dataset: Any) -> dict[str, str]:
@@ -522,18 +538,13 @@ class SpecSolver:
 
         return predictions
 
-    def _predict_one(self, steps: list[Json]) -> str:
-        """Generate verdict for a single trajectory.
+    def _build_prompt(self, steps: list[Json]) -> str:
+        """Build the full chat prompt text from trajectory steps.
 
-        Changed: uses enable_thinking=True for Qwen3.5 thinking mode.
-        Why: thinking mode wraps CoT in <think> tags, improving reasoning by ~18%.
-        Falls back to non-thinking mode if the tokenizer doesn't support it.
+        Changed: extracted from _predict_one to share between logit and generation modes.
+        Why: both modes need identical prompt formatting for consistent behavior.
+        Returns the tokenizer-formatted prompt string ready for encoding.
         """
-        if not self.available or not steps:
-            return "fail"
-
-        import torch
-
         user_content = format_trajectory(steps)
 
         messages = [
@@ -541,30 +552,103 @@ class SpecSolver:
             {"role": "user", "content": user_content},
         ]
 
-        # Changed: try enable_thinking=True first, fall back to False.
-        # Why: Qwen3.5 thinking mode produces better reasoning, but older
-        # tokenizer versions may not support the parameter.
+        # Changed: always use enable_thinking=False.
+        # Why: thinking mode = 5.1h (exceeds 3h limit). Even generation mode
+        # is 1.5h without thinking. Thinking adds no benefit for logit mode.
         try:
             text = self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
-                enable_thinking=True,
+                enable_thinking=False,
             )
         except TypeError:
-            try:
-                text = self.tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                    enable_thinking=False,
-                )
-            except TypeError:
-                text = self.tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
+            text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        return text
+
+    def predict_logit(self, steps: list[Json]) -> str:
+        """Predict pass/fail via single forward pass logit comparison.
+
+        Changed: new logit mode — replaces generation as the default.
+        Why: single forward pass takes ~2.4s/case vs ~27s/case for generation.
+        200 cases: logit ~8min vs generation ~1.5h vs thinking+generation ~5.1h.
+
+        Method:
+        1. Format prompt identically to generation mode.
+        2. Single forward pass (no autoregressive decoding).
+        3. Extract logits at the last token position for "pass" and "fail" tokens.
+        4. Compute p_fail = softmax(fail_logit, pass_logit).
+        5. Return "fail" if p_fail > 0.5, else "pass".
+        """
+        if not self.available or not steps:
+            return "fail"
+
+        import torch
+
+        text = self._build_prompt(steps)
+
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=MAX_INPUT_TOKENS,
+        ).to(next(self.model.parameters()).device)
+
+        with torch.inference_mode():
+            # Changed: single forward pass instead of autoregressive generation.
+            # Why: we only need logits at the last position for "pass"/"fail" tokens.
+            logits = self.model(**inputs).logits[0, -1, :]
+
+        p_logit = logits[self._pass_id].item()
+        f_logit = logits[self._fail_id].item()
+
+        # Changed: numerically stable softmax for p_fail.
+        # Why: subtract max to prevent overflow in exp().
+        mx = max(p_logit, f_logit)
+        p_fail = math.exp(f_logit - mx) / (math.exp(p_logit - mx) + math.exp(f_logit - mx))
+
+        verdict = "fail" if p_fail > 0.5 else "pass"
+        logger.debug(
+            "SpecSolver logit mode: p_pass=%.4f p_fail=%.4f -> %s",
+            1.0 - p_fail, p_fail, verdict,
+        )
+        return verdict
+
+    def _predict_one(self, steps: list[Json]) -> str:
+        """Dispatch to logit mode (default) or generation mode (fallback).
+
+        Changed: defaults to logit mode for speed (8min vs 1.5h for 200 cases).
+        Why: evaluation has a 3-hour time limit; generation is too slow,
+        thinking+generation exceeds the limit entirely.
+        Set USE_GENERATION=1 env var to use generation mode as fallback.
+        """
+        if not self.available or not steps:
+            return "fail"
+
+        # Changed: dispatch based on USE_GENERATION env var.
+        # Why: logit mode is 10x+ faster; generation kept as opt-in fallback.
+        use_generation = os.environ.get("USE_GENERATION", "0") == "1"
+
+        if use_generation:
+            return self._predict_one_generation(steps)
+        return self.predict_logit(steps)
+
+    def _predict_one_generation(self, steps: list[Json]) -> str:
+        """Generate verdict via autoregressive decoding (FALLBACK mode).
+
+        Changed: renamed from _predict_one; now only used when USE_GENERATION=1.
+        Why: generation takes ~1.5h for 200 cases, which is tight for the 3h limit.
+        Kept intact as fallback for quality comparison and debugging.
+        Changed: enable_thinking=False by default.
+        Why: thinking mode = 5.1h, exceeds 3h limit.
+        """
+        import torch
+
+        text = self._build_prompt(steps)
 
         inputs = self.tokenizer(
             text,
@@ -588,7 +672,7 @@ class SpecSolver:
 
         verdict = parse_verdict(response)
         logger.debug(
-            "SpecSolver response (first 200 chars): %s -> verdict=%s",
+            "SpecSolver generation response (first 200 chars): %s -> verdict=%s",
             response[:200], verdict,
         )
         return verdict
