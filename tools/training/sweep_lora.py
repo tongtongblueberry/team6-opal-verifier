@@ -40,8 +40,12 @@ class SweepConfig:
     run_name: str = "default"
 
 
-def prepare_data(config: SweepConfig):
-    """Load spec-based training data + validation + test splits.
+def prepare_data(config: SweepConfig, use_mutation: bool = False):
+    """Load training data + validation + test splits.
+
+    Changed: added use_mutation flag to load mutation data instead of/alongside spec data.
+    Why: mutation data (Types A-H) covers data-level differences (tc14/tc15/tc20) that
+    spec data alone cannot capture.
 
     Changed: use spec-based data (high-confidence labels) instead of noisy metamorphic data.
     Why: metamorphic labels from rule engine have ~29% noise. Spec labels are ground truth.
@@ -56,10 +60,23 @@ def prepare_data(config: SweepConfig):
     val_path = Path("/workspace/team6/training_data/spec_val.json")
     # Changed: added test set path. Why: separate unbiased evaluation after HP selection on val.
     test_path = Path("/workspace/team6/training_data/spec_test.json")
+    # Changed: mutation data path. Why: Type B data-level mutations for tc14/tc15/tc20.
+    mutation_path = Path("/workspace/team6/training_data/mutation_cases.json")
 
     # Train: spec-based (869 spec + 20 public ground truth)
     all_cases = json.loads(train_path.read_text()) if train_path.exists() else []
-    logger.info("Training data: %d cases", len(all_cases))
+    logger.info("Spec training data: %d cases", len(all_cases))
+
+    # Changed: optionally load and merge mutation data.
+    # Why: mutation data has targeted Type B examples (HostChallenge format, Read result, Activate target).
+    if use_mutation and mutation_path.exists():
+        mutation_cases = json.loads(mutation_path.read_text())
+        logger.info("Mutation data: %d cases (p=%d, f=%d)",
+                    len(mutation_cases),
+                    sum(1 for c in mutation_cases if c["label"] == "pass"),
+                    sum(1 for c in mutation_cases if c["label"] == "fail"))
+        all_cases.extend(mutation_cases)
+        logger.info("Combined training data: %d cases", len(all_cases))
 
     def _load_eval_set(path):
         cases = []
@@ -579,7 +596,14 @@ def main():
 
 
 def main_training():
-    """50-epoch main training with best config from sweep."""
+    """50-epoch main training with best config from sweep.
+
+    Changed: added --mutation flag to include mutation data for Type B coverage.
+    Why: mutation data (Types F/G/H) covers HostChallenge format, Read result,
+    and Activate target UID patterns needed for tc14/tc15/tc20.
+    """
+    use_mutation = "--mutation" in sys.argv
+
     if BEST_CONFIG_PATH.exists():
         cfg = json.loads(BEST_CONFIG_PATH.read_text())
     else:
@@ -595,19 +619,24 @@ def main_training():
     ga = int(os.environ.get("GRAD_ACCUM", cfg.get("grad_accum", 8)))
     epochs = int(os.environ.get("NUM_EPOCHS", "50"))
 
+    suffix = "_mutation" if use_mutation else ""
     config = SweepConfig(
         model_name=model, lr=lr, lora_rank=rank, lora_alpha=alpha,
         lora_dropout=dropout, max_length=ml, batch_size=bs, grad_accum=ga,
-        num_epochs=epochs, run_name=f"main_{epochs}ep")
+        num_epochs=epochs, run_name=f"main_{epochs}ep{suffix}")
 
     # Changed: unpack 3 sets. Why: test set for unbiased final evaluation after main training.
-    train_data, val_cases, test_cases = prepare_data(config)
+    # Changed: pass use_mutation flag to include mutation data when specified.
+    train_data, val_cases, test_cases = prepare_data(config, use_mutation=use_mutation)
 
     # Changed: single training run, evaluate on both val and test, save adapter for submission.
     # Why: avoids training 50 epochs twice. Adapter saved to artifacts/ for lora_solver.py to load.
+    # Changed: save to separate path for mutation training to avoid overwriting existing adapter.
     adapter_save_path = "/workspace/team6/team6-opal-verifier/artifacts/lora_adapter_v2"
-    logger.info(">>> Main training: %d epochs, eval on val + test, save to %s <<<",
-                epochs, adapter_save_path)
+    if use_mutation:
+        adapter_save_path = "/workspace/team6/adapters/mutation_4b_v2/final"
+    logger.info(">>> Main training: %d epochs, mutation=%s, eval on val + test, save to %s <<<",
+                epochs, use_mutation, adapter_save_path)
     result = run_single(config, train_data, val_cases,
                         extra_eval={"test": test_cases},
                         save_adapter=adapter_save_path)

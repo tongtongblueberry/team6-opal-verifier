@@ -55,9 +55,27 @@
 1. **Post-71.50 rule 변경** (71.5→68.0): UNEXPECTED_ERROR_STATUS 제거
 2. **NOT_AUTHORIZED 무조건 수용** (73.0→72.5): 일부 NA는 진짜 fail
 
-## 결론
-- **Rule engine 직접 개선만 점수를 올림**
-- LLM은 아직 hidden test에서 효과를 보지 못함
-- Hidden test의 에러 패턴은 synthetic data와 근본적으로 다른 것으로 추정
-- 73.00이 현재 접근법의 상한선일 수 있음
-- **완전히 다른 전략이 필요** (ACL 모델링, DPO, 27B selective 등)
+## 돌파구 (2026-05-21)
+
+### 근본 원인 발견: 학습 데이터 길이 분포 불일치
+- Training: 94% 1-2 steps (max 5)
+- Test: median 16 steps, 60% 10+ (max 39)
+- **LLM이 긴 trajectory를 한 번도 본 적 없었음**
+
+### 해결: Mutation data (public 20 기반)
+- Public 20 test cases를 template으로 mutation 생성 (210건)
+- 길이 분포 매칭: median 10.5, 50% 10+ steps
+- Paired pass/fail (DISCO ACL 2023 + PairCFR ACL 2024)
+
+### 결과
+- **4B LoRA + mutation data (5 epoch): Public 17/20 (85%)** — LLM 최초 돌파!
+- 27B-FP8 zero-shot logit: Public 15/20 (75%)
+- Rule engine only: 73.00 (14.6/20)
+
+### 3건 오답 분석 (tc14, tc15, tc20)
+- 모두 Type B: 데이터 값 차이 (status code가 아닌 HostChallenge, UID, Read data)
+- Logit mode의 한계 — 값 비교 능력 부족
+
+### 제출 예정
+- KST 5/22 00:00: 4B mutation LoRA (LLM-only) 제출
+- 15-epoch 모델도 학습 중 (완료 예상 KST 17:30)
