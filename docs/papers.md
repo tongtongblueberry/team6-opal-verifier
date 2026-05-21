@@ -387,11 +387,163 @@ All papers surveyed across research cycles (1-21). Organized by topic.
 
 ---
 
+## M. Data Generation & Distribution Matching
+
+### 53. SynAlign: Few-shot Synthetic Data with Distribution Matching via MMD
+- **Venue**: WWW 2025
+- **arXiv**: 2502.08661
+- **Problem solved**: Reduces synthetic-to-real distribution gap using Maximum Mean Discrepancy (MMD) alignment; directly relevant to our train/public distribution mismatch (94% short vs 80% long trajectories)
+- **Applied in**: Informed public 20 upsampling strategy and distribution-aware data generation
+- **Status**: TO-EVALUATE (extends Paper 24's distribution matching with explicit MMD)
+
+### 54. Generalizing Short to Long: Context Synthesis for Length Generalization
+- **arXiv**: 2502.15592
+- **Problem solved**: Synthesizes long-context training examples from short ones; addresses our core distribution mismatch (short training trajectories vs long test trajectories)
+- **Applied in**: Not yet adopted; candidate for generating long trajectory training data from short examples
+- **Status**: TO-EVALUATE
+
+### 55. TraceLLM: LLM as Realistic Trace Generator
+- **Venue**: EMNLP 2025
+- **arXiv**: 2502.17439
+- **Problem solved**: Uses LLMs for recursive generation of realistic protocol traces; directly applicable to generating synthetic TCG Opal test traces
+- **Applied in**: Candidate for `tools/datagen/generate_spec_data.py` improvement
+- **Status**: TO-EVALUATE
+
+### 56. Dataset Decomposition: Variable Sequence Length Curriculum
+- **Venue**: NeurIPS 2024
+- **arXiv**: 2405.13226
+- **Problem solved**: Curriculum learning that orders training by sequence length; trains short-first then long, improving generalization on variable-length inputs
+- **Applied in**: Candidate for curriculum ordering in `tools/training/finetune_lora_v2.py`
+- **Status**: TO-EVALUATE
+
+### 57. Structurally-Diverse Sampling for Subset Selection
+- **Venue**: EMNLP 2021
+- **Problem solved**: Diversity-focused subset selection outperforms random sampling; ensures training data covers diverse failure modes
+- **Applied in**: Informed gap data diversity strategy (9 gap categories)
+- **Status**: PLANNED
+
+### 58. Model Collapse: Training on Synthetic Data Causes Distribution Collapse
+- **Venue**: Nature 2024
+- **Problem solved**: Warns that iterative training on model-generated data causes progressive distribution narrowing and tail loss; critical risk for our synthetic data pipeline
+- **Applied in**: Motivated inclusion of real public 20 cases in training mix (never train on pure synthetic)
+- **Status**: IMPLEMENTED (design constraint: always mix real + synthetic data)
+
+---
+
+## N. Paired/Contrastive Training
+
+### 59. PairCFR: Pairwise Counterfactual Reasoning
+- **Problem solved**: Binary CE + contrastive loss on paired counterfactual examples; trains model to distinguish pass/fail by comparing near-identical traces with different outcomes
+- **Applied in**: Candidate for paired training on our pass/fail trace pairs
+- **Status**: TO-EVALUATE
+
+### 60. DISCO: Distilling Counterfactuals with Large Language Models
+- **Problem solved**: Uses LLMs to generate minimal counterfactual edits; creates paired examples where a single change flips the label
+- **Applied in**: Candidate for generating targeted pass/fail pairs from spec rules
+- **Status**: TO-EVALUATE
+
+### 61. Curriculum Ordering for Counterfactual Pairs
+- **Venue**: NAACL 2024
+- **Problem solved**: Orders contrastive pairs by difficulty during training; easy pairs first, then hard (near-boundary) pairs
+- **Applied in**: Candidate for curriculum in paired training pipeline
+- **Status**: TO-EVALUATE
+
+---
+
+## O. Self-Consistency & Voting
+
+### 62. Self-Consistency Improves Chain of Thought Reasoning in Language Models
+- **Authors**: Wang et al.
+- **Venue**: ICLR 2023
+- **Problem solved**: Sample multiple reasoning paths and take majority vote; +17.9% on GSM8K over single-path CoT
+- **Applied in**: Candidate for multi-sample voting at inference time in `src/lora_solver.py`
+- **Status**: TO-EVALUATE
+
+### 63. Multi-Temperature Voting for LLM Classification
+- **Authors**: Wu et al.
+- **Venue**: NeurIPS 2025
+- **arXiv**: 2510.02611
+- **Problem solved**: Samples at multiple temperatures and aggregates votes; +7.3 points over single-temperature inference
+- **Applied in**: Candidate for ensemble inference strategy
+- **Status**: TO-EVALUATE
+
+### 64. 3 Votes Minimum for Binary Classification
+- **Authors**: Liu
+- **arXiv**: 2605.03379
+- **Problem solved**: Establishes theoretical and empirical minimum of 3 votes for reliable binary classification with LLMs
+- **Applied in**: Candidate for minimum vote count in inference pipeline
+- **Status**: TO-EVALUATE
+
+### 65. Binary Ensemble Accuracy via LLM Voting
+- **Authors**: Khorashadizadeh et al.
+- **arXiv**: 2412.00166
+- **Problem solved**: Binary ensemble of LLM classifiers achieves 0.975 accuracy; provides theoretical framework for voting-based binary classification
+- **Applied in**: Candidate for multi-model or multi-run ensemble strategy
+- **Status**: TO-EVALUATE
+
+---
+
+## P. Distribution Shift & Two-Stage Fine-tuning
+
+### 66. Not All LLM-Generated Data Are Equal: Importance Weighting
+- **Venue**: ICLR 2025
+- **arXiv**: 2410.21526
+- **Problem solved**: Assigns importance weights to synthetic training examples based on proximity to real distribution; reduces synthetic-real gap
+- **Applied in**: Candidate for weighting synthetic vs real training examples in `tools/training/finetune_lora_v2.py`
+- **Status**: TO-EVALUATE
+
+### 67. Surgical Fine-Tuning: Adaptation to Distribution Shifts
+- **arXiv**: 2210.11466
+- **Problem solved**: Selectively fine-tunes only specific layers (early/late) depending on the type of distribution shift; more robust than full fine-tuning
+- **Applied in**: Candidate for selective layer training in LoRA (e.g., only attention layers in later blocks)
+- **Status**: TO-EVALUATE
+
+### 68. Few-Shot Recalibration for Distribution Shift
+- **arXiv**: 2403.18286
+- **Problem solved**: Uses a few target-distribution examples to recalibrate model confidence after distribution shift
+- **Applied in**: Candidate for recalibrating LoRA confidence using public 20 cases
+- **Status**: TO-EVALUATE
+
+---
+
+## Q. Hidden State Probing
+
+### 69. Probing Hidden States for Calibrated Predictions
+- **Year**: 2025
+- **Problem solved**: Extracts predictions from hidden states instead of generation tokens; hidden state probes are better calibrated than generation-mode outputs
+- **Applied in**: Validates our switch from generation to logit comparison mode (commit `79a361b`); candidate for direct hidden state classifier
+- **Status**: IMPLEMENTED (concept validated our logit approach)
+
+### 70. BERTology View of LLM Orchestrations: Token/Layer Selective Probes
+- **arXiv**: 2601.13288
+- **Problem solved**: Identifies which tokens and layers carry the most classification-relevant information; enables targeted probing instead of using all hidden states
+- **Applied in**: Candidate for selective layer probing in `src/lora_solver.py`
+- **Status**: TO-EVALUATE
+
+---
+
+## R. TCG Opal Domain References
+
+### 71. TCG Opal SSC Test Cases v2.01
+- **Source**: Trusted Computing Group (official specification)
+- **Problem solved**: Official test oracle specification defining expected behaviors for all Opal SSC operations; ground truth for rule engine
+- **Applied in**: `src/solver.py` -- all 50+ rules derived from this specification
+- **Status**: IMPLEMENTED (core reference)
+
+### 72. TCG Storage Opal Family Test Cases v1.02 (Oct 2025)
+- **Source**: Trusted Computing Group (official specification)
+- **Problem solved**: Latest test case definitions for Opal Family; includes updated session, locking, and authority rules
+- **Applied in**: `src/solver.py` -- spec mining Cycle 13 extracted 15 new rules from this document
+- **Status**: IMPLEMENTED (core reference)
+
+---
+
 ## Summary Statistics
 
 | Status | Count |
 |--------|-------|
-| IMPLEMENTED | 25 |
-| PLANNED | 7 |
-| REJECTED | 20 |
-| **Total** | **52** |
+| IMPLEMENTED | 28 |
+| PLANNED | 10 |
+| REJECTED | 19 |
+| TO-EVALUATE | 15 |
+| **Total** | **72** |
