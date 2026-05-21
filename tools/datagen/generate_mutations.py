@@ -657,6 +657,271 @@ def mutate_return_values(cases: list[dict]) -> list[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════
+# MUTATION TYPE F: HostChallenge length/format corruption (tc14-style)
+# ═══════════════════════════════════════════════════════════════
+# Changed: tc14 has HostChallenge="aaa...a" (33 chars, invalid length) with SUCCESS.
+# The spec requires HostChallenge to be exactly 32 bytes (64 hex chars).
+# A malformed challenge that's accepted as SUCCESS is a spec violation -> fail.
+# ═══════════════════════════════════════════════════════════════
+
+
+def mutate_challenge_format(cases: list[dict]) -> list[dict]:
+    """Generate HostChallenge format/length corruption mutations.
+
+    Changed: unlike Type C which uses obviously wrong passwords, this targets
+    the *format* of the challenge (wrong length, non-hex chars) while keeping
+    SUCCESS response -> spec violation (fail).
+    Why: tc14 fails because HostChallenge="aaa...a" (33 chars) accepted as SUCCESS.
+    Model needs to learn that malformed HostChallenge + SUCCESS = fail.
+    """
+    mutations: list[dict] = []
+
+    # Changed: malformed challenge values that look like hex but have wrong length.
+    # Why: these are the exact patterns from tc14 and similar test cases.
+    MALFORMED_CHALLENGES = [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",  # 33 chars (tc14 exact)
+        "bbbbbbbbbbbbbbbbbbbbbbbb",           # 24 chars (too short)
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",  # 68 chars (too long)
+        "GGGG0000HHHH1111",                   # 16 chars, non-hex letters
+        "xyz" * 11,                            # 33 chars, non-hex
+        "0" * 32,                              # 32 chars (half-length, 16 bytes)
+        "f" * 63,                              # 63 chars (off by one)
+        "a" * 65,                              # 65 chars (off by one)
+    ]
+
+    for case in cases:
+        records = case["records"]
+        fname = case["filename"]
+        label = case["label"]
+
+        # Changed: find ALL StartSession steps with HostChallenge (not just first).
+        # Why: some trajectories have multiple auth sessions.
+        for step_idx, record in enumerate(records):
+            if _get_method_name(record) != "startsession":
+                continue
+            original_challenge = _get_host_challenge(record)
+            if original_challenge is None:
+                continue
+            original_status = _get_status(record)
+            if not _is_success(original_status):
+                continue
+
+            # Changed: for each malformed challenge, create two variants:
+            # 1. Malformed + SUCCESS -> fail (spec violation: malformed auth accepted)
+            # 2. Malformed + NOT_AUTHORIZED -> pass (correctly rejected)
+
+            for malformed in MALFORMED_CHALLENGES:
+                if malformed == original_challenge:
+                    continue
+
+                # Variant 1: malformed challenge accepted (SUCCESS) -> fail
+                # Changed: this is the FINAL step variant (keep full trajectory).
+                if step_idx == len(records) - 1:
+                    mutated = copy.deepcopy(records)
+                    _set_host_challenge(mutated[step_idx], malformed)
+                    # Keep SUCCESS status and return_values as-is
+                    _reindex_steps(mutated)
+                    mutations.append({
+                        "records": mutated,
+                        "label": "fail",
+                        "source": f"mutation:{fname}:challenge_format:accept:{malformed[:15]}",
+                        "length": len(mutated),
+                    })
+
+                # Variant 2: malformed challenge rejected (NOT_AUTHORIZED) -> pass
+                mutated_reject = copy.deepcopy(records)
+                _set_host_challenge(mutated_reject[step_idx], malformed)
+                _set_status(mutated_reject[step_idx], "NOT_AUTHORIZED")
+                _clear_return_values(mutated_reject[step_idx])
+                # Truncate after the failed StartSession
+                mutated_reject = mutated_reject[:step_idx + 1]
+                _reindex_steps(mutated_reject)
+                mutations.append({
+                    "records": mutated_reject,
+                    "label": "pass",
+                    "source": f"mutation:{fname}:challenge_format:reject:{malformed[:15]}",
+                    "length": len(mutated_reject),
+                })
+
+            # Changed: limit to first StartSession with HostChallenge to avoid explosion.
+            break
+
+    return mutations
+
+
+# ═══════════════════════════════════════════════════════════════
+# MUTATION TYPE G: DATA_COMMAND Read result corruption (tc20-style)
+# ═══════════════════════════════════════════════════════════════
+# Changed: tc20 has DATA_COMMAND Read with result="8E" instead of "Random Data".
+# After GenKey (media encryption key generation), a Read should return random
+# encrypted data, not a short deterministic value.
+# ═══════════════════════════════════════════════════════════════
+
+
+def mutate_data_read_result(cases: list[dict]) -> list[dict]:
+    """Generate DATA_COMMAND Read result corruption mutations.
+
+    Changed: for trajectories with DATA_COMMAND Read steps, corrupt the result.
+    Why: tc20 fails because Read returns "8E" instead of "Random Data" after GenKey.
+    Model needs to learn that short/deterministic Read results after encryption = fail.
+    """
+    mutations: list[dict] = []
+
+    # Changed: corrupted Read results that indicate encryption failure.
+    # Why: after GenKey, reading encrypted sectors should return random-looking data,
+    # not short deterministic values.
+    CORRUPTED_RESULTS = [
+        "8E",                    # tc20 exact value
+        "00",                    # all zeros (no encryption)
+        "FF",                    # all ones
+        "DEADBEEF",              # deterministic pattern
+        "0000000000000000",       # 16 zeros
+        "",                       # empty result
+        "AB",                     # short hex
+    ]
+
+    VALID_RESULTS = [
+        "Random Data",           # tc10 exact value
+        "Encrypted Random Data",
+        "Random Bytes",
+    ]
+
+    for case in cases:
+        records = case["records"]
+        fname = case["filename"]
+        label = case["label"]
+
+        # Changed: find DATA_COMMAND Read steps.
+        for step_idx, record in enumerate(records):
+            cmd = record.get("input", {})
+            data_cmd = cmd.get("command", "")
+            if data_cmd != "Read":
+                continue
+
+            out = record.get("output", {})
+            original_result = out.get("args", {}).get("result", "")
+
+            # Changed: only mutate the FINAL Read step (most important for verdict).
+            if step_idx != len(records) - 1:
+                continue
+
+            # Variant 1: corrupt result -> fail
+            for corrupt_result in CORRUPTED_RESULTS:
+                if corrupt_result == original_result:
+                    continue
+
+                mutated = copy.deepcopy(records)
+                mutated[step_idx]["output"]["args"]["result"] = corrupt_result
+                _reindex_steps(mutated)
+                mutations.append({
+                    "records": mutated,
+                    "label": "fail",
+                    "source": f"mutation:{fname}:read_corrupt:{corrupt_result[:15]}",
+                    "length": len(mutated),
+                })
+
+            # Variant 2: valid result -> pass (if original was fail)
+            if label == "fail":
+                for valid_result in VALID_RESULTS:
+                    if valid_result == original_result:
+                        continue
+                    mutated = copy.deepcopy(records)
+                    mutated[step_idx]["output"]["args"]["result"] = valid_result
+                    _reindex_steps(mutated)
+                    mutations.append({
+                        "records": mutated,
+                        "label": "pass",
+                        "source": f"mutation:{fname}:read_fix:{valid_result[:15]}",
+                        "length": len(mutated),
+                    })
+
+    return mutations
+
+
+# ═══════════════════════════════════════════════════════════════
+# MUTATION TYPE H: Activate target UID corruption (tc15-style)
+# ═══════════════════════════════════════════════════════════════
+# Changed: tc15 Activates SP with UID "00 00 01 05 00 00 00 04" (Admin SP)
+# instead of "00 00 02 05 00 00 00 02" (Locking SP). Wrong target + SUCCESS = fail.
+# ═══════════════════════════════════════════════════════════════
+
+
+def mutate_activate_target(cases: list[dict]) -> list[dict]:
+    """Generate Activate target UID corruption mutations.
+
+    Changed: for cases with Activate method, swap the invoking_id UID to a wrong SP.
+    Why: tc15 fails because Activate targets Admin SP (00000105) instead of Locking SP (00000205).
+    """
+    mutations: list[dict] = []
+
+    # Changed: wrong SP UIDs for Activate method.
+    WRONG_UIDS = [
+        ("00 00 01 05 00 00 00 04", "AdminSP"),    # tc15 exact
+        ("00 00 01 05 00 00 00 01", "AdminSP_1"),
+        ("00 00 02 05 00 00 00 FF", "LockingSP_FF"),  # wrong object in Locking SP
+        ("00 00 00 01 00 00 00 01", "UnknownSP"),
+    ]
+
+    for case in cases:
+        records = case["records"]
+        fname = case["filename"]
+        label = case["label"]
+
+        for step_idx, record in enumerate(records):
+            if _get_method_name(record) != "activate":
+                continue
+
+            cmd = record.get("input", {})
+            inv = cmd.get("invoking_id", {})
+            if not isinstance(inv, dict):
+                continue
+            original_uid = inv.get("uid", "")
+            original_status = _get_status(record)
+
+            if not _is_success(original_status):
+                continue
+
+            for wrong_uid, uid_name in WRONG_UIDS:
+                if wrong_uid == original_uid:
+                    continue
+
+                # Changed: wrong target + SUCCESS -> fail
+                mutated = copy.deepcopy(records)
+                mutated[step_idx]["input"]["invoking_id"]["uid"] = wrong_uid
+                mutated[step_idx]["input"]["invoking_id"]["name"] = "SP"
+                # Keep SUCCESS (spec violation: wrong target accepted)
+                _reindex_steps(mutated)
+                mutations.append({
+                    "records": mutated,
+                    "label": "fail",
+                    "source": f"mutation:{fname}:activate_target:{uid_name}",
+                    "length": len(mutated),
+                })
+
+                # Changed: wrong target + FAIL/NOT_AUTHORIZED -> pass (correctly rejected)
+                for err in ["FAIL", "NOT_AUTHORIZED"]:
+                    mutated_err = copy.deepcopy(records)
+                    mutated_err[step_idx]["input"]["invoking_id"]["uid"] = wrong_uid
+                    mutated_err[step_idx]["input"]["invoking_id"]["name"] = "SP"
+                    _set_status(mutated_err[step_idx], err)
+                    _clear_return_values(mutated_err[step_idx])
+                    # Truncate after failed Activate
+                    mutated_err = mutated_err[:step_idx + 1]
+                    _reindex_steps(mutated_err)
+                    mutations.append({
+                        "records": mutated_err,
+                        "label": "pass",
+                        "source": f"mutation:{fname}:activate_target:{uid_name}:{err}",
+                        "length": len(mutated_err),
+                    })
+
+            # Only process first Activate per case
+            break
+
+    return mutations
+
+
+# ═══════════════════════════════════════════════════════════════
 # BALANCE AND ASSEMBLE
 # ═══════════════════════════════════════════════════════════════
 
@@ -746,6 +1011,25 @@ def main():
     rv_corrupt = mutate_return_values(cases)
     print(f"  Type E (return value corruption): {len(rv_corrupt)} mutations")
     all_mutations.extend(rv_corrupt)
+
+    # Changed: new Type F-H mutations targeting specific Type B data-level failures.
+    # Why: tc14 (HostChallenge format), tc20 (Read result), tc15 (Activate target) are
+    # all Type B cases where the difference is in data content, not status codes.
+
+    # Type F: HostChallenge format corruption (tc14-style)
+    challenge_format = mutate_challenge_format(cases)
+    print(f"  Type F (challenge format): {len(challenge_format)} mutations")
+    all_mutations.extend(challenge_format)
+
+    # Type G: DATA_COMMAND Read result corruption (tc20-style)
+    read_corrupt = mutate_data_read_result(cases)
+    print(f"  Type G (read result corruption): {len(read_corrupt)} mutations")
+    all_mutations.extend(read_corrupt)
+
+    # Type H: Activate target UID corruption (tc15-style)
+    activate_target = mutate_activate_target(cases)
+    print(f"  Type H (activate target): {len(activate_target)} mutations")
+    all_mutations.extend(activate_target)
 
     # Step 3: Add original cases as-is (anchor points for contrastive learning)
     print("\nAdding original cases as anchors...")
