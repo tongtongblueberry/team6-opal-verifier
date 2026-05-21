@@ -73,6 +73,28 @@ def format_trajectory_rich(records: list) -> str:
         cmd = step.get("input", {})
         out = step.get("output", {})
 
+        # Changed: handle DATA_COMMAND Read/Write steps (no "method" key, uses "command").
+        # Why: tc10/tc20 pair differs only in DATA_COMMAND Read result ("Random Data" vs "8E").
+        # Old code rendered these as empty "Step N:  -> " because method_obj was {}.
+        data_cmd = cmd.get("command", "")
+        if data_cmd and not cmd.get("method"):
+            # This is a DATA_COMMAND (Read/Write), not a TCG method call
+            data_args = cmd.get("args", {})
+            data_result = out.get("args", {}).get("result", "")
+            data_out_cmd = out.get("command", data_cmd)
+
+            is_final = (i == len(records) - 1)
+            prefix = "[FINAL] " if is_final else ""
+
+            line = f"{prefix}Step {i}: DATA_COMMAND {data_cmd}"
+            if data_args:
+                line += f" args={_compact_json(data_args)}"
+            line += f" -> {data_out_cmd}"
+            if data_result:
+                line += f" result={data_result}"
+            lines.append(line)
+            continue
+
         # Extract method info
         method_obj = cmd.get("method", {})
         method_name = method_obj.get("name", "") if isinstance(method_obj, dict) else str(method_obj)
@@ -114,20 +136,27 @@ def format_trajectory_rich(records: list) -> str:
         is_final = (i == len(records) - 1)
         prefix = "[FINAL] " if is_final else ""
 
-        # Compact args representation
+        # Changed: include both required AND optional args (esp. HostChallenge).
+        # Why: tc4/tc14 pair differs only in optional HostChallenge.
+        # Old code only showed required args, making pairs indistinguishable.
         args_str = ""
         if method_args:
             if isinstance(method_args, dict):
                 req = method_args.get("required", {})
                 opt = method_args.get("optional", {})
+                parts = []
                 if isinstance(req, dict) and req:
-                    args_str = _compact_json(req)
-                elif isinstance(method_args, dict) and not req:
+                    parts.append(_compact_json(req))
+                if isinstance(opt, dict) and opt:
+                    parts.append("opt=" + _compact_json(opt))
+                if parts:
+                    args_str = ", ".join(parts)
+                elif isinstance(method_args, dict) and not req and not opt:
                     args_str = _compact_json(method_args)
             else:
                 args_str = _compact_json(method_args)
-        if len(args_str) > 200:
-            args_str = args_str[:200] + "..."
+        if len(args_str) > 300:
+            args_str = args_str[:300] + "..."
 
         # Compact return values
         rv_str = ""
