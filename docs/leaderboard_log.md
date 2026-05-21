@@ -29,6 +29,7 @@
 | 21 | **5/21 16:22** | 330 | llm-9b-zero-shot | 73.00 | 9B generation | Zero-shot 9B for LOW tier | Generation도 net 0 |
 | 22 | **5/21 17:46** | 331 | na-accepted | **72.50** | **NA→pass** | **NOT_AUTHORIZED 무조건 수용** | **REGRESSION! 일부 NA는 진짜 fail** |
 | 23 | **5/21 17:51** | 332 | precond-any-error | 73.00 | 에러 유연화 | Any non-SUCCESS = pass when error expected | Hidden에서 효과 없음 |
+| 24 | **5/22 09:00** | r8-llm-only-16of20 | **70.00** | **LLM-only** | **r=8+NEFTune+LoRA+, threshold=0.70** | **LLM-only hidden 70 < rule engine 73** |
 
 **NOTE**: 위 시간은 모두 KST (UTC+9). submit --list의 UTC 시간에 +9시간.
 
