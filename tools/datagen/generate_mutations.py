@@ -421,7 +421,17 @@ def mutate_truncation(cases: list[dict]) -> list[dict]:
 
 
 def _find_startsession_step(records: list[Json]) -> int | None:
-    """Find the index of the StartSession step, if any."""
+    """Find the index of a StartSession step WITH HostChallenge, if any.
+
+    Changed: search ALL StartSession steps, not just the first.
+    Why: first StartSession may be unauthenticated (no HostChallenge).
+    Later StartSessions have HostChallenge for PIN authentication.
+    """
+    for i, record in enumerate(records):
+        if _get_method_name(record) == "startsession":
+            if _get_host_challenge(record) is not None:
+                return i
+    # Fallback: return first StartSession even without challenge
     for i, record in enumerate(records):
         if _get_method_name(record) == "startsession":
             return i
