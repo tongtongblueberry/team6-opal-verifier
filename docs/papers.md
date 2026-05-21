@@ -755,6 +755,49 @@ Based on the survey above, the recommended pipeline combines ideas from Papers 7
 
 ---
 
+## T. Data-Level Inconsistency Detection
+
+Papers for detecting Type B errors: data-level inconsistencies where field values, status codes, or payload contents violate protocol constraints that cannot be captured by control-flow rules alone.
+
+### 86. LogFiT: Perplexity-Based Log Anomaly Detection
+- **Venue**: IEEE TNSM 2024
+- **Problem solved**: Anomaly detection using perplexity scores from a language model trained on normal-only log data; anomalous logs produce high perplexity. Requires only normal (pass) examples for training, no labeled failures needed
+- **Applied in**: Candidate for detecting anomalous field values in protocol traces by measuring perplexity of status/value sequences
+- **Status**: TO-EVALUATE
+
+### 87. LoRA for Log Anomaly Detection
+- **arXiv**: 2503.08045
+- **Problem solved**: Payload-aware log anomaly detection using LoRA fine-tuning; achieves 97-98% detection accuracy by attending to actual data values (not just templates). Demonstrates that LoRA adapters on small LLMs can detect data-level anomalies
+- **Applied in**: Candidate for LoRA-based payload anomaly detection on TCG Opal trace fields (UIDs, column ranges, status values)
+- **Status**: TO-EVALUATE
+
+### 88. PrefixNLI: Token-Level Factual Inconsistency Detection via NLI
+- **arXiv**: 2511.01359
+- **Problem solved**: Detects factual inconsistency at the token level using Natural Language Inference; identifies exactly which tokens in a generated response contradict the source. Applicable to detecting which specific fields in a protocol response violate the expected specification
+- **Applied in**: Candidate for pinpointing inconsistent fields in trace steps (e.g., which status code or column value contradicts the spec)
+- **Status**: TO-EVALUATE
+
+### 89. VeriCoT: Neuro-Symbolic Chain-of-Thought Validation via FOL
+- **arXiv**: 2511.04662
+- **Problem solved**: Validates Chain-of-Thought reasoning by translating steps into First-Order Logic and checking consistency; catches logical contradictions that token-level methods miss
+- **Applied in**: Candidate for translating protocol trace steps into FOL assertions and verifying consistency (e.g., "session opened" implies "session must be closed before new session")
+- **Status**: TO-EVALUATE
+
+### 90. BCO: Binary Classifier Optimization
+- **Venue**: ACL 2025
+- **Problem solved**: Drop-in binary classification loss replacement for LLMs; optimizes directly for binary decision quality rather than next-token prediction. Produces better-calibrated binary classifiers from language models
+- **Applied in**: Candidate for replacing standard CE loss in LoRA training with BCO loss for pass/fail classification
+- **Note**: Also listed as Paper 27 in Section F; cross-referenced here for Type B detection context
+- **Status**: TO-EVALUATE
+
+### 91. Verbatim Data Transcription Failures in LLMs
+- **arXiv**: 2601.03640
+- **Problem solved**: Demonstrates that LLMs systematically struggle with exact value transcription (numbers, UIDs, hex strings); error rates increase with value complexity and sequence length. Validates our observation that LLMs fail on data-level verification tasks requiring exact value matching
+- **Applied in**: Reference paper validating why generation-mode LLM approaches fail for our task (exact UID/status matching); supports the design choice of logit comparison over generation
+- **Status**: REFERENCE (validates our problem)
+
+---
+
 ## Summary Statistics
 
 | Status | Count |
@@ -762,6 +805,7 @@ Based on the survey above, the recommended pipeline combines ideas from Papers 7
 | IMPLEMENTED | 28 |
 | PLANNED | 14 |
 | REJECTED | 20 |
-| TO-EVALUATE | 18 |
+| TO-EVALUATE | 23 |
 | TO-IMPLEMENT | 2 |
-| **Total** | **85** |
+| REFERENCE | 1 |
+| **Total** | **91** |
