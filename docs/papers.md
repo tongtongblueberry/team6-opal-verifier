@@ -538,12 +538,230 @@ All papers surveyed across research cycles (1-21). Organized by topic.
 
 ---
 
+## S. Training Data Generation via Mutation / Augmentation
+
+This section surveys papers and tools for generating training data by mutating real test cases as templates. Our situation: 20 real labeled test cases (pass/fail protocol traces, 1-39 steps, JSON format), need 500-2000 training cases matching test distribution.
+
+### 73. Data Mutation for Structurally Complex Test Cases (Xu & Offutt)
+- **Authors**: Xu, W. & Offutt, J.
+- **Venue**: The Computer Journal, 2009
+- **URL**: https://dl.acm.org/doi/10.1093/comjnl/bxm043
+- **Problem solved**: Generating large numbers of test cases from a few seed test cases by applying mutation operators to input data (not to the program)
+- **Mutations applied**:
+  - Value replacement (change field values within type-valid ranges)
+  - Boundary value injection (min, max, off-by-one for numeric/string fields)
+  - Structure insertion/deletion (add/remove nodes in tree-structured data)
+  - Type perturbation (change data types, null injection)
+- **Label correctness**: Mutation operators are defined relative to the specification schema; expected outputs are derived from spec rules (spec serves as oracle)
+- **Mutations per original**: Tens to hundreds per seed, depending on operator set and input complexity
+- **Open source**: No public implementation; concept is straightforward to implement for JSON/XML data
+- **Relevance**: DIRECTLY APPLICABLE. Our JSON protocol traces are tree-structured data. Mutation operators: change status codes, swap method names, alter UID values, insert/delete steps, modify column ranges
+- **Status**: TO-IMPLEMENT (highest priority)
+
+### 74. XML Data Perturbation for Web Services Testing (Offutt & Xu)
+- **Authors**: Offutt, J. & Xu, W.
+- **Venue**: TAV-WEB Workshop, 2004; extended in Info. & Soft. Tech. 2011
+- **URL**: https://www.sciencedirect.com/science/article/abs/pii/S0020025510004846
+- **Problem solved**: Systematic perturbation of XML messages for black-box web service testing; extends data mutation with XML Schema-aware operators
+- **Mutations applied**:
+  - Data value perturbation (within-type random/boundary values from XML Schema facets)
+  - RPC message mutation (4 new operators for RPC-style messages)
+  - Interaction perturbation (modify message sequences, not just individual messages)
+  - Invalid case generation (violate schema constraints to test error handling)
+- **Label correctness**: Schema validation determines validity; spec defines expected error responses for invalid inputs
+- **Mutations per original**: ~20-50 per message depending on schema complexity
+- **Open source**: No public tool, but the operators are well-defined and implementable
+- **Relevance**: HIGH. TCG Opal messages are structured similar to XML/RPC. The "interaction perturbation" (modifying message sequences) directly maps to our step insertion/deletion/reordering mutations
+- **Status**: TO-IMPLEMENT
+
+### 75. LLM2LLM: Iterative Data Enhancement (ACL 2024)
+- **Authors**: Lee, N. et al. (SqueezeAILab, UC Berkeley)
+- **Venue**: ACL 2024 Findings
+- **arXiv**: 2403.15042
+- **URL**: https://github.com/SqueezeAILab/LLM2LLM
+- **Problem solved**: Targeted augmentation of training data by iteratively generating synthetic examples from misclassified cases
+- **Pipeline**:
+  1. Fine-tune student LLM on seed data
+  2. Evaluate on training data, extract incorrect predictions
+  3. Teacher LLM generates synthetic data based on incorrect data points
+  4. Add synthetic data back to training set, repeat
+- **Label correctness**: Teacher LLM generates labeled examples; student validates by prediction consistency
+- **Results**: +24.2% GSM8K, +32.6% CaseHOLD, +39.8% SST-2 in low-data regime (LLaMA2-7B)
+- **Open source**: YES -- https://github.com/SqueezeAILab/LLM2LLM (MIT license)
+- **Relevance**: MEDIUM-HIGH. Can adapt pipeline: fine-tune Qwen on 20 cases, find misclassified cases, use larger Qwen (27B) as teacher to generate targeted augmentations. Requires adaptation from text generation to protocol trace mutation
+- **Status**: TO-EVALUATE
+
+### 76. Polyjuice: General-Purpose Counterfactual Generation (ACL 2021)
+- **Authors**: Wu, T., Ribeiro, M.T., Heer, J., Weld, D.S.
+- **Venue**: ACL 2021
+- **arXiv**: 2101.00288
+- **URL**: https://idl.uw.edu/papers/polyjuice
+- **Problem solved**: Generates diverse counterfactual examples using control codes to guide perturbation type (negation, insertion, deletion, lexical, resemantic, quantitative, shuffle)
+- **Mutations applied**:
+  - Negation (add/remove negation)
+  - Lexical substitution (synonym/antonym replacement)
+  - Quantitative change (modify numbers/quantities)
+  - Insertion/deletion of phrases
+  - Shuffle (reorder components)
+  - Resemantic (change meaning while preserving structure)
+- **Label correctness**: Generates candidates, human labels required (~70% less effort than manual). For our case: rule engine can serve as automatic labeler
+- **Mutations per original**: ~5-10 diverse counterfactuals per input
+- **Open source**: YES -- GPT-2 fine-tuned model on HuggingFace
+- **Relevance**: MEDIUM. Control codes concept is applicable (we can define Opal-specific control codes: status_change, step_insert, step_delete, auth_change, etc.), but the model itself is for NL text, not JSON traces. Concept transferable
+- **Status**: PLANNED (concept adoption)
+
+### 77. ICDA: Iterative Counterfactual Data Augmentation (AAAI 2025)
+- **Authors**: Plyler, M. & Chi, M.
+- **Venue**: AAAI 2025
+- **arXiv**: 2502.18249
+- **URL**: https://ojs.aaai.org/index.php/AAAI/article/view/34195
+- **Problem solved**: Iterative CDA that converges to low-noise augmented datasets even with initially noisy interventions; reduces spurious correlations
+- **Pipeline**:
+  1. Generate counterfactual dataset via initial intervention (can be noisy)
+  2. Train rationale network on augmented data
+  3. Use rationale network to generate better counterfactuals
+  4. Iterate until convergence (mutual information of spurious signals decreases)
+- **Label correctness**: Iterative refinement; rationale network learns which features are causal vs spurious
+- **Relevance**: MEDIUM. The iterative refinement concept is valuable -- even noisy initial mutations can be refined. Our rule engine provides a strong oracle, making this less necessary but useful for edge cases
+- **Status**: PLANNED
+
+### 78. FuzzAug: Coverage-Guided Fuzzing for Data Augmentation (EMNLP 2025 Findings)
+- **Authors**: (Multiple)
+- **Venue**: EMNLP 2025 Findings
+- **arXiv**: 2406.08665
+- **URL**: https://arxiv.org/abs/2406.08665
+- **Problem solved**: Applies fuzzing techniques (coverage-guided input mutation) to generate diverse training data for neural test generation
+- **Mutations applied**:
+  - Code transformations on fuzz targets to create new test functions
+  - Coverage-guided selection: keep mutations that increase coverage, discard redundant ones
+- **Label correctness**: Valid program semantics preserved by construction; coverage feedback ensures diversity
+- **Relevance**: HIGH. The coverage-guided selection is key: generate many mutations, keep only those that exercise new rule engine paths. Prevents generating 1000 near-identical cases
+- **Open source**: Not confirmed
+- **Status**: TO-EVALUATE
+
+### 79. Perturbation-Based Synthetic Data for Hallucination Detection (ACL 2024 Findings)
+- **Authors**: Zhang, D., Gangal, V., Lattimer, B., Yang, Y.
+- **Venue**: ACL 2024 Findings
+- **arXiv**: 2407.05474
+- **URL**: https://aclanthology.org/2024.findings-acl.789/
+- **Problem solved**: Generates binary-labeled training data (faithful/hallucinated) by perturbation-based rewriting of system responses; T5-base fine-tuned on generated data beats SOTA zero-shot detectors
+- **Mutations applied**:
+  - Faithful rewriting (paraphrase without changing facts)
+  - Hallucination injection (modify facts to create incorrect statements)
+  - Both perturbation types applied to the SAME source, creating natural pass/fail pairs
+- **Label correctness**: Source text serves as ground truth; perturbation direction determines label (faithful=pass, hallucinated=fail)
+- **Relevance**: VERY HIGH. Directly analogous to our task: they generate pass/fail pairs from the same source by applying label-preserving vs label-flipping perturbations. We can do the same: take a passing trace, inject a spec violation (hallucination = fail), or take a failing trace, fix the violation (faithful = pass)
+- **Status**: TO-IMPLEMENT (high priority, conceptually closest to our needs)
+
+### 80. Dually Self-Improved Counterfactual Data Augmentation (ACL 2025)
+- **Authors**: Zhang, X. et al.
+- **Venue**: ACL 2025
+- **URL**: https://aclanthology.org/2025.acl-long.260/
+- **Problem solved**: Self-improved counterfactual generation using attention-based causal term identification + DPO refinement of LLM generator + balanced loss to prevent over-emphasis on augmented data
+- **Pipeline**:
+  1. Identify task-specific causal terms via attention distribution of task model
+  2. LLM generates counterfactuals by perturbing causal terms
+  3. DPO refines LLM to produce higher-quality counterfactuals
+  4. Balanced loss for retraining (prevents synthetic data domination)
+- **Label correctness**: Causal term identification ensures perturbations target label-relevant features; DPO filters low-quality generations
+- **Relevance**: MEDIUM. Balanced loss concept is directly useful (prevent synthetic data from overwhelming 20 real cases). Causal term identification maps to "which JSON fields determine pass/fail"
+- **Status**: PLANNED
+
+### 81. NeuroCounterfactuals: Beyond Minimal-Edit (EMNLP 2022 Findings)
+- **Authors**: Howard, P. & Singer, G.
+- **Venue**: EMNLP 2022 Findings
+- **arXiv**: 2210.12365
+- **URL**: https://aclanthology.org/2022.findings-emnlp.371/
+- **Problem solved**: Generates "loose counterfactuals" with larger edits than minimal-edit approaches, resulting in more linguistically diverse and natural augmented data
+- **Key finding**: Minimal edits often fail to change label meaningfully and reduce grammaticality. Larger edits produce better training data
+- **Relevance**: MEDIUM. Validates that our multi-step mutations (changing multiple fields/steps simultaneously) may be more effective than single-field mutations
+- **Status**: PLANNED (concept)
+
+### 82. iPanda: LLM Agent for Protocol Conformance Testing (2025)
+- **Authors**: (Multiple)
+- **arXiv**: 2507.00378
+- **URL**: https://arxiv.org/abs/2507.00378
+- **Problem solved**: First LLM-based framework for automated protocol conformance testing; extracts test cases from protocol specs, generates executable tests, identifies conformance issues
+- **Pipeline**:
+  1. LLM extracts functional points from protocol document
+  2. Generates standardized test cases automatically
+  3. Optional anomaly filter removes bad cases
+  4. CoT-guided executable test generation
+  5. Code-oriented RAG for implementation library usage
+- **Label correctness**: Protocol spec serves as oracle; conformance check determines pass/fail
+- **Relevance**: HIGH. Closest existing tool to our use case (protocol conformance testing with LLM). However, designed for network protocols (CoAP, RSocket), not TCG Opal. Concept of "spec -> test case extraction -> execution -> conformance check" is exactly our pipeline
+- **Status**: TO-EVALUATE (concept adoption, not direct tool reuse)
+
+### 83. AugGPT: ChatGPT-Based Text Data Augmentation (2023)
+- **Authors**: Dai, H. et al.
+- **arXiv**: 2302.13007
+- **URL**: https://github.com/yhydhx/AugGPT
+- **Problem solved**: Uses ChatGPT to rephrase training examples into semantically similar but lexically different variants for few-shot classification
+- **Pipeline**:
+  1. Fine-tune BERT on base (small) dataset
+  2. Prompt ChatGPT to rephrase each example
+  3. Fine-tune BERT on base + augmented data
+- **Label correctness**: Rephrasing preserves label (semantically equivalent)
+- **Open source**: YES -- https://github.com/yhydhx/AugGPT
+- **Relevance**: LOW-MEDIUM. Rephrasing preserves label but does not generate label-flipped examples. For our case: can generate "equivalent passing traces" (different valid method orders, different UIDs) but not new failing traces
+- **Status**: REJECTED (too simple for our needs; need label-flipping mutations, not just paraphrases)
+
+### 84. TCG Opal SSC: Test Cases Specification (Official Conformance Suite)
+- **Source**: Trusted Computing Group
+- **URL**: https://trustedcomputinggroup.org/resource/tcg-storage-opal-test-cases/
+- **Latest**: TCG Storage Opal Family Test Cases v1.02 (Oct 2025)
+- **What it is**: Official conformance test suite for Opal SSC 1.00/2.00/2.01; defines test procedures, expected behaviors, pass/fail criteria for all Opal operations
+- **Commercial tool**: ULINK TCG Storage Certification Test Suite (proprietary, hardware-focused)
+- **Relevance**: The specification itself defines mutation patterns: each test case specifies "do X, expect Y; if Z instead, fail". These test procedures are our mutation templates
+- **Status**: IMPLEMENTED (already used in solver.py rules and spec mining)
+
+### 85. Model Collapse & Synthetic Data Mixing (Nature 2024)
+- **Note**: Already listed as Paper 58, cross-referenced here
+- **Key constraint for this section**: Never train purely on mutated data. Always maintain real:synthetic ratio (e.g., 1:5 to 1:10). Paper 58 proves iterative synthetic-only training causes progressive distribution collapse
+- **Status**: IMPLEMENTED (design constraint)
+
+---
+
+## S.1 Synthesis: Recommended Mutation Pipeline for TCG Opal Traces
+
+Based on the survey above, the recommended pipeline combines ideas from Papers 73, 74, 75, 78, 79:
+
+### Mutation Operators (from Papers 73, 74, adapted for JSON protocol traces)
+1. **Status mutation**: Change status codes (SUCCESS -> NOT_AUTHORIZED, FAIL, SP_BUSY, etc.)
+2. **Value mutation**: Modify UIDs, column ranges, byte values within type-valid ranges
+3. **Step insertion**: Add valid/invalid method calls to trace
+4. **Step deletion**: Remove steps from trace (creates incomplete sessions)
+5. **Step reordering**: Swap order of operations (e.g., authenticate before StartSession)
+6. **Authority mutation**: Change authority credentials (AdminSP, Locking SP, etc.)
+7. **Session mutation**: Modify session handles, HSN/TSN values
+8. **Method mutation**: Replace method names (Get -> Set, Authenticate -> Next)
+
+### Label Oracle (from Papers 73, 79, 82)
+- Rule engine (solver.py) serves as automatic oracle for all mutations
+- Pass trace + spec-violating mutation = labeled as FAIL
+- Fail trace + spec-fixing mutation = labeled as PASS
+- Ambiguous cases (rule engine returns uncertain) = DISCARD
+
+### Quality Control (from Papers 75, 78, 80, 85)
+- Coverage-guided selection (Paper 78): Keep mutations that trigger different rule engine paths
+- Iterative focus on errors (Paper 75): Generate more mutations for cases the model gets wrong
+- Balanced mixing (Paper 80): Use balanced loss to prevent synthetic data domination
+- Anti-collapse (Paper 85): Maintain minimum 15-20% real data in training mix
+
+### Estimated Yield
+- 20 seed cases x 25-50 mutations each = 500-1000 initial cases
+- After coverage-guided filtering: ~500-800 diverse cases
+- After iterative error-focused augmentation (2-3 rounds): 1000-2000 cases
+
+---
+
 ## Summary Statistics
 
 | Status | Count |
 |--------|-------|
 | IMPLEMENTED | 28 |
-| PLANNED | 10 |
-| REJECTED | 19 |
-| TO-EVALUATE | 15 |
-| **Total** | **72** |
+| PLANNED | 14 |
+| REJECTED | 20 |
+| TO-EVALUATE | 18 |
+| TO-IMPLEMENT | 2 |
+| **Total** | **85** |

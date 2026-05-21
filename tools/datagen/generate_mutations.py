@@ -161,9 +161,10 @@ def _reindex_steps(records: list[Json]) -> list[Json]:
 
     Changed: preserves the original structure, only updates index if present.
     """
+    # Changed: index starts from 1 (not 0), matching the real test data format.
     for i, record in enumerate(records):
         if "index" in record:
-            record["index"] = i
+            record["index"] = i + 1
     return records
 
 
@@ -194,12 +195,15 @@ def mutate_status_flip(cases: list[dict]) -> list[dict]:
     """
     mutations: list[dict] = []
 
-    # Changed: build a map from case number to find pass/fail pairs.
-    # Why: we need the pass variant's return_values to restore when fixing errors.
-    by_number: dict[int, list[dict]] = {}
+    # Changed: build pair mapping. Public 20 pairs are: tc1↔tc11, tc2↔tc12, ..., tc10↔tc20.
+    # Why: need pass variant's return_values to restore when fixing fail→pass.
+    # Pairing logic: pass cases are tc1-tc10, fail cases are tc11-tc20.
+    by_number: dict[int, dict] = {}  # base_num -> {"pass": case, "fail": case}
     for case in cases:
         num = _case_number(case["filename"])
-        by_number.setdefault(num, []).append(case)
+        base = num if num <= 10 else num - 10
+        by_number.setdefault(base, {})
+        by_number[base][case["label"]] = case
 
     for case in cases:
         records = case["records"]
@@ -226,12 +230,9 @@ def mutate_status_flip(cases: list[dict]) -> list[dict]:
 
         elif label == "fail" and not _is_success(last_status):
             # Changed: fail case with error last step -> create pass variant.
-            # Find the paired pass case to get correct return_values.
-            pass_pair = None
-            for paired in by_number.get(num, []):
-                if paired["label"] == "pass" and paired["filename"] != fname:
-                    pass_pair = paired
-                    break
+            # Changed: find paired pass case using base number (tc1↔tc11 etc.)
+            base = num if num <= 10 else num - 10
+            pass_pair = by_number.get(base, {}).get("pass")
 
             # Changed: fix error to SUCCESS, restore return_values from pass pair.
             mutated = copy.deepcopy(records)
