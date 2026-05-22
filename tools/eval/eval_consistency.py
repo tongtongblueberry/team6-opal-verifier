@@ -211,8 +211,11 @@ def load_model(base_model: str, adapter_path: str):
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
 
-    logger.info("토크나이저 로드: %s", adapter_path)
-    tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+    # 수정: 토크나이저는 base model에서 로드해야 함 — LoRA adapter에는 토크나이저 파일이 없음.
+    BASE_MODEL = "Qwen/Qwen3.5-4B"
+    MODEL_CACHE = "/workspace/cache/hf_cache/hub"
+    logger.info("토크나이저 로드 (base model): %s", BASE_MODEL)
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, cache_dir=MODEL_CACHE, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 

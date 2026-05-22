@@ -1,10 +1,15 @@
-"""Experiment A: r=4 LoRA + NEFTune + LoRA+ 차등 학습률.
+"""Experiment A: r=8 LoRA + NEFTune + LoRA+ 차등 학습률.
 
 변경 사항 요약 (기존 train_wd.py 대비):
-  - r=4, alpha=8 (기존 r=16, alpha=32) — 파라미터 수 대폭 축소, 정규화 효과
+  - r=8, alpha=16 (최적 rank — 사이클 2에서 검증)
   - NEFTune noise injection (alpha=5.0) — 임베딩에 노이즈 추가로 일반화 향상
-  - LoRA+ 차등 학습률: lr_A=5e-5, lr_B=8e-4 (16:1 비율) — B 매트릭스를 더 빠르게 학습
-  - 3 epochs (기존 5) — 과적합 방지
+  - LoRA+ 차등 학습률: lr_A=2.5e-5, lr_B=4e-4 (16:1 비율) — B 매트릭스를 더 빠르게 학습
+  - dropout=0.0 (ALLoRA 2024 — 소량 데이터에서 dropout 해로움, NEFTune이 정규화 담당)
+  - label_smoothing=0.0 (3차 OOM: label_smoother의 log_softmax가 메모리 폭발 유발 → 제거)
+  - batch=1, grad_accum=16 (effective batch=16, 3차 OOM 대응: batch=2→1, accum=8→16)
+  - fail oversampling (class imbalance → pass:fail ≈ 50:50)
+  - validation 20% + early stopping (eval_loss 기준 best model 선택)
+  - --data 인자로 다양한 데이터 소스 결합 가능
   - weight_decay=0.0 (LoRA 자체가 정규화 역할)
   - cosine LR schedule + warmup 10%
   - max_seq_len=2048
@@ -23,6 +28,7 @@ import gc
 import glob
 import logging
 import argparse
+import random
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 sys.path.insert(0, "/workspace/team6/team6-opal-verifier")
@@ -54,21 +60,29 @@ BASE_MODEL = "Qwen/Qwen3.5-4B"
 MODEL_CACHE = "/workspace/cache/hf_cache/hub"
 
 # LoRA 관련
-LORA_R = 4                # Changed: 4 (기존 16) — 파라미터 수 4배 축소, 과적합 방지
-LORA_ALPHA = 8            # Changed: 8 (기존 32) — alpha = 2*r 유지
-LORA_DROPOUT = 0.1        # 드롭아웃 유지
+# Changed: LORA_R 4 → 8 (최적값 반영), LORA_ALPHA 8 → 16 (alpha = 2*r).
+# Why: 사이클 2에서 r=8이 최적 rank임이 검증됨. 더 이상 sed로 변경 불필요.
+LORA_R = 8
+LORA_ALPHA = 16
+# Changed: dropout 0.1 → 0.0.
+# Why: ALLoRA (2024) — 소량 데이터 단기 학습에서 dropout이 해로움. NEFTune이 정규화 담당.
+LORA_DROPOUT = 0.0
 TARGET_MODULES = ["q_proj", "v_proj", "k_proj", "o_proj"]
 
 # LoRA+ 차등 학습률 — B 매트릭스를 더 빠르게 학습
-LR_A = 5e-5               # Changed: lora_A 학습률
-LR_B = 8e-4               # Changed: lora_B 학습률 (비율 16:1)
+# Changed: LR 50% 감소 (effective batch size 2배 증가에 따른 보정).
+# Why: GRAD_ACCUM 8→16으로 effective batch size 2배 → linear scaling rule에 의해 lr 절반.
+LR_A = 2.5e-5
+LR_B = 4e-4
 WEIGHT_DECAY = 0.0        # Changed: 0 (LoRA 자체가 regularization)
 
 # 학습 관련
-NUM_EPOCHS = 10           # Changed: 10 — r=4+NEFTune으로 과적합 억제되므로, 전체 학습 후 최적 체크포인트 선택
+NUM_EPOCHS = 10           # Changed: 10 — r=8+NEFTune으로 과적합 억제되므로, 전체 학습 후 최적 체크포인트 선택
 # Changed: bs=4에서 OOM 발생 (모델 39GB + 활성화 메모리 초과) → bs=1, accum=8로 변경
-BATCH_SIZE = 1            # Changed: 1 (OOM 방지, 모델이 39GB 점유)
-GRAD_ACCUM = 8            # effective batch size = 1*8 = 8 (동일 유지)
+BATCH_SIZE = 1            # Changed: 2→1 (3차 OOM: batch=2에서도 label_smoother OOM 재발). Why: L40S 48GB에서 4B 모델+LoRA+grad_ckpt → batch=1이 안전 상한.
+# Changed: GRAD_ACCUM 8 → 16 (effective batch size 16).
+# Why: 더 큰 effective batch size로 gradient 안정화. LR도 50% 감소하여 보정.
+GRAD_ACCUM = 16           # Changed: 8→16 (batch=1과 함께 effective batch=16 유지). Why: batch 절반 → accum 2배로 effective batch size 보존.
 MAX_SEQ_LEN = 2048        # 긴 trajectory도 커버
 WARMUP_RATIO = 0.1        # Changed: 10% warmup (기존 5%)
 MAX_GRAD_NORM = 1.0       # gradient clipping
@@ -391,7 +405,7 @@ def evaluate_public20(model, tokenizer, max_seq_len):
 # 메인 학습 함수
 # ============================================================
 def main():
-    parser = argparse.ArgumentParser(description="Experiment A: r=4 LoRA + NEFTune + LoRA+")
+    parser = argparse.ArgumentParser(description="Experiment A: r=8 LoRA + NEFTune + LoRA+")
     parser.add_argument(
         "--max-cases",
         type=int,
@@ -408,6 +422,15 @@ def main():
         action="store_true",
         help="학습 후 평가 건너뛰기",
     )
+    # Changed: --data CLI 인자 추가.
+    # Why: mutation_cases.json 외에 다른 데이터 파일도 지정 가능 (콤마 구분).
+    #      supervised manifest 등 다양한 데이터 소스를 유연하게 결합.
+    parser.add_argument(
+        "--data",
+        type=str,
+        default=MUTATION_DATA,
+        help="학습 데이터 경로 (콤마로 구분하여 여러 파일 지정 가능)",
+    )
     args = parser.parse_args()
 
     logger.info("=" * 60)
@@ -423,9 +446,18 @@ def main():
     logger.info("Config: max_cases=%d, resume=%s", args.max_cases, args.resume)
 
     # ---- 데이터 로드 ----
-    logger.info("Loading mutation data from %s...", MUTATION_DATA)
-    data = json.load(open(MUTATION_DATA))
-    logger.info("Loaded %d total cases", len(data))
+    # Changed: --data CLI 인자로 여러 파일 로드 가능 (콤마 구분).
+    # Why: mutation_cases.json 외에 supervised manifest 등 다양한 소스를 결합.
+    data = []
+    for data_path in args.data.split(","):
+        data_path = data_path.strip()
+        if os.path.exists(data_path):
+            loaded = json.load(open(data_path))
+            logger.info("Loaded %d cases from %s", len(loaded), data_path)
+            data.extend(loaded)
+        else:
+            logger.warning("Data file not found: %s", data_path)
+    logger.info("Total loaded: %d cases", len(data))
 
     # Changed: --max-cases로 데이터 수 제한 (기본 210)
     if args.max_cases and args.max_cases < len(data):
@@ -436,6 +468,18 @@ def main():
     n_pass = sum(1 for c in data if c.get("label") == "pass")
     n_fail = sum(1 for c in data if c.get("label") == "fail")
     logger.info("Label distribution: pass=%d, fail=%d (total=%d)", n_pass, n_fail, len(data))
+
+    # Changed: fail oversampling으로 class imbalance 보정
+    # Why: pass 83% bias → 모델이 항상 pass 예측. Focal Loss 대신 oversampling이 더 간단.
+    # 근거: Ju et al. (EMNLP 2024), EACL 2024 class imbalance 연구
+    if n_fail > 0 and n_pass > n_fail:
+        fail_cases = [c for c in data if c.get("label") == "fail"]
+        oversample_factor = max(1, round(n_pass / n_fail) - 1)
+        data.extend(fail_cases * oversample_factor)
+        random.shuffle(data)
+        n_pass_new = sum(1 for c in data if c.get("label") == "pass")
+        n_fail_new = sum(1 for c in data if c.get("label") == "fail")
+        logger.info("After oversampling: pass=%d, fail=%d (factor=%d)", n_pass_new, n_fail_new, oversample_factor)
 
     # Changed: format_for_training_v2 사용 — lora_solver.py의 format_trajectory_rich와 동일한 형식
     train_data = []
@@ -467,9 +511,39 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # ---- 데이터 분할: 80% train / 20% validation (stratified) ----
+    # Changed: validation 20% + early stopping을 위한 stratified split.
+    # Why: 과적합 감지 + load_best_model_at_end로 최적 체크포인트 자동 선택.
+    pass_data = [d for d in train_data if d["messages"][-1]["content"].strip().lower() == "pass"]
+    fail_data = [d for d in train_data if d["messages"][-1]["content"].strip().lower() == "fail"]
+    random.shuffle(pass_data)
+    random.shuffle(fail_data)
+
+    val_ratio = 0.2
+    n_val_pass = max(1, int(len(pass_data) * val_ratio))
+    n_val_fail = max(1, int(len(fail_data) * val_ratio)) if fail_data else 0
+
+    val_data_raw = pass_data[:n_val_pass] + fail_data[:n_val_fail]
+    train_data_raw = pass_data[n_val_pass:] + fail_data[n_val_fail:]
+    random.shuffle(val_data_raw)
+    random.shuffle(train_data_raw)
+
+    logger.info(
+        "Split: train=%d (pass=%d, fail=%d), val=%d (pass=%d, fail=%d)",
+        len(train_data_raw),
+        len(pass_data) - n_val_pass,
+        len(fail_data) - n_val_fail if fail_data else 0,
+        len(val_data_raw),
+        n_val_pass,
+        n_val_fail,
+    )
+
     # ---- Dataset 생성 ----
-    logger.info("Tokenizing %d examples (max_seq_len=%d)...", len(train_data), MAX_SEQ_LEN)
-    dataset = MutationDataset(train_data, tokenizer, MAX_SEQ_LEN)
+    logger.info("Tokenizing train set: %d examples (max_seq_len=%d)...", len(train_data_raw), MAX_SEQ_LEN)
+    dataset = MutationDataset(train_data_raw, tokenizer, MAX_SEQ_LEN)
+
+    logger.info("Tokenizing val set: %d examples...", len(val_data_raw))
+    val_dataset = MutationDataset(val_data_raw, tokenizer, MAX_SEQ_LEN)
 
     if len(dataset) == 0:
         logger.error("Empty dataset after tokenization! Exiting.")
@@ -485,7 +559,7 @@ def main():
         cache_dir=MODEL_CACHE,
     )
 
-    # Changed: r=4, alpha=8 — 기존 r=16 대비 파라미터 4배 축소, LoRA 자체가 정규화 역할
+    # Changed: r=8, alpha=16 — 사이클 2에서 최적 rank로 검증됨
     lora_cfg = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         r=LORA_R,
@@ -511,6 +585,7 @@ def main():
         output_dir=CHECKPOINT_DIR,
         num_train_epochs=NUM_EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
+        per_device_eval_batch_size=1,          # Changed: eval batch=1 (label_smoother의 log_softmax OOM 방지)
         gradient_accumulation_steps=GRAD_ACCUM,
         learning_rate=LR_B,                    # Changed: base lr (B 매트릭스 기준)
         weight_decay=WEIGHT_DECAY,             # Changed: 0.0 (LoRA가 정규화)
@@ -519,6 +594,10 @@ def main():
         lr_scheduler_type="cosine",            # Changed: cosine schedule
         optim="adamw_torch",                   # Changed: LoraPlusTrainer가 override하므로 이 값은 무시됨
         neftune_noise_alpha=NEFTUNE_NOISE_ALPHA,  # Changed: NEFTune 임베딩 노이즈
+        # Changed: label_smoothing_factor 0.1→0.0 (3차 OOM 대응).
+        # Why: label_smoothing>0이면 Trainer가 label_smoother를 사용 → log_softmax(full vocab) 추가 메모리.
+        #       batch=1에서도 OOM 유발 가능하므로 제거. overconfidence는 NEFTune+dropout=0으로 충분.
+        label_smoothing_factor=0.0,
         logging_steps=LOGGING_STEPS,           # 10 step마다 로그
         save_strategy=SAVE_STRATEGY,           # epoch마다 체크포인트 저장
         save_total_limit=SAVE_TOTAL_LIMIT,
@@ -526,13 +605,21 @@ def main():
         gradient_checkpointing=True,
         report_to="none",
         dataloader_pin_memory=True,
+        # Changed: validation + early stopping 설정.
+        # Why: 20% validation split으로 과적합 감지. eval_loss 기준 best model 선택.
+        eval_strategy="epoch",  # Changed: evaluation_strategy → eval_strategy / Why: transformers>=4.46 renamed this parameter
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
     )
 
     # Changed: LoraPlusTrainer 사용 — A/B 매트릭스에 차등 lr 적용
+    # Changed: eval_dataset 추가 — validation set으로 과적합 감지 + early stopping.
+    # Why: load_best_model_at_end=True이므로 eval_loss 기준 최적 체크포인트 자동 복원.
     trainer = LoraPlusTrainer(
         model=model,
         args=training_args,
         train_dataset=dataset,
+        eval_dataset=val_dataset,
     )
 
     # ---- 체크포인트에서 재개 ----

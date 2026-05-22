@@ -4,15 +4,22 @@
 
 from __future__ import annotations
 
-# Changed: USE_RULE_ENGINE 플래그 추가 — LLM을 메인 솔버로 전환.
-# Why: 딥러닝 과제 요구사항. LLM(LoRA 4B)이 primary, rule engine은 백업.
-# True로 설정하면 기존 rule engine 기반 Solver로 복귀 (73.00 backup).
-USE_RULE_ENGINE = False
+# Changed: remove the rule-engine switch from the submission architecture.
+# Why: LLM-only architecture gate forbids legacy rule fallback in Solver/predict paths.
 
 import os
 import logging
 import math
 import time
+
+# Changed: threshold를 환경변수로 파라미터화.
+# Why: 하드코딩 0.5 대신 OPAL_THRESHOLD로 주입 가능 (기본 0.70). 최적 threshold는 데이터에 따라 다름.
+THRESHOLD = float(os.environ.get("OPAL_THRESHOLD", "0.70"))
+
+# Changed: self-consistency pass 수를 환경변수로 파라미터화.
+# Why: K>1이면 여러 temperature로 logit을 수집하여 p_fail 평균 → noise에 강건.
+#      K=1이면 기존 단일 forward pass와 동일 (비활성).
+SC_PASSES = int(os.environ.get("OPAL_SC_PASSES", "1"))
 
 import json
 import re
@@ -514,6 +521,9 @@ class ProtocolState:
     trace: list[Json] = field(default_factory=list)
 
 
+# LLM-only architecture gate: legacy rule code is not a fallback.
+# Changed: keep the deterministic verifier isolated from submission entry points.
+# Why: architecture/submission prediction must use the LoRA model or fail closed.
 class StatefulOpalVerifier:
     # Changed: make rule behavior explicit and conservative.
     # Why: PASS means final response is protocol-compliant, including compliant errors.
@@ -1133,9 +1143,8 @@ class StatefulOpalVerifier:
 
 
 def predict(dataset: Any) -> list[str]:
-    # Changed: keep a batch helper while avoiding any model loading.
-    # Why: some local scripts call module-level predict, while the official evaluator uses Solver.
-    verifier = StatefulOpalVerifier()
+    # Changed: route module-level prediction through the LLM-only Solver.
+    # Why: LLM-only architecture gate forbids StatefulOpalVerifier/rule fallback here.
     if isinstance(dataset, dict):
         cases = dataset.get("testcases") or dataset.get("cases") or dataset.get("data") or []
     else:
@@ -1146,47 +1155,27 @@ def predict(dataset: Any) -> list[str]:
         iterable = cases
     else:
         iterable = []
-    return [verifier.verify(case) for case in iterable]
+    if not iterable:
+        return []
+
+    predictions = Solver().predict(iterable)
+    ordered: list[str] = []
+    for index, case in enumerate(iterable):
+        case_id = str(case.get("id", f"case_{index}")) if isinstance(case, dict) else f"case_{index}"
+        if case_id not in predictions:
+            raise RuntimeError(f"LLM-only prediction missing result for {case_id}")
+        ordered.append(predictions[case_id])
+    return ordered
 
 
 def predict_one(testcase: Any) -> str:
-    # Changed: add a small helper for local scripts and smoke tests.
-    # Why: it keeps batch API behavior unchanged while making unit checks simple.
-    return StatefulOpalVerifier().verify(testcase)
-
-
-
-# Changed: tier-based LoRA integration with rule engine confidence awareness.
-# Why: previous flat thresholds (0.15/0.90) made LoRA nearly useless.
-# New approach: rule engine confidence tier determines how much to trust LoRA.
-# - HIGH confidence rules: keep rule engine (LoRA can only override with extreme confidence)
-# - LOW confidence rules: trust LoRA more (threshold 0.5 = direct LoRA decision)
-# - MEDIUM confidence rules: moderate trust (threshold 0.65/0.35)
-HIGH_CONFIDENCE_RULES = {
-    "PARSE_FINAL_COMMAND", "PROPERTIES_TARGET", "PROPERTIES_PAYLOAD",
-    "STARTSESSION_FINAL", "PRECONDITION_EXPECTED_ERROR", "KNOWN_FIELD_INVALID_VALUE",
-    "LOCKING_DATA_ACCESS", "ACTIVATE_TARGET",
-}
-LOW_CONFIDENCE_RULES = {
-    "UNEXPECTED_ERROR_STATUS", "DEFAULT_PASS", "KNOWN_FIELD_EXPECTED_SUCCESS",
-}
-
-# Changed: per-tier thresholds (tunable via env vars).
-# Why: LOW confidence rules should defer to LLM at ~0.5, HIGH should almost never override.
-TIER_THRESHOLDS = {
-    "high": {
-        "rescue": float(os.environ.get("HIGH_RESCUE", "0.05")),   # very strict
-        "detect": float(os.environ.get("HIGH_DETECT", "0.95")),   # very strict
-    },
-    "medium": {
-        "rescue": float(os.environ.get("MED_RESCUE", "0.30")),
-        "detect": float(os.environ.get("MED_DETECT", "0.70")),
-    },
-    "low": {
-        "rescue": float(os.environ.get("LOW_RESCUE", "0.45")),    # nearly trust LLM
-        "detect": float(os.environ.get("LOW_DETECT", "0.55")),    # nearly trust LLM
-    },
-}
+    # Changed: route single-case prediction through the LLM-only Solver.
+    # Why: module helpers must match the submission architecture and fail closed.
+    case_id = str(testcase.get("id", "case_0")) if isinstance(testcase, dict) else "case_0"
+    predictions = Solver().predict([testcase])
+    if case_id not in predictions:
+        raise RuntimeError(f"LLM-only prediction missing result for {case_id}")
+    return predictions[case_id]
 
 # ---------------------------------------------------------------------------
 # Changed: LLM(LoRA) 기반 format 함수를 solver.py에 인라인.
@@ -1375,15 +1364,14 @@ def _parse_records(trajectory: Any) -> list[Json]:
 
 
 # ---------------------------------------------------------------------------
-# Solver 클래스: USE_RULE_ENGINE 플래그에 따라 분기
+# Solver 클래스: LLM-only 제출 진입점
 # ---------------------------------------------------------------------------
 
 class Solver:
     """평가 서버가 호출하는 메인 Solver 클래스.
 
-    Changed: LLM(LoRA 4B)을 primary solver로 전환.
-    Why: 딥러닝 과제 요구사항 — LLM이 메인이어야 함.
-         rule engine은 USE_RULE_ENGINE=True일 때만 사용 (73.00 backup).
+    Changed: make LoRA the only submission prediction path.
+    Why: architecture must fail closed instead of falling back to legacy rule code.
 
     인터페이스:
         Solver()  — 모델 로드
@@ -1391,14 +1379,9 @@ class Solver:
     """
 
     def __init__(self) -> None:
-        if USE_RULE_ENGINE:
-            # Changed: rule engine 모드 — 기존 73.00 로직 그대로 사용.
-            # Why: USE_RULE_ENGINE=True일 때 안전한 backup.
-            self._init_rule_engine()
-        else:
-            # Changed: LLM primary 모드 — Qwen3.5-4B + LoRA adapter 로드.
-            # Why: LoRA logit 비교 방식이 public 85% (17/20) 달성.
-            self._init_lora()
+        # Changed: initialize only the LoRA model path.
+        # Why: LLM-only architecture gate: legacy rule code is not a fallback.
+        self._init_lora()
 
     def _init_lora(self) -> None:
         """Qwen3.5-4B + LoRA adapter 로드.
@@ -1411,29 +1394,68 @@ class Solver:
         self.tokenizer = None
         self._pass_id = None
         self._fail_id = None
+        self._adapter_path = None
         self._available = False
 
-        # Changed: adapter 경로 탐색 — v3 > v2 > 기본 순서.
-        # Why: v3 (uncertainty resolver)가 최신 학습 결과.
         root = Path(__file__).resolve().parents[1]
         adapter_path = None
-        for candidate in [
-            root / "artifacts" / "lora_adapter_v3",
-            root / "artifacts" / "lora_adapter_v2",
-            root / "artifacts" / "lora_adapter",
-        ]:
+
+        # Changed: adapter 경로 탐색 우선순위에 env override와 DCV2 final adapter를 추가.
+        # Why: leaderboard 제출은 repo-local artifacts/lora_adapter_dcv2_final 로 패키징 가능해야 하며,
+        #      OPAL_LORA_ADAPTER가 있으면 운영자가 지정한 adapter만 사용하고 실패 시 fail-closed 해야 함.
+        env_adapter = os.environ.get("OPAL_LORA_ADAPTER")
+        if env_adapter:
+            env_path = Path(os.path.expandvars(env_adapter)).expanduser()
+            if not env_path.is_absolute():
+                env_path = root / env_path
+            candidate_specs = [(env_path, "OPAL_LORA_ADAPTER")]
+        else:
+            candidate_specs = [
+                (
+                    root / "artifacts" / "lora_adapter_dcv2_final",
+                    "repo-local final adapter for submission packaging",
+                ),
+                (
+                    Path(
+                        "/workspace/team6/ops/runs/20260522_164328_KST/adapters/"
+                        "dcv2_lora_qwen4b_lr1e3_bs2_ga4_ep5/final"
+                    ),
+                    "server absolute final adapter for operational verification only",
+                ),
+                (root / "artifacts" / "lora_adapter_v3", "repo-local legacy v3 adapter"),
+                (root / "artifacts" / "lora_adapter_v2", "repo-local legacy v2 adapter"),
+                (root / "artifacts" / "lora_adapter", "repo-local legacy adapter"),
+            ]
+
+        adapter_source = ""
+        for candidate, source in candidate_specs:
             if candidate.exists() and (candidate / "adapter_config.json").exists():
                 adapter_path = str(candidate)
+                adapter_source = source
                 break
 
         if adapter_path is None:
-            _logger.warning("LoRA adapter를 찾을 수 없음 (artifacts/ 디렉토리 확인 필요)")
-            # Changed: adapter 없으면 rule engine으로 fallback.
-            # Why: 제출 시 adapter가 없을 수 있음 — 안전한 fallback 필수.
-            _logger.info("Rule engine으로 fallback")
-            self._init_rule_engine()
             self._available = False
-            return
+            # Changed: fail closed when the LoRA adapter is absent.
+            # Why: LLM-only architecture gate forbids rule-engine fallback.
+            if env_adapter:
+                raise RuntimeError(
+                    "LLM-only architecture gate: OPAL_LORA_ADAPTER does not point "
+                    "to a valid LoRA adapter"
+                )
+            raise RuntimeError(
+                "LLM-only architecture gate: LoRA adapter not found; package "
+                "artifacts/lora_adapter_dcv2_final or set OPAL_LORA_ADAPTER"
+            )
+
+        self._adapter_path = adapter_path
+        _logger.info(
+            "LoRA adapter selected: %s (%s). Submission packaging should include "
+            "repo-local artifacts/lora_adapter_dcv2_final; the /workspace/team6 "
+            "absolute candidate is for operational verification only.",
+            adapter_path,
+            adapter_source,
+        )
 
         # Changed: base model 경로 — 평가 서버의 캐시 경로 사용.
         # Why: 평가 환경은 네트워크 없음. /dl2026/skeleton/model_cache/에 미리 캐시됨.
@@ -1442,9 +1464,10 @@ class Solver:
         try:
             self._load_model(adapter_path, base_model)
         except Exception as e:
-            _logger.warning("LoRA 모델 로드 실패: %s — rule engine으로 fallback", e)
-            self._init_rule_engine()
             self._available = False
+            # Changed: fail closed on model/tokenizer/adapter load failures.
+            # Why: a broken LLM path must not be silently replaced by rule code.
+            raise RuntimeError("LLM-only architecture gate: LoRA model load failed") from e
 
     def _load_model(self, adapter_path: str, base_model: str) -> None:
         """모델과 tokenizer 로드.
@@ -1486,43 +1509,11 @@ class Solver:
 
         _logger.info("LoRA 모델 로드 완료: %.1f초", time.time() - t0)
 
-    def _init_rule_engine(self) -> None:
-        """기존 rule engine 기반 초기화 (backup용).
-
-        Changed: 기존 Solver.__init__() 로직을 별도 메서드로 분리.
-        Why: USE_RULE_ENGINE=True 또는 LLM 로드 실패 시 사용.
-        """
-        self._rule_engine_mode = True
-        self.verifier = StatefulOpalVerifier()
-        self.lora_solver = None
-        self.llm_solver = None
-
-        use_llm = os.environ.get("USE_LLM", "1") == "1"
-        use_lora = os.environ.get("USE_LORA", "0") == "1"
-
-        if use_llm:
-            try:
-                from src.llm_solver import LLMSolver
-                self.llm_solver = LLMSolver()
-                if not self.llm_solver.available:
-                    self.llm_solver = None
-            except Exception:
-                self.llm_solver = None
-
-        if use_lora and self.llm_solver is None:
-            try:
-                from src.lora_solver import LoRASolver
-                self.lora_solver = LoRASolver()
-                if not self.lora_solver.available:
-                    self.lora_solver = None
-            except Exception:
-                self.lora_solver = None
-
     def predict(self, dataset: Any) -> dict[str, str]:
         """dataset의 각 케이스에 대해 pass/fail 예측.
 
-        Changed: LLM primary 모드와 rule engine 모드를 분기.
-        Why: USE_RULE_ENGINE 플래그에 따라 다른 예측 경로 사용.
+        Changed: use only the loaded LoRA model for prediction.
+        Why: LLM-only architecture gate: legacy rule code is not a fallback.
 
         Args:
             dataset: 리스트 형태 [{id, steps}, ...] 또는 [{records: [...]}, ...]
@@ -1533,12 +1524,17 @@ class Solver:
         if not isinstance(dataset, list):
             return {}
 
-        # Changed: LLM primary 모드인지 확인.
-        # Why: _available=True이면 LLM으로 예측, 아니면 rule engine fallback.
-        if hasattr(self, '_available') and self._available:
-            return self._predict_lora(dataset)
-        else:
-            return self._predict_rule_engine(dataset)
+        # Changed: fail closed if model initialization did not complete.
+        # Why: deterministic/rule fallback is forbidden on the submission path.
+        if (
+            not getattr(self, "_available", False)
+            or self.model is None
+            or self.tokenizer is None
+            or self._pass_id is None
+            or self._fail_id is None
+        ):
+            raise RuntimeError("LLM-only architecture gate: LoRA model unavailable")
+        return self._predict_lora(dataset)
 
     def _predict_lora(self, dataset: list) -> dict[str, str]:
         """LLM(LoRA) primary 예측.
@@ -1546,8 +1542,17 @@ class Solver:
         Changed: 전체 예측 로직을 LoRA logit 비교 기반으로 변경.
         Why: 학습된 LoRA 모델이 pass/fail을 직접 판단 — rule engine 불필요.
              format_trajectory_rich로 포맷 → chat template 적용 → logit 비교.
+
+        Changed: threshold 파라미터화 + self-consistency 통합.
+        Why: OPAL_THRESHOLD 환경변수로 threshold 주입 (기본 0.70).
+             OPAL_SC_PASSES>1이면 여러 temperature로 logit 수집 → p_fail 평균.
         """
         import torch
+
+        # Changed: self-consistency용 temperature 목록.
+        # Why: K=5일 때 다양한 temperature에서 logit → softmax → p_fail 평균.
+        #      eval_consistency.py의 구현을 참고하되, solver 내 인라인으로 통합.
+        SC_TEMPERATURES = [0.7, 0.8, 1.0, 1.2, 1.5]
 
         predictions: dict[str, str] = {}
 
@@ -1564,11 +1569,9 @@ class Solver:
             records = _parse_records(steps)
 
             if not records:
-                # Changed: records가 비어있으면 pass로 기본값.
-                # Why: 빈 trajectory는 오류 없음 → pass.
-                _logger.warning("케이스 %s: records가 비어있음 — pass로 기본값 사용", case_id)
-                predictions[case_id] = "pass"
-                continue
+                # Changed: fail closed instead of returning a deterministic default.
+                # Why: empty/unparseable inputs must not bypass the LLM-only gate.
+                raise RuntimeError(f"LLM-only architecture gate: no records for {case_id}")
 
             # Changed: format_trajectory_rich_inline()로 trajectory 포맷.
             # Why: 학습 시 사용한 포맷과 동일해야 모델이 올바르게 예측.
@@ -1608,78 +1611,50 @@ class Solver:
             p_logit = logits[self._pass_id].item()
             f_logit = logits[self._fail_id].item()
 
-            # Changed: softmax로 p_fail 확률 계산 후 0.5 threshold.
-            # Why: logit 차이를 확률로 변환 — 0.5 이상이면 fail.
-            mx = max(p_logit, f_logit)
-            p_fail = math.exp(f_logit - mx) / (
-                math.exp(p_logit - mx) + math.exp(f_logit - mx)
-            )
-
-            prediction = "fail" if p_fail > 0.5 else "pass"
-            _logger.info(
-                "케이스 %s: p_fail=%.4f → %s", case_id, p_fail, prediction
-            )
-            predictions[case_id] = prediction
-
-        return predictions
-
-    def _predict_rule_engine(self, dataset: list) -> dict[str, str]:
-        """기존 rule engine 기반 예측 (backup).
-
-        Changed: 기존 Solver.predict() 로직을 그대로 보존.
-        Why: USE_RULE_ENGINE=True이거나 LLM 로드 실패 시 73.00 성능 보장.
-        """
-        predictions: dict[str, str] = {}
-        for index, item in enumerate(dataset):
-            if isinstance(item, dict):
-                case_id = str(item.get('id', f'case_{index}'))
-                steps = item.get('steps', item)
+            # Changed: self-consistency 적용 (SC_PASSES > 1일 때).
+            # Why: eval_consistency.py 참고 — 여러 temperature에서 logit/T → softmax → p_fail 수집 → 평균.
+            #      temperature scaling은 logit 후처리만으로 구현 (모델 재로딩 불필요, 추가 forward pass도 불필요).
+            #      단일 forward pass의 raw logit을 temperature로 나누어 다양한 확률 분포를 생성.
+            if SC_PASSES > 1:
+                temps = SC_TEMPERATURES[:SC_PASSES]
+                p_fail_list = []
+                for T in temps:
+                    scaled_p = p_logit / T
+                    scaled_f = f_logit / T
+                    mx = max(scaled_p, scaled_f)
+                    pf = math.exp(scaled_f - mx) / (
+                        math.exp(scaled_p - mx) + math.exp(scaled_f - mx)
+                    )
+                    p_fail_list.append(pf)
+                p_fail = sum(p_fail_list) / len(p_fail_list)
+                _logger.info(
+                    "케이스 %s: SC K=%d p_fails=%s -> avg_p_fail=%.4f",
+                    case_id,
+                    len(temps),
+                    [f"{pf:.4f}" for pf in p_fail_list],
+                    p_fail,
+                )
             else:
-                case_id = f'case_{index}'
-                steps = item
+                # Changed: 단일 pass — p_fail을 softmax로 계산 후 THRESHOLD와 비교.
+                # Why: 기존 f_logit > p_logit (즉 threshold=0.5) 대신 파라미터화된 THRESHOLD 사용.
+                mx = max(p_logit, f_logit)
+                p_fail = math.exp(f_logit - mx) / (
+                    math.exp(p_logit - mx) + math.exp(f_logit - mx)
+                )
 
-            result = self.verifier.verify_with_trace(steps)
-            prediction = result['prediction']
-            trace = result.get('trace', [])
-            rule_id = self._get_rule_id(trace)
-            tier = self._get_tier(rule_id)
-
-            # Changed: LOW confidence 케이스만 LLM/LoRA에 위임.
-            # Why: HIGH/MEDIUM rules는 rule engine이 100% 정확 (public 20 기준).
-            if tier == "low" and (self.llm_solver or self.lora_solver):
-                rule_context = {
-                    "rule_id": rule_id,
-                    "prediction": prediction,
-                    "tier": tier,
-                    "detail": trace[-1].get("detail", "") if trace else "",
-                }
-
-                if self.llm_solver:
-                    llm_pred = self.llm_solver.predict(steps, rule_context=rule_context)
-                    prediction = llm_pred
-                elif self.lora_solver:
-                    records = self.verifier._records(steps)
-                    if records:
-                        p_fail = self.lora_solver.predict_prob(records, rule_context=rule_context)
-                        thresholds = TIER_THRESHOLDS[tier]
-                        if prediction == 'fail' and p_fail < thresholds["rescue"]:
-                            prediction = 'pass'
-                        elif prediction == 'pass' and p_fail > thresholds["detect"]:
-                            prediction = 'fail'
-
+            # Changed: prediction을 p_fail > THRESHOLD로 결정.
+            # Why: 기존 f_logit > p_logit (threshold=0.5 equivalent) 대신
+            #      환경변수 OPAL_THRESHOLD로 주입 가능한 threshold 사용 (기본 0.70).
+            prediction = "fail" if p_fail > THRESHOLD else "pass"
+            _logger.info(
+                "케이스 %s: pass_logit=%.4f fail_logit=%.4f p_fail=%.4f threshold=%.2f -> %s",
+                case_id,
+                p_logit,
+                f_logit,
+                p_fail,
+                THRESHOLD,
+                prediction,
+            )
             predictions[case_id] = prediction
+
         return predictions
-
-    @staticmethod
-    def _get_rule_id(trace: list[Json]) -> str:
-        if not trace:
-            return "UNKNOWN"
-        return trace[-1].get('rule_id', 'UNKNOWN')
-
-    @staticmethod
-    def _get_tier(rule_id: str) -> str:
-        if rule_id in HIGH_CONFIDENCE_RULES:
-            return "high"
-        elif rule_id in LOW_CONFIDENCE_RULES:
-            return "low"
-        return "medium"

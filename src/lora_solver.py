@@ -321,4 +321,4 @@ class LoRASolver:
     def predict(self, records: list[Json], trace: list[Json] | None = None) -> str:
         """Predict pass/fail (binary)."""
         p_fail = self.predict_prob(records)
-        return "fail" if p_fail > 0.5 else "pass"
+        return "fail" if p_fail > 0.70 else "pass"  # Changed: threshold 0.5→0.70 (solver.py와 일치). Why: eval_checkpoints.py sweep에서 0.70이 최적 확인.

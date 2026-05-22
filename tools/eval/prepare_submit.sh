@@ -276,28 +276,51 @@ else
 fi
 echo ""
 
-# --- 6c: solver.py의 USE_RULE_ENGINE 플래그 확인 ---
-echo "  [6c] solver.py USE_RULE_ENGINE 확인..."
-USE_RULE_FLAG=$(grep -n "^USE_RULE_ENGINE" "$SUBMIT_DIR/src/solver.py" 2>/dev/null || echo "NOT_FOUND")
+# --- 6c: solver.py의 LLM-only 구조 확인 ---
+echo "  [6c] solver.py LLM-only 구조 확인..."
+# Changed: USE_RULE_ENGINE 플래그 존재 여부 검증을 LLM-only 금지 패턴/필수 API 검증으로 교체.
+# Why: 현재 LLM-only solver에서는 USE_RULE_ENGINE 부재가 정상이며 rule-engine 경로가 있으면 제출 구조 오류임.
+SOLVER_FILE="$SUBMIT_DIR/src/solver.py"
 
-if echo "$USE_RULE_FLAG" | grep -q "False"; then
-    echo "    OK: USE_RULE_ENGINE = False (LLM-only 모드)"
-elif echo "$USE_RULE_FLAG" | grep -q "True"; then
-    echo "    WARNING: USE_RULE_ENGINE = True (rule engine 모드)"
-    echo "    LLM-only 제출이라면 False로 변경 필요!"
-    echo ""
-    read -r -p "    USE_RULE_ENGINE을 False로 변경하시겠습니까? [y/N] " response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        # Changed: sed로 USE_RULE_ENGINE 플래그를 False로 변경.
-        # Why: LLM-only 제출에서는 반드시 False여야 함.
-        sed -i 's/^USE_RULE_ENGINE = True/USE_RULE_ENGINE = False/' "$SUBMIT_DIR/src/solver.py"
-        echo "    변경 완료: USE_RULE_ENGINE = False"
-    else
-        echo "    유지: USE_RULE_ENGINE = True"
-    fi
+if grep -Fq "_init_rule_engine(" "$SOLVER_FILE"; then
+    echo "    FAIL: _init_rule_engine( 호출 또는 정의 발견"
+    ERRORS=$((ERRORS + 1))
 else
-    echo "    WARNING: USE_RULE_ENGINE 플래그를 찾을 수 없음"
-    echo "    $USE_RULE_FLAG"
+    echo "    OK: _init_rule_engine( 없음"
+fi
+
+if grep -Fq "USE_RULE_ENGINE" "$SOLVER_FILE"; then
+    echo "    FAIL: USE_RULE_ENGINE 발견 (LLM-only 구조에서는 없어야 함)"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "    OK: USE_RULE_ENGINE 없음 (LLM-only 정상)"
+fi
+
+if grep -Fq "StatefulOpalVerifier(" "$SOLVER_FILE"; then
+    echo "    FAIL: StatefulOpalVerifier( 생성 호출 발견"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "    OK: StatefulOpalVerifier( 생성 호출 없음"
+fi
+
+if grep -Eq "Rule engine으로 fallback|rule engine으로 fallback" "$SOLVER_FILE"; then
+    echo "    FAIL: rule engine fallback 문자열 발견"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "    OK: rule engine fallback 문자열 없음"
+fi
+
+if grep -Eq "^[[:space:]]*class[[:space:]]+Solver\b" "$SOLVER_FILE"; then
+    echo "    OK: class Solver 존재"
+else
+    echo "    FAIL: class Solver를 찾을 수 없음"
+    ERRORS=$((ERRORS + 1))
+fi
+
+if grep -Eq "^[[:space:]]*def[[:space:]]+predict[[:space:]]*\(" "$SOLVER_FILE"; then
+    echo "    OK: def predict 존재"
+else
+    echo "    FAIL: def predict를 찾을 수 없음"
     ERRORS=$((ERRORS + 1))
 fi
 echo ""
@@ -320,14 +343,13 @@ echo ""
 
 # --- 6e: 절대 경로 검사 (평가 환경에서 작동하지 않을 수 있는 경로) ---
 echo "  [6e] 절대 경로 검사..."
-# Changed: /workspace/ 경로가 solver.py에 하드코딩되어 있으면 경고.
-# Why: 평가 서버의 작업 디렉토리는 /workspace/가 아닐 수 있음.
-#      solver.py는 상대 경로 (Path(__file__).parents[1]) 사용해야 함.
+# Changed: /workspace/ 문자열은 운영 후보/로그 경로일 수 있으므로 warning-only로 유지.
+# Why: solver.py는 repo-local adapter를 우선 사용하며, 서버 후보 경로 문자열만으로 제출 실패 처리하면 안 됨.
 ABS_PATHS=$(grep -n "/workspace/" "$SUBMIT_DIR/src/solver.py" 2>/dev/null | grep -v "^#" | grep -v "# " || true)
 if [ -n "$ABS_PATHS" ]; then
     echo "    WARNING: solver.py에 /workspace/ 절대 경로 발견:"
     echo "$ABS_PATHS" | head -5 | sed 's/^/      /'
-    echo "    평가 환경에서 작동하지 않을 수 있습니다."
+    echo "    repo-local adapter가 우선 사용되면 운영 후보/로그 문자열은 경고로만 처리합니다."
 else
     echo "    OK: solver.py에 절대 경로 없음"
 fi
@@ -336,6 +358,7 @@ ABS_PATHS_LORA=$(grep -n "/workspace/" "$SUBMIT_DIR/src/lora_solver.py" 2>/dev/n
 if [ -n "$ABS_PATHS_LORA" ]; then
     echo "    WARNING: lora_solver.py에 /workspace/ 절대 경로 발견:"
     echo "$ABS_PATHS_LORA" | head -5 | sed 's/^/      /'
+    echo "    repo-local adapter가 우선 사용되면 운영 후보/로그 문자열은 경고로만 처리합니다."
 fi
 echo ""
 
