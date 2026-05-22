@@ -11,3 +11,9 @@ reports/
 rule_proposals/
 synthetic_cases/
 artifacts/spec_index.jsonl
+# Changed: ignore Cycle 7 generated audit, manifest, and sync outputs.
+# Why: these are local run artifacts and should not be versioned.
+artifacts/data_audit/
+artifacts/manifests/
+artifacts/server_sync/
+data_audit_outputs/

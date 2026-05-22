@@ -1,0 +1,117 @@
+{
+  "_note": "Changed: add a Cycle 7 training manifest skeleton. Why: future training runs can converge on one explicit manifest without changing training scripts; this file is not executable until null values are resolved.",
+  "schema_version": "cycle7.skeleton.v1",
+  "dataset": {
+    "_note": "Changed: reserve dataset inputs and split metadata. Why: training data selection should be explicit and auditable.",
+    "train_manifest_path": null,
+    "validation_manifest_path": null,
+    "test_manifest_path": null,
+    "input_root": null,
+    "output_root": null,
+    "splits": {
+      "train": [],
+      "validation": [],
+      "test": []
+    },
+    "label_source": null,
+    "shuffle": false,
+    "seed": 0,
+    "max_examples": null
+  },
+  "prompt_schema": {
+    "_note": "Changed: reserve prompt rendering schema fields. Why: prompt construction should be separable from model and optimizer settings.",
+    "template_id": null,
+    "template_path": null,
+    "system_prompt_path": null,
+    "input_fields": [],
+    "target_fields": [],
+    "metadata_fields": [],
+    "render_options": {
+      "trim_whitespace": false,
+      "include_schema_name": false
+    }
+  },
+  "model": {
+    "_note": "Changed: reserve base model identity and loading settings. Why: model choice should be explicit before any run consumes this manifest.",
+    "provider": null,
+    "base_model": null,
+    "revision": null,
+    "tokenizer": null,
+    "context_length": null,
+    "dtype": null,
+    "load_in_4bit": false,
+    "trust_remote_code": false
+  },
+  "adapter": {
+    "_note": "Changed: reserve adapter training settings. Why: adapter configuration should be declared independently from the base model.",
+    "enabled": false,
+    "type": null,
+    "rank": null,
+    "alpha": null,
+    "dropout": null,
+    "target_modules": [],
+    "modules_to_save": []
+  },
+  "optimization": {
+    "_note": "Changed: reserve optimizer and scheduler settings. Why: optimization behavior should be reproducible from the manifest.",
+    "optimizer": null,
+    "learning_rate": null,
+    "weight_decay": null,
+    "warmup_steps": null,
+    "max_steps": null,
+    "epochs": null,
+    "per_device_train_batch_size": null,
+    "gradient_accumulation_steps": null,
+    "max_grad_norm": null,
+    "scheduler": null,
+    "seed": 0
+  },
+  "evaluation": {
+    "_note": "Changed: reserve evaluation inputs, metrics, and output locations. Why: validation should be configured without editing the training script.",
+    "enabled": false,
+    "eval_manifest_path": null,
+    "metrics": [],
+    "per_device_eval_batch_size": null,
+    "max_batches": null,
+    "output_dir": null,
+    "save_predictions": false
+  },
+  "calibration": {
+    "_note": "Changed: reserve calibration configuration. Why: post-training thresholds and calibration artifacts should be documented with the run.",
+    "enabled": false,
+    "method": null,
+    "heldout_manifest_path": null,
+    "temperature": null,
+    "thresholds": {},
+    "output_path": null
+  },
+  "checkpointing": {
+    "_note": "Changed: reserve checkpoint save and resume behavior. Why: checkpoint retention should be explicit for repeatable training runs.",
+    "enabled": false,
+    "save_dir": null,
+    "save_every_steps": null,
+    "keep_last": 0,
+    "resume_from": null,
+    "save_optimizer_state": false
+  },
+  "server_sync": {
+    "_note": "Changed: reserve server sync handles. Why: remote artifact movement should use SSH aliases and paths without embedding auth material.",
+    "enabled": false,
+    "ssh_alias": null,
+    "remote_path": null,
+    "local_staging_dir": null,
+    "include_patterns": [],
+    "exclude_patterns": [],
+    "dry_run": false
+  },
+  "safety_gates": {
+    "_note": "Changed: reserve pre-run validation gates. Why: unsafe or incomplete training runs should be blocked before execution.",
+    "enabled": false,
+    "require_clean_git": false,
+    "required_files": [],
+    "blocked_paths": [],
+    "allow_leaderboard_labels": false,
+    "max_train_examples": null,
+    "fail_on_unresolved_nulls": false
+  }
+}
