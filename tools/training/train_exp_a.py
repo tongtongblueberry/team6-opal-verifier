@@ -430,6 +430,13 @@ def main():
         default=MUTATION_DATA,
         help="학습 데이터 경로 (콤마로 구분하여 여러 파일 지정 가능)",
     )
+    # Changed: --no-split 옵션 추가.
+    # Why: 사이클 2 재현 시 전체 데이터를 학습에 사용해야 함. split이 항상 실행되어 20% 데이터 손실.
+    parser.add_argument(
+        "--no-split",
+        action="store_true",
+        help="Validation split 비활성화. 전체 데이터를 학습에 사용 (사이클 2 재현용)",
+    )
     args = parser.parse_args()
 
     logger.info("=" * 60)
@@ -509,38 +516,49 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token
 
     # ---- 데이터 분할: 80% train / 20% validation (stratified) ----
-    # Changed: validation 20% + early stopping을 위한 stratified split.
-    # Why: 과적합 감지 + load_best_model_at_end로 최적 체크포인트 자동 선택.
-    pass_data = [d for d in train_data if d["messages"][-1]["content"].strip().lower() == "pass"]
-    fail_data = [d for d in train_data if d["messages"][-1]["content"].strip().lower() == "fail"]
-    random.shuffle(pass_data)
-    random.shuffle(fail_data)
+    # Changed: --no-split 옵션으로 validation split 비활성화.
+    # Why: 사이클 2 재현 시 전체 데이터를 학습에 사용해야 함. split이 항상 실행되어 20% 데이터 손실.
+    if args.no_split:
+        train_data_raw = train_data
+        val_data_raw = []
+        logger.info("--no-split: 전체 %d건을 학습에 사용 (validation 없음)", len(train_data_raw))
+    else:
+        # Changed: validation 20% + early stopping을 위한 stratified split.
+        # Why: 과적합 감지 + load_best_model_at_end로 최적 체크포인트 자동 선택.
+        pass_data = [d for d in train_data if d["messages"][-1]["content"].strip().lower() == "pass"]
+        fail_data = [d for d in train_data if d["messages"][-1]["content"].strip().lower() == "fail"]
+        random.shuffle(pass_data)
+        random.shuffle(fail_data)
 
-    val_ratio = 0.2
-    n_val_pass = max(1, int(len(pass_data) * val_ratio))
-    n_val_fail = max(1, int(len(fail_data) * val_ratio)) if fail_data else 0
+        val_ratio = 0.2
+        n_val_pass = max(1, int(len(pass_data) * val_ratio))
+        n_val_fail = max(1, int(len(fail_data) * val_ratio)) if fail_data else 0
 
-    val_data_raw = pass_data[:n_val_pass] + fail_data[:n_val_fail]
-    train_data_raw = pass_data[n_val_pass:] + fail_data[n_val_fail:]
-    random.shuffle(val_data_raw)
-    random.shuffle(train_data_raw)
+        val_data_raw = pass_data[:n_val_pass] + fail_data[:n_val_fail]
+        train_data_raw = pass_data[n_val_pass:] + fail_data[n_val_fail:]
+        random.shuffle(val_data_raw)
+        random.shuffle(train_data_raw)
 
-    logger.info(
-        "Split: train=%d (pass=%d, fail=%d), val=%d (pass=%d, fail=%d)",
-        len(train_data_raw),
-        len(pass_data) - n_val_pass,
-        len(fail_data) - n_val_fail if fail_data else 0,
-        len(val_data_raw),
-        n_val_pass,
-        n_val_fail,
-    )
+        logger.info(
+            "Split: train=%d (pass=%d, fail=%d), val=%d (pass=%d, fail=%d)",
+            len(train_data_raw),
+            len(pass_data) - n_val_pass,
+            len(fail_data) - n_val_fail if fail_data else 0,
+            len(val_data_raw),
+            n_val_pass,
+            n_val_fail,
+        )
 
     # ---- Dataset 생성 ----
     logger.info("Tokenizing train set: %d examples (max_seq_len=%d)...", len(train_data_raw), MAX_SEQ_LEN)
     dataset = MutationDataset(train_data_raw, tokenizer, MAX_SEQ_LEN)
 
-    logger.info("Tokenizing val set: %d examples...", len(val_data_raw))
-    val_dataset = MutationDataset(val_data_raw, tokenizer, MAX_SEQ_LEN)
+    # Changed: val_data_raw가 비어있으면 (--no-split) val_dataset 생성 생략.
+    if val_data_raw:
+        logger.info("Tokenizing val set: %d examples...", len(val_data_raw))
+        val_dataset = MutationDataset(val_data_raw, tokenizer, MAX_SEQ_LEN)
+    else:
+        val_dataset = None
 
     if len(dataset) == 0:
         logger.error("Empty dataset after tokenization! Exiting.")
@@ -604,7 +622,7 @@ def main():
         dataloader_pin_memory=True,
         # Changed: validation + early stopping 설정.
         # Why: 20% validation split으로 과적합 감지. eval_loss 기준 best model 선택.
-        eval_strategy="epoch",  # Changed: evaluation_strategy → eval_strategy / Why: transformers>=4.46 renamed this parameter
+        eval_strategy="no" if args.no_split else "epoch",  # Changed: --no-split이면 eval 비활성화 / Why: validation set 없으면 eval 불가
         load_best_model_at_end=False,  # Changed: 사이클 9 — eval_loss 기반 모델 선택 비활성
         metric_for_best_model="eval_loss",
     )
@@ -612,11 +630,13 @@ def main():
     # Changed: LoraPlusTrainer 사용 — A/B 매트릭스에 차등 lr 적용
     # Changed: eval_dataset 추가 — validation set으로 과적합 감지 + early stopping.
     # Why: load_best_model_at_end=True이므로 eval_loss 기준 최적 체크포인트 자동 복원.
+    # Changed: eval_dataset는 val_data_raw가 있을 때만 전달.
+    # Why: --no-split이면 val_dataset=None이므로 eval_dataset 생략.
     trainer = LoraPlusTrainer(
         model=model,
         args=training_args,
         train_dataset=dataset,
-        eval_dataset=val_dataset,
+        eval_dataset=val_dataset if val_data_raw else None,
     )
 
     # ---- 체크포인트에서 재개 ----
