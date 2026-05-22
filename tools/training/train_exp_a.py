@@ -64,25 +64,24 @@ MODEL_CACHE = "/workspace/cache/hf_cache/hub"
 # Why: 사이클 2에서 r=8이 최적 rank임이 검증됨. 더 이상 sed로 변경 불필요.
 LORA_R = 8
 LORA_ALPHA = 16
-# Changed: dropout 0.1 → 0.0.
-# Why: ALLoRA (2024) — 소량 데이터 단기 학습에서 dropout이 해로움. NEFTune이 정규화 담당.
-LORA_DROPOUT = 0.0
+# Changed: 사이클 9 — 사이클 2 설정 복원 + 데이터만 확대 (1변수 원칙)
+# dropout 0.0 → 0.1 복원 (사이클 2 검증 설정)
+LORA_DROPOUT = 0.1
 TARGET_MODULES = ["q_proj", "v_proj", "k_proj", "o_proj"]
 
 # LoRA+ 차등 학습률 — B 매트릭스를 더 빠르게 학습
-# Changed: LR 50% 감소 (effective batch size 2배 증가에 따른 보정).
-# Why: GRAD_ACCUM 8→16으로 effective batch size 2배 → linear scaling rule에 의해 lr 절반.
-LR_A = 2.5e-5
-LR_B = 4e-4
+# Changed: 사이클 9 — LR 사이클 2 설정 복원 (lr_A=5e-5, lr_B=8e-4)
+LR_A = 5e-5
+LR_B = 8e-4
 WEIGHT_DECAY = 0.0        # Changed: 0 (LoRA 자체가 regularization)
 
 # 학습 관련
-NUM_EPOCHS = 10           # Changed: 10 — r=8+NEFTune으로 과적합 억제되므로, 전체 학습 후 최적 체크포인트 선택
+NUM_EPOCHS = 5            # Changed: 사이클 9 — 5 에폭 (충분하되 과적합 전 중단)
 # Changed: bs=4에서 OOM 발생 (모델 39GB + 활성화 메모리 초과) → bs=1, accum=8로 변경
 BATCH_SIZE = 1            # Changed: 2→1 (3차 OOM: batch=2에서도 label_smoother OOM 재발). Why: L40S 48GB에서 4B 모델+LoRA+grad_ckpt → batch=1이 안전 상한.
 # Changed: GRAD_ACCUM 8 → 16 (effective batch size 16).
 # Why: 더 큰 effective batch size로 gradient 안정화. LR도 50% 감소하여 보정.
-GRAD_ACCUM = 16           # Changed: 8→16 (batch=1과 함께 effective batch=16 유지). Why: batch 절반 → accum 2배로 effective batch size 보존.
+GRAD_ACCUM = 8            # Changed: 사이클 9 — 16→8 복원 (사이클 2 설정, effective batch=8)
 MAX_SEQ_LEN = 2048        # 긴 trajectory도 커버
 WARMUP_RATIO = 0.1        # Changed: 10% warmup (기존 5%)
 MAX_GRAD_NORM = 1.0       # gradient clipping
@@ -93,12 +92,12 @@ NEFTUNE_NOISE_ALPHA = 5.0  # Changed: 임베딩 노이즈 강도
 # 기타
 LOGGING_STEPS = 10
 SAVE_STRATEGY = "epoch"
-SAVE_TOTAL_LIMIT = 10     # Changed: 모든 에폭 체크포인트 보존 (최적 선택용)
+SAVE_TOTAL_LIMIT = 5      # Changed: 사이클 9 — 5 에폭이므로 5개 보존
 MAX_CASES_DEFAULT = 210    # 기본 학습 데이터 수
 
 # 경로
 MUTATION_DATA = "/workspace/team6/training_data/mutation_cases.json"
-ADAPTER_OUT = "/workspace/team6/adapters/exp_a"
+ADAPTER_OUT = "/workspace/team6/adapters/cycle9"  # Changed: 사이클 9 출력 경로
 CHECKPOINT_DIR = f"{ADAPTER_OUT}/checkpoints"
 FINAL_DIR = f"{ADAPTER_OUT}/final"
 
@@ -469,17 +468,15 @@ def main():
     n_fail = sum(1 for c in data if c.get("label") == "fail")
     logger.info("Label distribution: pass=%d, fail=%d (total=%d)", n_pass, n_fail, len(data))
 
-    # Changed: fail oversampling으로 class imbalance 보정
-    # Why: pass 83% bias → 모델이 항상 pass 예측. Focal Loss 대신 oversampling이 더 간단.
-    # 근거: Ju et al. (EMNLP 2024), EACL 2024 class imbalance 연구
-    if n_fail > 0 and n_pass > n_fail:
-        fail_cases = [c for c in data if c.get("label") == "fail"]
-        oversample_factor = max(1, round(n_pass / n_fail) - 1)
-        data.extend(fail_cases * oversample_factor)
-        random.shuffle(data)
-        n_pass_new = sum(1 for c in data if c.get("label") == "pass")
-        n_fail_new = sum(1 for c in data if c.get("label") == "fail")
-        logger.info("After oversampling: pass=%d, fail=%d (factor=%d)", n_pass_new, n_fail_new, oversample_factor)
+    # Changed: 사이클 9 — fail oversampling 비활성화 (1변수 원칙: 데이터만 변경)
+    # if n_fail > 0 and n_pass > n_fail:
+    #     fail_cases = [c for c in data if c.get("label") == "fail"]
+    #     oversample_factor = max(1, round(n_pass / n_fail) - 1)
+    #     data.extend(fail_cases * oversample_factor)
+    #     random.shuffle(data)
+    #     n_pass_new = sum(1 for c in data if c.get("label") == "pass")
+    #     n_fail_new = sum(1 for c in data if c.get("label") == "fail")
+    #     logger.info("After oversampling: pass=%d, fail=%d (factor=%d)", n_pass_new, n_fail_new, oversample_factor)
 
     # Changed: format_for_training_v2 사용 — lora_solver.py의 format_trajectory_rich와 동일한 형식
     train_data = []
@@ -608,7 +605,7 @@ def main():
         # Changed: validation + early stopping 설정.
         # Why: 20% validation split으로 과적합 감지. eval_loss 기준 best model 선택.
         eval_strategy="epoch",  # Changed: evaluation_strategy → eval_strategy / Why: transformers>=4.46 renamed this parameter
-        load_best_model_at_end=True,
+        load_best_model_at_end=False,  # Changed: 사이클 9 — eval_loss 기반 모델 선택 비활성
         metric_for_best_model="eval_loss",
     )
 
