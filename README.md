@@ -1,90 +1,97 @@
-# Team 6 Opal Verifier
+# Team 6 Opal Verifier: Rule Baseline 73.00
 
-SSD TCG/Opal command-response trajectory pass/fail classification.
-SNU Introduction to Deep Learning (M2177.0043) | Due: 2026-06-08
+This branch is a cleaned rule-based baseline for SSD TCG/Opal trajectory pass/fail
+classification. It is based on the historical 73.00 leaderboard branch:
 
-## Leaderboard
+- Source branch: `origin/rule_base`
+- Source commit: `dec0840938e4fdbec72d413ccbb12c2065b45a27`
+- Recorded leaderboard result: Job `300`, `solver-fix-auth-ro`, score `73.00`
+- Key changes over the 71.50 baseline: empty `HostChallenge` is treated as unauthenticated, and Read-Only sessions reject write methods.
 
-| Score | Method | Commit | Date |
-|-------|--------|--------|------|
-| **71.50** | Rule engine (UNEXPECTED_ERROR_STATUS) | `2df1e71` | 2026-05-18 |
-| 69.50 | Rule engine (field semantics) | `c613397` | 2026-05-18 |
-| 68.00 | Rule engine (spec index) | `fd43bd5` | 2026-05-17 |
-| 60.50 | Rule engine (initial) | `872f31d` | 2026-05-17 |
+No LoRA, RAG, training pipeline, generated data, or model artifact is used in this
+branch. The prediction path is deterministic and stdlib-only.
 
-Best branch: `best-71.50`
+## Repository Layout
 
-## Architecture
-
-```
-Trajectory
-    |
-[1] Rule Engine (StatefulOpalVerifier) -- best-71.50 base
-    |
-    +-- Specific rule matched --> Use rule prediction (pass or fail)
-    |
-    +-- UNEXPECTED_ERROR_STATUS --> "fail" (aggressive: all unexplained errors)
-            |
-        [2] LoRA Override (Qwen3.5-4B + LoRA adapter v2)
-            |
-            +-- LoRA says "pass" --> Override to pass (rescue false positive)
-            +-- LoRA says "fail" --> Keep fail
+```text
+.
+├── README.md
+├── pyproject.toml
+├── setup.sh
+├── uv.lock
+└── src
+    ├── __init__.py
+    └── solver.py
 ```
 
-**Key discovery**: `UNEXPECTED_ERROR_STATUS` (모든 unexplained error = fail)이 71.50의 핵심.
-이것을 `DEFAULT_PASS`(= pass)로 바꾸면 68.00으로 하락. LoRA는 이 중 false positive만 선별 rescue.
+## Prediction Path
 
-## Current: HP Sweep (Cycle 15)
-
-서버에서 LoRA hyperparameter sweep 실행 중.
-- Data: spec-based 1,435건 (train 869 / val 283 / test 283)
-- Sweep: LR → rank → alpha → dropout → max_length → model size → final test eval
-- HP selection: val fail_recall (precision ≥ 0.9), final: test set unbiased estimate
-- Fixed: cosine scheduler, AdamW, batch=8 (VRAM 94%)
-- 상세: `docs/sweep_plan.md`
-
-초기 결과 (Step 1 LR sweep):
-
-| LR | Accuracy | Fail Precision | Fail Recall | F1 |
-|----|----------|----------------|-------------|-----|
-| 5e-5 | 76.3% | 0.77 | 0.74 | 0.75 |
-| 1e-4 | 77.0% | 0.77 | 0.76 | 0.76 |
-
-## Project Structure
-
-```
-src/                          # Submission code (제출용)
-├── solver.py                 # Rule engine + Solver (best-71.50 base)
-└── lora_solver.py            # LoRA adapter inference (v2 only)
-
-tools/
-├── training/                 # Training pipeline
-│   ├── sweep_lora.py         # HP sweep (LR→rank→alpha→dropout→len→model)
-│   ├── finetune_lora_v2.py   # Rich format + label masking
-│   └── build_training_data.py
-├── eval/                     # Evaluation
-│   ├── eval_lora.py          # LoRA model evaluation
-│   ├── metamorphic_eval.py   # Metamorphic/synthetic test generation
-│   └── mutation_eval.py      # Mutation testing for rule adequacy
-├── datagen/                  # Data generation
-│   └── generate_spec_data.py # Spec-based training data (1,435 cases)
-└── analysis/                 # Diagnostics
-    ├── rule_coverage.py      # Rule/spec coverage analysis
-    ├── metamorphic_coverage.py
-    ├── intermediate_eval.py
-    └── test_fail_dp_cases.py
-
-artifacts/                    # Model artifacts (generated, not in git until trained)
-└── lora_adapter_v2/          # LoRA adapter weights (~12MB)
-
-docs/
-├── sweep_plan.md             # HP sweep plan (architecture, loss, metrics)
-├── spec_rules.md             # Spec-derived rules
-└── archive/                  # Historical docs
+```text
+input trajectory
+  -> src.solver.StatefulOpalVerifier
+  -> protocol-state tracking and rule checks
+  -> "pass" or "fail"
 ```
 
-## References
+Important rule families include:
 
-- Hu, E. J. et al. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR.
-- TOGLL (ASE 2024): Fine-tuned small models beat large zero-shot 3.8x.
-- Zhang et al. (ICLR 2024): Model scaling > data scaling for fine-tuning.
+- final command/response parsing
+- StartSession authentication state
+- authenticated vs unauthenticated method preconditions
+- Read-Only session write blocking
+- known object field access checks
+- locking data read/write access checks
+- unexpected final error status handling
+
+## Local Smoke Test
+
+Run the submission setup smoke:
+
+```bash
+bash setup.sh
+```
+
+Run a direct one-case prediction:
+
+```bash
+python3 - <<'PY'
+from src.solver import predict_one
+
+case = [
+    {
+        "input": {"Method": {"Name": "Properties"}, "InvokingUID": {"Name": "Session Manager UID"}},
+        "output": {"Status": {"Name": "SUCCESS"}, "Properties": {"MaxMethods": 1}},
+    }
+]
+
+print(predict_one(case))
+PY
+```
+
+Expected output:
+
+```text
+pass
+```
+
+## Using This As A Data-Generation Baseline
+
+Use this branch as a fixed teacher only through the public solver API:
+
+```python
+from src.solver import predict_one
+
+label = predict_one(trajectory)
+```
+
+Do not mix this branch with LoRA or generated-model artifacts when measuring whether
+new synthetic data improves over the rule baseline. If a generated dataset is being
+audited, compare its labels against this branch first, then test any new model or
+rule change in a separate branch.
+
+## Leaderboard Recheck
+
+This branch preserves the code path tied to the recorded 73.00 result, but a fresh
+leaderboard score can only be confirmed by submitting this exact branch/package
+again. Local smoke tests verify import and deterministic execution; they do not
+replace leaderboard evaluation.

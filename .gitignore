@@ -1,5 +1,5 @@
-# Changed: keep generated local artifacts out of Git.
-# Why: only source, docs, and submission metadata should be versioned.
+# Changed: keep the clean rule-baseline branch free of generated artifacts.
+# Why: this branch should stay reproducible and stdlib-only.
 __pycache__/
 *.py[cod]
 .venv/
@@ -10,4 +10,4 @@ leaderboard_logs/
 reports/
 rule_proposals/
 synthetic_cases/
-artifacts/spec_index.jsonl
+artifacts/

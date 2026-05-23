@@ -3,7 +3,6 @@
 # decision should track protocol state instead of training on the tiny public set.
 
 from __future__ import annotations
-import os
 
 import json
 import re
@@ -1113,52 +1112,11 @@ def predict_one(testcase: Any) -> str:
     # Why: it keeps batch API behavior unchanged while making unit checks simple.
     return StatefulOpalVerifier().verify(testcase)
 
-
-
-# Changed: tier-based LoRA integration with rule engine confidence awareness.
-# Why: previous flat thresholds (0.15/0.90) made LoRA nearly useless.
-# New approach: rule engine confidence tier determines how much to trust LoRA.
-# - HIGH confidence rules: keep rule engine (LoRA can only override with extreme confidence)
-# - LOW confidence rules: trust LoRA more (threshold 0.5 = direct LoRA decision)
-# - MEDIUM confidence rules: moderate trust (threshold 0.65/0.35)
-HIGH_CONFIDENCE_RULES = {
-    "PARSE_FINAL_COMMAND", "PROPERTIES_TARGET", "PROPERTIES_PAYLOAD",
-    "STARTSESSION_FINAL", "PRECONDITION_EXPECTED_ERROR", "KNOWN_FIELD_INVALID_VALUE",
-    "LOCKING_DATA_ACCESS", "ACTIVATE_TARGET",
-}
-LOW_CONFIDENCE_RULES = {
-    "UNEXPECTED_ERROR_STATUS", "DEFAULT_PASS", "KNOWN_FIELD_EXPECTED_SUCCESS",
-}
-
-# Changed: per-tier thresholds (tunable via env vars).
-# Why: LOW confidence rules should defer to LLM at ~0.5, HIGH should almost never override.
-TIER_THRESHOLDS = {
-    "high": {
-        "rescue": float(os.environ.get("HIGH_RESCUE", "0.05")),   # very strict
-        "detect": float(os.environ.get("HIGH_DETECT", "0.95")),   # very strict
-    },
-    "medium": {
-        "rescue": float(os.environ.get("MED_RESCUE", "0.30")),
-        "detect": float(os.environ.get("MED_DETECT", "0.70")),
-    },
-    "low": {
-        "rescue": float(os.environ.get("LOW_RESCUE", "0.45")),    # nearly trust LLM
-        "detect": float(os.environ.get("LOW_DETECT", "0.55")),    # nearly trust LLM
-    },
-}
-
-
 class Solver:
     def __init__(self) -> None:
+        # Changed: keep the submission path rule-based only.
+        # Why: this clean branch is the 73.00 rule baseline and should not import LoRA/RAG artifacts.
         self.verifier = StatefulOpalVerifier()
-        self.lora_solver = None
-        try:
-            from src.lora_solver import LoRASolver
-            self.lora_solver = LoRASolver()
-            if not self.lora_solver.available:
-                self.lora_solver = None
-        except Exception:
-            self.lora_solver = None
 
     def predict(self, dataset: Any) -> dict[str, str]:
         if not isinstance(dataset, list):
@@ -1176,47 +1134,7 @@ class Solver:
             result = self.verifier.verify_with_trace(steps)
             prediction = result['prediction']
 
-            # Changed: tier-based LoRA override with rule engine context.
-            # Why: LLM should have maximum influence on uncertain cases,
-            # and minimal influence on cases the rule engine handles well.
-            if self.lora_solver:
-                records = self.verifier._records(steps)
-                if records:
-                    trace = result.get('trace', [])
-                    rule_id = self._get_rule_id(trace)
-                    tier = self._get_tier(rule_id)
-                    thresholds = TIER_THRESHOLDS[tier]
-
-                    # Changed: pass rule engine context to LoRA for v3 format.
-                    # Why: neuro-symbolic approach — LLM uses rule analysis as signal.
-                    rule_context = {
-                        "rule_id": rule_id,
-                        "prediction": prediction,
-                        "tier": tier,
-                        "detail": trace[-1].get("detail", "") if trace else "",
-                    }
-                    p_fail = self.lora_solver.predict_prob(records, rule_context=rule_context)
-
-                    # Rescue: rule says fail but LoRA says pass
-                    if prediction == 'fail' and p_fail < thresholds["rescue"]:
-                        prediction = 'pass'
-                    # Detect: rule says pass but LoRA says fail
-                    elif prediction == 'pass' and p_fail > thresholds["detect"]:
-                        prediction = 'fail'
-
+            # Changed: return the deterministic verifier decision without model override.
+            # Why: removing optional LoRA keeps this branch reproducible as a rule-only baseline.
             predictions[case_id] = prediction
         return predictions
-
-    @staticmethod
-    def _get_rule_id(trace: list[Json]) -> str:
-        if not trace:
-            return "UNKNOWN"
-        return trace[-1].get('rule_id', 'UNKNOWN')
-
-    @staticmethod
-    def _get_tier(rule_id: str) -> str:
-        if rule_id in HIGH_CONFIDENCE_RULES:
-            return "high"
-        elif rule_id in LOW_CONFIDENCE_RULES:
-            return "low"
-        return "medium"
