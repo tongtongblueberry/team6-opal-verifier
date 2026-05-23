@@ -6,6 +6,7 @@ classification. It is based on the historical 73.00 leaderboard branch:
 - Source branch: `origin/rule_base`
 - Source commit: `dec0840938e4fdbec72d413ccbb12c2065b45a27`
 - Recorded leaderboard result: Job `300`, `solver-fix-auth-ro`, score `73.00`
+- Clean-branch recheck: Job `415`, `rulebase-73-clean-20260523_051344_KST`, score `73.00`
 - Key changes over the 71.50 baseline: empty `HostChallenge` is treated as unauthenticated, and Read-Only sessions reject write methods.
 
 No LoRA, RAG, training pipeline, generated data, or model artifact is used in this
@@ -91,7 +92,14 @@ rule change in a separate branch.
 
 ## Leaderboard Recheck
 
-This branch preserves the code path tied to the recorded 73.00 result, but a fresh
-leaderboard score can only be confirmed by submitting this exact branch/package
-again. Local smoke tests verify import and deterministic execution; they do not
-replace leaderboard evaluation.
+This cleaned branch was submitted again from an isolated server package and returned
+`Success 73.00` on Job `415`. The submitted package contained only:
+
+- `README.md`
+- `pyproject.toml`
+- `setup.sh`
+- `uv.lock`
+- `src/__init__.py`
+- `src/solver.py`
+
+The server package smoke passed before submission.
