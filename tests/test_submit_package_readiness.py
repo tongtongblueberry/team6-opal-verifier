@@ -11,15 +11,40 @@ from pathlib import Path
 from tools.eval.check_submit_package import check_submit_package
 
 
+# Changed: create a tiny fake LoRA artifact marker set for package checks.
+# Why: readiness unit tests must validate packaging rules without real model weights.
+def _write_fake_lora_artifact(package_dir: Path, name: str = "lora_adapter_dcv2_final") -> None:
+    adapter_dir = package_dir / "artifacts" / name
+    adapter_dir.mkdir(parents=True)
+    (adapter_dir / "adapter_config.json").write_text("{}", encoding="utf-8")
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"fake")
+
+
+# Changed: create a tiny fake merged-model artifact marker set for package checks.
+# Why: checker support for standalone artifacts should be testable without loading a model.
+def _write_fake_merged_model_artifact(package_dir: Path) -> None:
+    model_dir = package_dir / "artifacts" / "merged_model"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_bytes(b"fake")
+    (model_dir / "tokenizer_config.json").write_text("{}", encoding="utf-8")
+
+
 # Changed: build a minimal package fixture from the current worktree files.
 # Why: readiness checks should run without model artifacts, datasets, or submit commands.
-def _make_package(root: Path) -> tempfile.TemporaryDirectory[str]:
+def _make_package(root: Path, artifact: str | None = "lora") -> tempfile.TemporaryDirectory[str]:
     temp_dir = tempfile.TemporaryDirectory()
     package_dir = Path(temp_dir.name)
     (package_dir / "src").mkdir()
     shutil.copy2(root / "setup.sh", package_dir / "setup.sh")
     shutil.copy2(root / "src" / "solver.py", package_dir / "src" / "solver.py")
     shutil.copy2(root / "src" / "__init__.py", package_dir / "src" / "__init__.py")
+    # Changed: optionally add fake artifact markers after copying source files.
+    # Why: tests need to cover both accepted package families and the missing-artifact failure.
+    if artifact == "lora":
+        _write_fake_lora_artifact(package_dir)
+    elif artifact == "merged":
+        _write_fake_merged_model_artifact(package_dir)
     return temp_dir
 
 
@@ -32,6 +57,42 @@ class SubmitPackageReadinessTest(unittest.TestCase):
             errors = check_submit_package(Path(temp_name))
         self.assertEqual([], errors)
 
+    def test_merged_model_artifact_passes_readiness(self) -> None:
+        # Changed: cover standalone merged artifact readiness.
+        # Why: Cycle 2 packages may omit LoRA adapters when artifacts/merged_model is complete.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root, artifact="merged") as temp_name:
+            errors = check_submit_package(Path(temp_name))
+        self.assertEqual([], errors)
+
+    def test_alternate_final_lora_artifact_passes_readiness(self) -> None:
+        # Changed: cover artifacts/lora_adapter_final as a valid LoRA package layout.
+        # Why: server-side packages may use the alternate final adapter directory name.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root, artifact=None) as temp_name:
+            _write_fake_lora_artifact(Path(temp_name), name="lora_adapter_final")
+            errors = check_submit_package(Path(temp_name))
+        self.assertEqual([], errors)
+
+    def test_missing_model_artifact_fails_readiness(self) -> None:
+        # Changed: require either merged model or LoRA adapter artifact.
+        # Why: static readiness should not pass a package that cannot load an LLM.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root, artifact=None) as temp_name:
+            errors = check_submit_package(Path(temp_name))
+        self.assertTrue(any("missing model artifact" in error for error in errors), errors)
+
+    def test_incomplete_merged_model_takes_precedence_and_fails(self) -> None:
+        # Changed: incomplete merged_model blocks readiness even when LoRA exists.
+        # Why: solver.py will prefer artifacts/merged_model/config.json over the adapter path.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root, artifact="lora") as temp_name:
+            merged_dir = Path(temp_name) / "artifacts" / "merged_model"
+            merged_dir.mkdir(parents=True)
+            (merged_dir / "config.json").write_text("{}", encoding="utf-8")
+            errors = check_submit_package(Path(temp_name))
+        self.assertTrue(any("merged model weight" in error for error in errors), errors)
+
     def test_missing_offline_setup_env_fails_readiness(self) -> None:
         root = Path(__file__).resolve().parents[1]
         with _make_package(root) as temp_name:
@@ -39,6 +100,20 @@ class SubmitPackageReadinessTest(unittest.TestCase):
             setup_path.write_text("#!/usr/bin/env bash\nset -euo pipefail\n", encoding="utf-8")
             errors = check_submit_package(Path(temp_name))
         self.assertTrue(any("HF_HOME" in error for error in errors), errors)
+
+    def test_rule_engine_marker_fails_readiness(self) -> None:
+        # Changed: cover the no-rule scan on executable Python tokens.
+        # Why: deterministic rule-engine architecture must fail before packaging.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root) as temp_name:
+            solver_path = Path(temp_name) / "src" / "solver.py"
+            solver_path.write_text(
+                solver_path.read_text(encoding="utf-8")
+                + "\ndef _init_rule_engine():\n    return None\n",
+                encoding="utf-8",
+            )
+            errors = check_submit_package(Path(temp_name))
+        self.assertTrue(any("_init_rule_engine" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

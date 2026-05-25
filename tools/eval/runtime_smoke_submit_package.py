@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.eval.check_submit_package import check_submit_package
+from tools.eval.check_submit_package import check_submit_package, detect_model_artifact
 
 
 # Changed: report model-load status separately from package/runtime parity.
@@ -107,6 +107,17 @@ def _stage_exception_message(stage: str, action: str, exc: Exception) -> str:
     return f"{stage}_FAIL: {action} raised {type(exc).__name__}"
 
 
+# Changed: display artifact paths relative to the package under test.
+# Why: smoke output should identify merged-vs-LoRA mode without printing environment-specific absolute paths.
+def _artifact_display_path(package_dir: Path, artifact_path: Path | None) -> str:
+    if artifact_path is None:
+        return "<none>"
+    try:
+        return str(artifact_path.relative_to(package_dir))
+    except ValueError:
+        return artifact_path.name
+
+
 # Changed: validate runtime offline parity through solver's own policy helpers.
 # Why: this catches cases where static strings exist but local_files_only resolves incorrectly.
 def run_runtime_smoke(
@@ -121,7 +132,11 @@ def run_runtime_smoke(
     package_errors = check_submit_package(package_dir)
     if package_errors:
         return SmokeResult(False, [f"CHECK_FAIL: {error}" for error in package_errors])
-    messages.append("CHECK_OK: static HF offline readiness")
+    artifact = detect_model_artifact(package_dir)
+    messages.append("CHECK_OK: static HF offline/artifact readiness")
+    messages.append(
+        f"ARTIFACT_OK: {artifact.kind} at {_artifact_display_path(package_dir, artifact.path)}"
+    )
 
     with _offline_hf_env(package_dir):
         solver = _import_solver(package_dir)
@@ -196,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
         "--load-model",
         dest="load_model",
         action="store_true",
-        help="Instantiate Solver; requires local base model and LoRA adapter artifacts.",
+        help="Instantiate Solver; requires local merged model or base model plus LoRA adapter artifacts.",
     )
     parser.add_argument(
         "--first-forward",

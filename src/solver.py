@@ -122,8 +122,41 @@ def _hf_load_kwargs(root: Path | None = None) -> dict[str, Any]:
     return kwargs
 
 
+# Changed: centralize repo-relative artifact path expansion for merged-model and LoRA env overrides.
+# Why: OPAL_MERGED_MODEL_DIR and OPAL_LORA_ADAPTER must resolve relative to the submit package root.
+def _expand_artifact_path(raw_path: str, root: Path) -> Path:
+    candidate = Path(os.path.expandvars(raw_path)).expanduser()
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    return candidate
+
+
+# Changed: prefer a standalone merged model artifact when explicitly configured or packaged.
+# Why: Cycle 2 submissions can use the 12GB limit by loading artifacts/merged_model directly.
+def _resolve_merged_model_path(root: Path) -> tuple[Path | None, str]:
+    env_merged = os.environ.get("OPAL_MERGED_MODEL_DIR")
+    if env_merged is not None:
+        if not env_merged.strip():
+            raise RuntimeError(
+                "LLM-only architecture gate: OPAL_MERGED_MODEL_DIR is set but empty"
+            )
+        env_path = _expand_artifact_path(env_merged, root)
+        if not (env_path / "config.json").exists():
+            raise RuntimeError(
+                "LLM-only architecture gate: OPAL_MERGED_MODEL_DIR does not point "
+                "to a merged model with config.json"
+            )
+        return env_path, "OPAL_MERGED_MODEL_DIR"
+
+    package_path = root / "artifacts" / "merged_model"
+    if (package_path / "config.json").exists():
+        return package_path, "repo-local artifacts/merged_model"
+
+    return None, ""
+
+
 # Changed: keep only LLM submission code in this module.
-# Why: the architecture must be LLM-only; retained code below only normalizes inputs and runs LoRA.
+# Why: the architecture must be LLM-only; retained code below only normalizes inputs and runs model logits.
 
 def predict(dataset: Any) -> list[str]:
     # Changed: route module-level prediction through the LLM-only Solver.
@@ -353,7 +386,7 @@ def _parse_records(trajectory: Any) -> list[Json]:
 class Solver:
     """평가 서버가 호출하는 메인 Solver 클래스.
 
-    Changed: make LoRA the only submission prediction path.
+    Changed: make merged-model or LoRA logits the only submission prediction path.
     Why: architecture must fail closed instead of falling back to non-LLM code.
 
     인터페이스:
@@ -362,25 +395,47 @@ class Solver:
     """
 
     def __init__(self) -> None:
-        # Changed: initialize only the LoRA model path.
-        # Why: LLM-only architecture gate: no deterministic fallback is allowed.
+        # Changed: initialize the selected LLM artifact path, merged model first and LoRA second.
+        # Why: Cycle 2 packages may contain a standalone merged model while preserving the LoRA path.
         self._init_lora()
 
     def _init_lora(self) -> None:
-        """Qwen3.5-4B + LoRA adapter 로드.
+        """Standalone merged model 또는 Qwen3.5-4B + LoRA adapter 로드.
 
-        Changed: lora_solver.py의 LoRASolver._load()와 동일한 로직.
-        Why: submission 환경에서 lora_solver.py import 없이도 동작하도록 자체 구현.
-             adapter는 artifacts/ 디렉토리에서 로드.
+        Changed: merged model artifact를 LoRA adapter보다 먼저 탐색.
+        Why: 12GB 제출 용량을 쓰는 merged artifact는 base+adapter 조합 없이 직접 로드되어야 함.
         """
         self.model = None
         self.tokenizer = None
         self._pass_id = None
         self._fail_id = None
         self._adapter_path = None
+        self._merged_model_path = None
+        self._artifact_mode = None
         self._available = False
 
         root = Path(__file__).resolve().parents[1]
+
+        # Changed: choose the standalone merged model before scanning LoRA adapters.
+        # Why: OPAL_MERGED_MODEL_DIR or artifacts/merged_model/config.json means the merged model is authoritative.
+        merged_model_path, merged_model_source = _resolve_merged_model_path(root)
+        if merged_model_path is not None:
+            self._merged_model_path = str(merged_model_path)
+            self._artifact_mode = "merged_model"
+            _logger.info(
+                "Merged model selected: %s (%s)",
+                merged_model_path,
+                merged_model_source,
+            )
+            try:
+                self._load_merged_model(str(merged_model_path))
+            except Exception as e:
+                self._available = False
+                # Changed: fail closed on merged model load failures.
+                # Why: a declared merged artifact must not silently fall through to LoRA or rules.
+                raise RuntimeError("LLM-only architecture gate: merged model load failed") from e
+            return
+
         adapter_path = None
 
         # Changed: adapter 경로 탐색 우선순위에 env override와 DCV2 final adapter를 추가.
@@ -388,15 +443,17 @@ class Solver:
         #      OPAL_LORA_ADAPTER가 있으면 운영자가 지정한 adapter만 사용하고 실패 시 fail-closed 해야 함.
         env_adapter = os.environ.get("OPAL_LORA_ADAPTER")
         if env_adapter:
-            env_path = Path(os.path.expandvars(env_adapter)).expanduser()
-            if not env_path.is_absolute():
-                env_path = root / env_path
+            env_path = _expand_artifact_path(env_adapter, root)
             candidate_specs = [(env_path, "OPAL_LORA_ADAPTER")]
         else:
             candidate_specs = [
                 (
                     root / "artifacts" / "lora_adapter_dcv2_final",
                     "repo-local final adapter for submission packaging",
+                ),
+                (
+                    root / "artifacts" / "lora_adapter_final",
+                    "repo-local alternate final adapter for submission packaging",
                 ),
                 (
                     Path(
@@ -428,13 +485,16 @@ class Solver:
                 )
             raise RuntimeError(
                 "LLM-only architecture gate: LoRA adapter not found; package "
-                "artifacts/lora_adapter_dcv2_final or set OPAL_LORA_ADAPTER"
+                "artifacts/lora_adapter_dcv2_final, artifacts/lora_adapter_final, "
+                "or set OPAL_LORA_ADAPTER"
             )
 
         self._adapter_path = adapter_path
+        self._artifact_mode = "lora_adapter"
         _logger.info(
             "LoRA adapter selected: %s (%s). Submission packaging should include "
-            "repo-local artifacts/lora_adapter_dcv2_final; the /workspace/team6 "
+            "repo-local artifacts/lora_adapter_dcv2_final or artifacts/lora_adapter_final; "
+            "the /workspace/team6 "
             "absolute candidate is for operational verification only.",
             adapter_path,
             adapter_source,
@@ -451,6 +511,51 @@ class Solver:
             # Changed: fail closed on model/tokenizer/adapter load failures.
             # Why: a broken LLM path must not be silently replaced by non-LLM code.
             raise RuntimeError("LLM-only architecture gate: LoRA model load failed") from e
+
+    def _load_merged_model(self, merged_model_path: str) -> None:
+        """Standalone merged causal LM과 tokenizer를 같은 디렉터리에서 로드.
+
+        Changed: add direct AutoModelForCausalLM/AutoTokenizer loading for merged artifacts.
+        Why: merged_model packages already contain base+LoRA weights and must not require peft at runtime.
+        """
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        t0 = time.time()
+        # Changed: reuse the same HF offline/cache policy as the LoRA path.
+        # Why: merged and adapter artifacts must behave identically in evaluator offline mode.
+        hf_load_kwargs = _hf_load_kwargs(Path(__file__).resolve().parents[1])
+        _logger.info(
+            "Merged 모델 로드: dir=%s, local_files_only=%s, cache_dir=%s",
+            merged_model_path,
+            hf_load_kwargs["local_files_only"],
+            hf_load_kwargs.get("cache_dir", "<default>"),
+        )
+
+        # Changed: tokenizer는 merged model 디렉터리에서 직접 로드.
+        # Why: standalone artifact must carry the tokenizer needed for first-forward inference.
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            merged_model_path,
+            trust_remote_code=True,
+            **hf_load_kwargs,
+        )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        # Changed: model은 merged weights 디렉터리에서 직접 로드.
+        # Why: no LoRA adapter composition is needed after merge_and_unload().
+        self.model = AutoModelForCausalLM.from_pretrained(
+            merged_model_path,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True,
+            **hf_load_kwargs,
+        )
+        self.model.eval()
+        self._cache_label_token_ids()
+        self._available = True
+
+        _logger.info("Merged 모델 로드 완료: %.1f초", time.time() - t0)
 
     def _load_model(self, adapter_path: str, base_model: str) -> None:
         """모델과 tokenizer 로드.
@@ -499,19 +604,21 @@ class Solver:
             **hf_load_kwargs,
         )
         self.model.eval()
-
-        # Changed: pass/fail 토큰 ID 캐싱.
-        # Why: 매 케이스마다 encode하는 것보다 한 번 캐싱이 효율적.
-        self._pass_id = self.tokenizer.encode("pass", add_special_tokens=False)[0]
-        self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
+        self._cache_label_token_ids()
         self._available = True
 
         _logger.info("LoRA 모델 로드 완료: %.1f초", time.time() - t0)
 
+    def _cache_label_token_ids(self) -> None:
+        # Changed: share pass/fail token ID caching across merged and LoRA artifacts.
+        # Why: both LLM-only paths must feed the same threshold/logit inference code.
+        self._pass_id = self.tokenizer.encode("pass", add_special_tokens=False)[0]
+        self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
+
     def predict(self, dataset: Any) -> dict[str, str]:
         """dataset의 각 케이스에 대해 pass/fail 예측.
 
-        Changed: use only the loaded LoRA model for prediction.
+        Changed: use only the loaded LLM artifact for prediction.
         Why: LLM-only architecture gate: deterministic fallback is not allowed.
 
         Args:
@@ -532,14 +639,14 @@ class Solver:
             or self._pass_id is None
             or self._fail_id is None
         ):
-            raise RuntimeError("LLM-only architecture gate: LoRA model unavailable")
+            raise RuntimeError("LLM-only architecture gate: LLM model artifact unavailable")
         return self._predict_lora(dataset)
 
     def _predict_lora(self, dataset: list) -> dict[str, str]:
-        """LLM(LoRA) primary 예측.
+        """LLM artifact primary 예측.
 
-        Changed: 전체 예측 로직을 LoRA logit 비교 기반으로 변경.
-        Why: 학습된 LoRA 모델이 pass/fail을 직접 판단하며 비-LLM 판정기를 사용하지 않음.
+        Changed: keep one logit comparison implementation for merged and LoRA artifacts.
+        Why: merged model path must use the same threshold/pass/fail inference as the adapter path.
              format_trajectory_rich로 포맷 → chat template 적용 → logit 비교.
 
         Changed: threshold 파라미터화 + self-consistency 통합.

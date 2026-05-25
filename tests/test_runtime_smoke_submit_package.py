@@ -15,21 +15,48 @@ from pathlib import Path
 from tools.eval.runtime_smoke_submit_package import main, run_runtime_smoke
 
 
-# Changed: build a minimal importable submit package without model artifacts.
+# Changed: create fake LoRA artifact files for static package readiness.
+# Why: runtime smoke default tests should not depend on real adapter weights.
+def _write_fake_lora_artifact(package_dir: Path) -> None:
+    adapter_dir = package_dir / "artifacts" / "lora_adapter_dcv2_final"
+    adapter_dir.mkdir(parents=True)
+    (adapter_dir / "adapter_config.json").write_text("{}", encoding="utf-8")
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"fake")
+
+
+# Changed: create fake merged-model artifact files for static package readiness.
+# Why: first-forward smoke must cover merged artifact control flow without real model files.
+def _write_fake_merged_model_artifact(package_dir: Path) -> None:
+    model_dir = package_dir / "artifacts" / "merged_model"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_bytes(b"fake")
+    (model_dir / "tokenizer_config.json").write_text("{}", encoding="utf-8")
+
+
+# Changed: build a minimal importable submit package with fake artifact markers.
 # Why: default smoke must validate env parity while leaving model load as NOT_RUN.
-def _make_package(root: Path) -> tempfile.TemporaryDirectory[str]:
+def _make_package(root: Path, artifact: str = "lora") -> tempfile.TemporaryDirectory[str]:
     temp_dir = tempfile.TemporaryDirectory()
     package_dir = Path(temp_dir.name)
     (package_dir / "src").mkdir()
     shutil.copy2(root / "setup.sh", package_dir / "setup.sh")
     shutil.copy2(root / "src" / "solver.py", package_dir / "src" / "solver.py")
     shutil.copy2(root / "src" / "__init__.py", package_dir / "src" / "__init__.py")
+    # Changed: add a fake artifact marker so static readiness can pass without real weights.
+    # Why: default smoke intentionally skips model load and only checks runtime policy.
+    if artifact == "merged":
+        _write_fake_merged_model_artifact(package_dir)
+    else:
+        _write_fake_lora_artifact(package_dir)
     return temp_dir
 
 
 # Changed: build a fake submit package that passes static HF checks without real artifacts.
 # Why: model-load and first-forward tests must validate smoke control flow, not external model files.
-def _make_fake_package(first_forward_result: str = "pass") -> tempfile.TemporaryDirectory[str]:
+def _make_fake_package(
+    first_forward_result: str = "pass", artifact: str = "merged"
+) -> tempfile.TemporaryDirectory[str]:
     temp_dir = tempfile.TemporaryDirectory()
     package_dir = Path(temp_dir.name)
     src_dir = package_dir / "src"
@@ -64,6 +91,13 @@ def _make_fake_package(first_forward_result: str = "pass") -> tempfile.Temporary
                 return {{"local_files_only": _hf_local_files_only(root)}}
 
 
+            def _resolve_merged_model_path(root: Path):
+                env_path = os.environ.get("OPAL_MERGED_MODEL_DIR")
+                if env_path:
+                    return Path(env_path), "OPAL_MERGED_MODEL_DIR"
+                return root / "artifacts" / "merged_model", "repo-local"
+
+
             def _static_loader_markers() -> None:
                 hf_load_kwargs = _hf_load_kwargs(Path("."))
                 AutoTokenizer.from_pretrained("tokenizer", **hf_load_kwargs)
@@ -88,6 +122,12 @@ def _make_fake_package(first_forward_result: str = "pass") -> tempfile.Temporary
         ),
         encoding="utf-8",
     )
+    # Changed: let fake packages exercise either merged-model or LoRA artifact recognition.
+    # Why: static checker should pass both families without loading real model bytes.
+    if artifact == "lora":
+        _write_fake_lora_artifact(package_dir)
+    else:
+        _write_fake_merged_model_artifact(package_dir)
     return temp_dir
 
 
@@ -125,19 +165,21 @@ class RuntimeSmokeSubmitPackageTest(unittest.TestCase):
 
         self.assertTrue(result.ok, result.messages)
         self.assertTrue(any("RUNTIME_OK" in message for message in result.messages), result.messages)
+        self.assertTrue(any("ARTIFACT_OK: lora_adapter" in message for message in result.messages), result.messages)
         self.assertTrue(any("MODEL_LOAD_NOT_RUN" in message for message in result.messages), result.messages)
         self.assertTrue(any("FIRST_FORWARD_NOT_RUN" in message for message in result.messages), result.messages)
 
-    def test_runtime_smoke_first_forward_implies_model_load_without_artifacts(self) -> None:
+    def test_runtime_smoke_first_forward_implies_model_load_for_merged_artifact(self) -> None:
         # Changed: cover first-forward using a fake Solver/predict_one package.
-        # Why: the unit test must not require local model or adapter artifacts.
-        with _make_fake_package() as temp_name:
+        # Why: merged-model smoke should validate control flow without real model bytes.
+        with _make_fake_package(artifact="merged") as temp_name:
             result = run_runtime_smoke(Path(temp_name), first_forward=True)
 
         self.assertTrue(result.ok, result.messages)
         self.assertEqual("1", os.environ.get("FAKE_SOLVER_CONSTRUCTED"))
         self.assertEqual("runtime_smoke_first_forward", os.environ.get("FAKE_FIRST_FORWARD_ID"))
         self.assertEqual("True", os.environ.get("FAKE_FIRST_FORWARD_HAS_STEPS"))
+        self.assertTrue(any("ARTIFACT_OK: merged_model" in message for message in result.messages), result.messages)
         self.assertTrue(any("MODEL_LOAD_OK" in message for message in result.messages), result.messages)
         self.assertTrue(any("FIRST_FORWARD_OK" in message for message in result.messages), result.messages)
 
