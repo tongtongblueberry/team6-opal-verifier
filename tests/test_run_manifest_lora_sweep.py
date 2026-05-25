@@ -47,11 +47,22 @@ class RunManifestLoraSweepTest(unittest.TestCase):
         self.assertIn("0.05", command)
         self.assertIn("--resume", command)
 
+    def test_parse_args_defaults_to_calibration_selection_metrics(self) -> None:
+        # Changed: lock the runner CLI defaults to calibration split metrics.
+        # Why: hidden metrics are reserved for no-peek validation reports.
+        args = sweep.parse_args(["--manifest", "manifest.jsonl", "--run-root", "runs"])
+
+        self.assertEqual(args.selection_metric, "metrics.by_split.calibration.accuracy")
+        self.assertEqual(args.precision_metric, "metrics.by_split.calibration.precision_fail")
+        self.assertEqual(args.recall_metric, "metrics.by_split.calibration.recall_fail")
+
     def test_choose_best_prefers_constraint_satisfying_result(self) -> None:
         args = argparse.Namespace(
-            selection_metric="metrics.by_split.hidden.accuracy",
-            precision_metric="metrics.by_split.hidden.precision_fail",
-            recall_metric="metrics.by_split.hidden.recall_fail",
+            # Changed: choose_best fixture now uses calibration metric paths.
+            # Why: runner defaults must align with calibration-first candidate selection.
+            selection_metric="metrics.by_split.calibration.accuracy",
+            precision_metric="metrics.by_split.calibration.precision_fail",
+            recall_metric="metrics.by_split.calibration.recall_fail",
             min_fail_precision=0.90,
             min_fail_recall=0.80,
         )
@@ -62,7 +73,7 @@ class RunManifestLoraSweepTest(unittest.TestCase):
             "eval_summary": {
                 "metrics": {
                     "by_split": {
-                        "hidden": {
+                        "calibration": {
                             "accuracy": 0.99,
                             "precision_fail": 0.80,
                             "recall_fail": 1.00,
@@ -78,7 +89,7 @@ class RunManifestLoraSweepTest(unittest.TestCase):
             "eval_summary": {
                 "metrics": {
                     "by_split": {
-                        "hidden": {
+                        "calibration": {
                             "accuracy": 0.93,
                             "precision_fail": 0.95,
                             "recall_fail": 0.85,

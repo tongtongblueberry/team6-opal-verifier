@@ -147,9 +147,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--resume", action="store_true", help="Pass --resume to train_manifest_lora.py.")
     parser.add_argument("--force", action="store_true", help="Rerun configs even when eval JSON already exists.")
     parser.add_argument("--dry-run", action="store_true", help="Write the plan without launching training/eval.")
-    parser.add_argument("--selection-metric", default="metrics.by_split.hidden.accuracy")
-    parser.add_argument("--precision-metric", default="metrics.by_split.hidden.precision_fail")
-    parser.add_argument("--recall-metric", default="metrics.by_split.hidden.recall_fail")
+    # Changed: score sweep winners on calibration metrics by default.
+    # Why: hidden split should remain no-peek validation unless callers opt in.
+    parser.add_argument("--selection-metric", default="metrics.by_split.calibration.accuracy")
+    parser.add_argument("--precision-metric", default="metrics.by_split.calibration.precision_fail")
+    parser.add_argument("--recall-metric", default="metrics.by_split.calibration.recall_fail")
     parser.add_argument("--min-fail-precision", type=float, default=0.90)
     parser.add_argument("--min-fail-recall", type=float, default=0.80)
     parser.add_argument("--logging-steps", type=int, default=10)

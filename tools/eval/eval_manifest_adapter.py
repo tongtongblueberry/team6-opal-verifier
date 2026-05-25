@@ -776,11 +776,82 @@ def best_threshold_entry(entries: Sequence[dict[str, Any]], metric_name: str) ->
     }
 
 
+# Changed: derive selective risk coverage metrics from stored p_fail scores only.
+# Why: threshold sweep reports must reuse one inference pass without importing model, solver, or rule code.
+def compute_selective_risk_metrics(predictions: Sequence[dict[str, Any]], threshold: float) -> dict[str, Any]:
+    n = len(predictions)
+    selected_n = 0
+    true_positive_count = 0
+    false_positive_count = 0
+    gold_fail_count = 0
+    gold_pass_count = 0
+
+    for item in predictions:
+        gold = item["gold"]
+        if gold == "fail":
+            gold_fail_count += 1
+        elif gold == "pass":
+            gold_pass_count += 1
+
+        if float(item["p_fail"]) >= threshold:
+            selected_n += 1
+            if gold == "fail":
+                true_positive_count += 1
+            elif gold == "pass":
+                false_positive_count += 1
+
+    false_positive_rate = divide_or_none(false_positive_count, gold_pass_count)
+    return {
+        "n": n,
+        "threshold": threshold,
+        "selected_n": selected_n,
+        "coverage": selected_n / n if n else 0.0,
+        "risk_error_rate": divide_or_none(false_positive_count, selected_n),
+        "false_positive_rate": false_positive_rate,
+        "false_positives_per_100": false_positive_rate * 100.0 if false_positive_rate is not None else None,
+        "fail_coverage": divide_or_none(true_positive_count, gold_fail_count),
+        "true_positive_count": true_positive_count,
+        "false_positive_count": false_positive_count,
+    }
+
+
+# Changed: summarize the p_fail risk-coverage curve independently of any single threshold.
+# Why: AURC gives reviewers a compact ordering-quality signal for selective risk triage.
+def compute_risk_coverage_summary(predictions: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    n = len(predictions)
+    if not n:
+        return {
+            "n": 0,
+            "aurc": None,
+            "full_coverage_risk_error_rate": None,
+            "max_coverage_at_zero_error": 0.0,
+        }
+
+    false_positive_count = 0
+    risk_sum = 0.0
+    max_zero_error_selected_n = 0
+    sorted_predictions = sorted(predictions, key=lambda item: float(item["p_fail"]), reverse=True)
+    for selected_n, item in enumerate(sorted_predictions, start=1):
+        if item["gold"] == "pass":
+            false_positive_count += 1
+        risk_error_rate = false_positive_count / selected_n
+        risk_sum += risk_error_rate
+        if false_positive_count == 0:
+            max_zero_error_selected_n = selected_n
+
+    return {
+        "n": n,
+        "aurc": risk_sum / n,
+        "full_coverage_risk_error_rate": false_positive_count / n,
+        "max_coverage_at_zero_error": max_zero_error_selected_n / n,
+    }
+
+
 def build_threshold_sweep_report(
     predictions: Sequence[dict[str, Any]],
     thresholds: Sequence[float],
 ) -> dict[str, Any]:
-    # Changed: persist per-threshold metrics and simple best-threshold selections.
+    # Changed: persist per-threshold metrics, risk coverage, and simple best-threshold selections.
     # Why: threshold decisions should be reproducible from one inference pass and archived JSON.
     if not predictions:
         return {
@@ -789,11 +860,13 @@ def build_threshold_sweep_report(
             "metrics_by_threshold": [],
             "best_accuracy": None,
             "best_fail_f1": None,
+            "risk_coverage_summary": compute_risk_coverage_summary([]),
         }
     entries = [
         {
             "threshold": threshold,
             "metrics": compute_metrics(predictions, threshold),
+            "risk_coverage": compute_selective_risk_metrics(predictions, threshold),
         }
         for threshold in thresholds
     ]
@@ -803,6 +876,7 @@ def build_threshold_sweep_report(
         "metrics_by_threshold": entries,
         "best_accuracy": best_threshold_entry(entries, "accuracy"),
         "best_fail_f1": best_threshold_entry(entries, "f1_fail"),
+        "risk_coverage_summary": compute_risk_coverage_summary(predictions),
     }
 
 
@@ -905,10 +979,11 @@ def metric_table_lines(metrics: dict[str, Any]) -> list[str]:
 
 
 def threshold_sweep_markdown_lines(threshold_sweep: dict[str, Any]) -> list[str]:
-    # Changed: summarize optional threshold sweep results in Korean Markdown.
+    # Changed: summarize optional threshold sweep and risk-coverage results in Korean Markdown.
     # Why: archive reviewers need to see why a threshold was selected without opening JSON.
     if not threshold_sweep.get("enabled"):
         return []
+    risk_summary = threshold_sweep["risk_coverage_summary"]
     lines = [
         "",
         "## Threshold Sweep",
@@ -916,14 +991,21 @@ def threshold_sweep_markdown_lines(threshold_sweep: dict[str, Any]) -> list[str]
         f"- thresholds: `{threshold_sweep['thresholds']}`",
         f"- best accuracy: `{threshold_sweep['best_accuracy']}`",
         f"- best fail F1: `{threshold_sweep['best_fail_f1']}`",
+        f"- risk coverage AURC: `{format_float(risk_summary['aurc'])}`",
+        f"- max coverage at zero error: `{format_percent(risk_summary['max_coverage_at_zero_error'])}`",
         "",
-        "| Threshold | Accuracy | Fail F1 | Macro F1 | Balanced Acc | Brier | ECE |",
-        "|---:|---:|---:|---:|---:|---:|---:|",
+        "| Threshold | Coverage | Risk Error | FP Rate | FP/100 | Accuracy | Fail F1 | Macro F1 | Balanced Acc | Brier | ECE |",
+        "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for entry in threshold_sweep["metrics_by_threshold"]:
         overall = entry["metrics"]["overall"]
+        risk_coverage = entry["risk_coverage"]
         lines.append(
-            f"| {entry['threshold']:.6f} | {format_percent(overall['accuracy'])} | "
+            f"| {entry['threshold']:.6f} | {format_percent(risk_coverage['coverage'])} | "
+            f"{format_percent(risk_coverage['risk_error_rate'])} | "
+            f"{format_percent(risk_coverage['false_positive_rate'])} | "
+            f"{format_float(risk_coverage['false_positives_per_100'])} | "
+            f"{format_percent(overall['accuracy'])} | "
             f"{format_percent(overall['f1_fail'])} | {format_percent(overall['macro_f1'])} | "
             f"{format_percent(overall['balanced_accuracy'])} | {format_float(overall['brier_score'])} | "
             f"{format_float(overall['ece'])} |"

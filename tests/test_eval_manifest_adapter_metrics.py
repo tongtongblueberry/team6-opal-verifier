@@ -56,6 +56,29 @@ class EvalManifestAdapterMetricTests(unittest.TestCase):
         self.assertEqual(sweep["best_accuracy"], {"threshold": 0.5, "value": 1.0})
         self.assertEqual(sweep["best_fail_f1"], {"threshold": 0.5, "value": 1.0})
 
+    def test_threshold_sweep_adds_selective_risk_coverage_from_p_fail(self) -> None:
+        # Changed: assert threshold sweep risk coverage is computed from p_fail scores.
+        # Why: the report must reuse one inference pass without solver or model imports.
+        predictions = [
+            {"gold": "pass", "split": "hidden", "p_fail": 0.9, "prediction": "pass"},
+            {"gold": "fail", "split": "hidden", "p_fail": 0.8, "prediction": "pass"},
+            {"gold": "fail", "split": "hidden", "p_fail": 0.6, "prediction": "pass"},
+            {"gold": "pass", "split": "hidden", "p_fail": 0.4, "prediction": "fail"},
+        ]
+
+        sweep = eval_adapter.build_threshold_sweep_report(predictions, [0.5])
+        risk_coverage = sweep["metrics_by_threshold"][0]["risk_coverage"]
+        summary = sweep["risk_coverage_summary"]
+
+        self.assertEqual(risk_coverage["selected_n"], 3)
+        self.assertTrue(math.isclose(risk_coverage["coverage"], 0.75))
+        self.assertTrue(math.isclose(risk_coverage["risk_error_rate"], 1 / 3))
+        self.assertTrue(math.isclose(risk_coverage["false_positive_rate"], 0.5))
+        self.assertTrue(math.isclose(risk_coverage["false_positives_per_100"], 50.0))
+        self.assertTrue(math.isclose(risk_coverage["fail_coverage"], 1.0))
+        self.assertTrue(math.isclose(summary["aurc"], (1.0 + 0.5 + (1 / 3) + 0.5) / 4))
+        self.assertTrue(math.isclose(summary["max_coverage_at_zero_error"], 0.0))
+
     def test_parse_threshold_sweep_deduplicates_and_validates(self) -> None:
         self.assertEqual(eval_adapter.parse_threshold_sweep("0.30, 0.35, 0.30"), [0.3, 0.35])
 

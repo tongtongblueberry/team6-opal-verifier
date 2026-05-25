@@ -48,21 +48,37 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
         recall_fail: float,
         brier_score: float,
         ece: float,
+        hidden_accuracy: float | None = None,
+        hidden_precision_fail: float | None = None,
+        hidden_recall_fail: float | None = None,
+        hidden_brier_score: float | None = None,
+        hidden_ece: float | None = None,
     ) -> dict[str, object]:
-        hidden = self.metric_block(
+        # Changed: fixture entries now separate calibration selection metrics from hidden validation metrics.
+        # Why: default selector behavior must be tested as calibration-first with hidden preserved only for review.
+        calibration = self.metric_block(
             accuracy=accuracy,
             precision_fail=precision_fail,
             recall_fail=recall_fail,
             brier_score=brier_score,
             ece=ece,
         )
+        hidden = self.metric_block(
+            accuracy=hidden_accuracy if hidden_accuracy is not None else accuracy,
+            precision_fail=hidden_precision_fail if hidden_precision_fail is not None else precision_fail,
+            recall_fail=hidden_recall_fail if hidden_recall_fail is not None else recall_fail,
+            brier_score=hidden_brier_score if hidden_brier_score is not None else brier_score,
+            ece=hidden_ece if hidden_ece is not None else ece,
+        )
+        calibration["threshold"] = threshold
         hidden["threshold"] = threshold
-        overall = dict(hidden)
+        overall = dict(calibration)
         return {
             "threshold": threshold,
             "metrics": {
                 "overall": overall,
                 "by_split": {
+                    "calibration": calibration,
                     "hidden": hidden,
                 },
             },
@@ -121,7 +137,7 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_selects_best_hidden_threshold_from_eval_json_not_summary_cache(self) -> None:
+    def test_selects_best_calibration_threshold_from_eval_json_not_summary_cache(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
             root = Path(temp_name)
             artifacts = root / "artifacts"
@@ -146,6 +162,11 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
                         recall_fail=0.82,
                         brier_score=0.11,
                         ece=0.04,
+                        hidden_accuracy=0.70,
+                        hidden_precision_fail=0.99,
+                        hidden_recall_fail=0.99,
+                        hidden_brier_score=0.30,
+                        hidden_ece=0.20,
                     ),
                 ],
             )
@@ -159,6 +180,11 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
                         recall_fail=0.81,
                         brier_score=0.09,
                         ece=0.03,
+                        hidden_accuracy=0.99,
+                        hidden_precision_fail=0.99,
+                        hidden_recall_fail=0.99,
+                        hidden_brier_score=0.05,
+                        hidden_ece=0.01,
                     )
                 ],
             )
@@ -168,11 +194,53 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
             report = selector.build_selection_report(sweep_json, selector.SelectionOptions())
 
         self.assertEqual(report["base_threshold_best"], {"name": "base_threshold_best"})
+        # Changed: assert default selection paths are calibration-based.
+        # Why: a higher hidden score must not override the calibration-first winner.
+        self.assertEqual(report["selection"]["split"], "calibration")
+        self.assertEqual(report["selection"]["selection_metric"], "metrics.by_split.calibration.accuracy")
         self.assertEqual(report["best"]["config_name"], "first")
         self.assertEqual(report["best"]["threshold"], 0.7)
         self.assertEqual(report["best"]["selection_metric_value"], 0.94)
-        self.assertEqual(report["best"]["calibration"]["hidden"]["brier_score"], 0.11)
-        self.assertEqual(report["best"]["calibration"]["hidden"]["ece"], 0.04)
+        self.assertEqual(report["best"]["calibration"]["calibration"]["brier_score"], 0.11)
+        self.assertEqual(report["best"]["calibration"]["calibration"]["ece"], 0.04)
+
+    def test_preserves_hidden_metrics_as_no_peek_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            artifacts = root / "artifacts"
+            artifacts.mkdir()
+            eval_json = artifacts / "candidate.eval_manifest.json"
+            self.write_eval_report(
+                eval_json,
+                [
+                    self.threshold_entry(
+                        0.55,
+                        accuracy=0.91,
+                        precision_fail=0.93,
+                        recall_fail=0.84,
+                        brier_score=0.12,
+                        ece=0.05,
+                        hidden_accuracy=0.77,
+                        hidden_precision_fail=0.88,
+                        hidden_recall_fail=0.79,
+                        hidden_brier_score=0.22,
+                        hidden_ece=0.09,
+                    )
+                ],
+            )
+            sweep_json = artifacts / "manifest_lora_sweep_results.json"
+            self.write_sweep_report(sweep_json, {"candidate": eval_json})
+
+            report = selector.build_selection_report(sweep_json, selector.SelectionOptions())
+
+        # Changed: verify hidden metrics are copied into the validation block, not the selection block.
+        # Why: hidden scores must stay inspectable without affecting calibration-first ranking.
+        no_peek = report["best"]["no_peek_validation"]
+        self.assertEqual(no_peek["split"], "hidden")
+        self.assertEqual(no_peek["metrics"]["accuracy"], 0.77)
+        self.assertEqual(no_peek["metrics"]["precision_fail"], 0.88)
+        self.assertEqual(no_peek["summary"]["brier_score"], 0.22)
+        self.assertEqual(report["best"]["metrics"]["calibration"]["accuracy"], 0.91)
 
     def test_reports_no_best_when_constraints_are_not_satisfied(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
@@ -208,11 +276,13 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
             "created_at_kst": "2026-05-26T00:00:00+09:00",
             "input": {"sweep_json": "artifacts/manifest_lora_sweep_results.json"},
             "selection": {
-                "split": "hidden",
-                "selection_metric": "metrics.by_split.hidden.accuracy",
+                # Changed: markdown fixture follows the calibration-first report default.
+                # Why: formatter coverage should reflect the default selector contract.
+                "split": "calibration",
+                "selection_metric": "metrics.by_split.calibration.accuracy",
                 "selection_direction": "max",
-                "precision_metric": "metrics.by_split.hidden.precision_fail",
-                "recall_metric": "metrics.by_split.hidden.recall_fail",
+                "precision_metric": "metrics.by_split.calibration.precision_fail",
+                "recall_metric": "metrics.by_split.calibration.recall_fail",
                 "min_fail_precision": 0.9,
                 "min_fail_recall": 0.8,
             },
@@ -225,7 +295,19 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
                 "precision_metric_value": 0.92,
                 "recall_metric_value": 0.83,
                 "eval_json": "chosen.eval_manifest.json",
-                "calibration": {"hidden": {"brier_score": 0.08, "ece": 0.02}},
+                "calibration": {"calibration": {"brier_score": 0.08, "ece": 0.02}},
+                # Changed: markdown fixture includes the hidden no-peek validation block.
+                # Why: formatter should keep hidden metrics separate from calibration selection output.
+                "no_peek_validation": {
+                    "split": "hidden",
+                    "metrics": {
+                        "accuracy": 0.71,
+                        "precision_fail": 0.81,
+                        "recall_fail": 0.72,
+                        "brier_score": 0.18,
+                        "ece": 0.06,
+                    },
+                },
             },
             "top_candidates": [
                 {
@@ -235,7 +317,7 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
                     "precision_metric_value": 0.92,
                     "recall_metric_value": 0.83,
                     "eval_json": "chosen.eval_manifest.json",
-                    "calibration": {"hidden": {"brier_score": 0.08, "ece": 0.02}},
+                    "calibration": {"calibration": {"brier_score": 0.08, "ece": 0.02}},
                 }
             ],
             "skipped_results": [],
@@ -247,6 +329,8 @@ class SelectManifestSweepCandidateTests(unittest.TestCase):
         self.assertIn("`chosen`", markdown)
         self.assertIn("0.650000", markdown)
         self.assertIn("0.080000", markdown)
+        self.assertIn("## No-peek Validation", markdown)
+        self.assertIn("0.710000", markdown)
 
 
 if __name__ == "__main__":

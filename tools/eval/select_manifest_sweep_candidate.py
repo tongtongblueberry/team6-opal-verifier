@@ -11,7 +11,10 @@ from zoneinfo import ZoneInfo
 
 
 KST = ZoneInfo("Asia/Seoul")
-DEFAULT_SPLIT = "hidden"
+# Changed: make calibration the default decision split.
+# Why: hidden metrics must remain report-only no-peek validation unless explicitly selected.
+DEFAULT_SPLIT = "calibration"
+NO_PEEK_VALIDATION_SPLIT = "hidden"
 DEFAULT_STATUSES = ("completed", "skipped_completed")
 TOOL_NAME = "tools/eval/select_manifest_sweep_candidate.py"
 
@@ -49,7 +52,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--selection-metric",
         default=None,
-        help="Dotted metric path inside each threshold entry, or a split metric key. Default: hidden accuracy.",
+        help="Dotted metric path inside each threshold entry, or a split metric key. Default: calibration accuracy.",
     )
     parser.add_argument(
         "--selection-direction",
@@ -60,12 +63,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--precision-metric",
         default=None,
-        help="Dotted metric path for fail precision, or a split metric key. Default: hidden precision_fail.",
+        help="Dotted metric path for fail precision, or a split metric key. Default: calibration precision_fail.",
     )
     parser.add_argument(
         "--recall-metric",
         default=None,
-        help="Dotted metric path for fail recall, or a split metric key. Default: hidden recall_fail.",
+        help="Dotted metric path for fail recall, or a split metric key. Default: calibration recall_fail.",
     )
     parser.add_argument("--min-fail-precision", type=float, default=0.90)
     parser.add_argument("--min-fail-recall", type=float, default=0.80)
@@ -232,9 +235,12 @@ def candidate_from_entry(
         return None
 
     split_metrics = nested_get(entry, f"metrics.by_split.{options.split}")
+    no_peek_metrics = nested_get(entry, f"metrics.by_split.{NO_PEEK_VALIDATION_SPLIT}")
     overall_metrics = nested_get(entry, "metrics.overall")
     if not isinstance(split_metrics, dict):
         split_metrics = {}
+    if not isinstance(no_peek_metrics, dict):
+        no_peek_metrics = {}
     if not isinstance(overall_metrics, dict):
         overall_metrics = {}
 
@@ -265,6 +271,13 @@ def candidate_from_entry(
         "metrics": {
             options.split: split_metrics,
             "overall": overall_metrics,
+        },
+        # Changed: copy hidden metrics into a separate validation-only report block.
+        # Why: calibration-first selection must preserve hidden evidence without ranking on it.
+        "no_peek_validation": {
+            "split": NO_PEEK_VALIDATION_SPLIT,
+            "summary": calibration_summary(no_peek_metrics),
+            "metrics": no_peek_metrics,
         },
     }
 
@@ -411,11 +424,14 @@ def slim_candidate(candidate: dict[str, Any] | None) -> dict[str, Any] | None:
         "constraints_satisfied": candidate["constraints_satisfied"],
         "calibration": candidate["calibration"],
         "metrics": candidate["metrics"],
+        # Changed: keep hidden validation data in every slim report candidate.
+        # Why: top/best candidate projections must retain the no-peek validation block.
+        "no_peek_validation": candidate["no_peek_validation"],
     }
 
 
 # Changed: build a standalone report that keeps base-threshold best separate from threshold-aware best.
-# Why: reviewers need to compare the old sweep winner with the hidden-split constrained threshold winner.
+# Why: reviewers need to compare the old sweep winner with the calibration-first threshold winner.
 def build_selection_report(sweep_json_path: Path, options: SelectionOptions) -> dict[str, Any]:
     validate_options(options)
     sweep_json_path = sweep_json_path.expanduser().resolve()
@@ -455,6 +471,9 @@ def build_selection_report(sweep_json_path: Path, options: SelectionOptions) -> 
             "min_fail_recall": options.min_fail_recall,
             "statuses": list(options.statuses),
             "top_k": top_k,
+            # Changed: declare the held-out validation split used only for report inspection.
+            # Why: downstream archive review should not mistake hidden metrics for selection inputs.
+            "no_peek_validation_split": NO_PEEK_VALIDATION_SPLIT,
         },
         "counts": {
             "results": len(sweep_report.get("results", [])) if isinstance(sweep_report.get("results"), list) else None,
@@ -521,6 +540,26 @@ def format_markdown_report(report: dict[str, Any]) -> str:
                 format_candidate_row(report["best"], split),
             ]
         )
+        no_peek = report["best"].get("no_peek_validation", {})
+        if not isinstance(no_peek, dict):
+            no_peek = {}
+        no_peek_metrics = no_peek.get("metrics")
+        if isinstance(no_peek_metrics, dict):
+            # Changed: render hidden validation metrics as a separate Markdown block.
+            # Why: Markdown reports should preserve no-peek evidence without mixing it into selection rows.
+            lines.extend(
+                [
+                    "",
+                    "## No-peek Validation",
+                    "",
+                    f"- split: `{no_peek.get('split', NO_PEEK_VALIDATION_SPLIT)}`",
+                    f"- accuracy: `{format_float(no_peek_metrics.get('accuracy'))}`",
+                    f"- fail precision: `{format_float(no_peek_metrics.get('precision_fail'))}`",
+                    f"- fail recall: `{format_float(no_peek_metrics.get('recall_fail'))}`",
+                    f"- brier: `{format_float(no_peek_metrics.get('brier_score'))}`",
+                    f"- ece: `{format_float(no_peek_metrics.get('ece'))}`",
+                ]
+            )
     lines.extend(
         [
             "",
