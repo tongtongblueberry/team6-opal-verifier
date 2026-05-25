@@ -25,6 +25,14 @@ FORBIDDEN_DATASET_PATH = "/dl2026/dataset"
 KST = timezone(timedelta(hours=9), name="KST")
 MIN_COMPACT_SUBSTRING_PATTERN_LEN = 6
 ECE_BIN_COUNT = 10
+# Changed: freeze deterministic input character-length buckets for base eval reports.
+# Why: length bucket metrics must be reproducible from manifest input text without model or rule imports.
+LENGTH_BUCKETS = (
+    ("chars_0000_0512", 512),
+    ("chars_0513_1024", 1024),
+    ("chars_1025_2048", 2048),
+    ("chars_2049_plus", None),
+)
 PUBLIC_HOLDOUT_PATTERNS = (
     "public",
     "public20",
@@ -293,6 +301,16 @@ def normalize_split(value: Any, line_number: int) -> str:
     if not isinstance(value, str) or not value.strip():
         fail(f"Manifest line {line_number} is missing non-empty string field 'split'")
     return value.strip().lower()
+
+
+# Changed: derive a deterministic length bucket directly from manifest input text.
+# Why: bucket metrics must not depend on tokenizer/model internals or any solver/rule code.
+def input_length_bucket(input_text: str) -> str:
+    char_count = len(input_text)
+    for name, max_chars in LENGTH_BUCKETS:
+        if max_chars is None or char_count <= max_chars:
+            return name
+    raise AssertionError("LENGTH_BUCKETS must include an open-ended final bucket")
 
 
 def load_manifest(path: Path) -> tuple[list[ManifestRow], dict[str, Any]]:
@@ -610,6 +628,11 @@ def evaluate_rows(
                     "line_number": row.line_number,
                     "sample_id": row.sample_id,
                     "split": row.split,
+                    # Changed: preserve source/length grouping metadata on every prediction.
+                    # Why: report-level bucket metrics must be computed from cached predictions only.
+                    "source": row.source,
+                    "input_length_chars": len(row.input_text),
+                    "length_bucket": input_length_bucket(row.input_text),
                     "gold": row.label,
                     "prediction": prediction,
                     "correct": prediction == row.label,
@@ -755,6 +778,68 @@ def compute_metrics(predictions: Sequence[dict[str, Any]], threshold: float) -> 
     return {
         "overall": compute_metric_block(predictions, threshold),
         "by_split": by_split,
+    }
+
+
+# Changed: compute base-threshold metrics for each requested metadata bucket.
+# Why: bucket reports should reuse compute_metric_block without expanding threshold sweep complexity.
+def compute_metric_blocks_by_key(
+    predictions: Sequence[dict[str, Any]],
+    key: str,
+    threshold: float,
+) -> dict[str, Any]:
+    by_bucket: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in predictions:
+        bucket_name = str(item.get(key, "unknown") or "unknown")
+        by_bucket[bucket_name].append(item)
+    return {
+        bucket_name: compute_metric_block(bucket_predictions, threshold)
+        for bucket_name, bucket_predictions in sorted(by_bucket.items())
+    }
+
+
+# Changed: summarize the weakest accuracy bucket for each bucket axis.
+# Why: Markdown needs a compact worst/summary table without dumping every bucket metric.
+def summarize_bucket_axis(blocks: dict[str, Any]) -> dict[str, Any]:
+    if not blocks:
+        return {
+            "bucket_count": 0,
+            "total_n": 0,
+            "worst_accuracy": None,
+        }
+    worst_name, worst_block = min(
+        blocks.items(),
+        key=lambda item: (float(item[1]["accuracy"]), -int(item[1]["n"]), item[0]),
+    )
+    return {
+        "bucket_count": len(blocks),
+        "total_n": sum(int(block["n"]) for block in blocks.values()),
+        "worst_accuracy": {
+            "bucket": worst_name,
+            "n": worst_block["n"],
+            "accuracy": worst_block["accuracy"],
+            "macro_f1": worst_block["macro_f1"],
+            "fail_f1": worst_block["f1_fail"],
+        },
+    }
+
+
+# Changed: expose split/source/length bucket metrics as a report block separate from overall metrics.
+# Why: consumers can inspect bucket behavior at the base threshold without changing compute_metrics shape.
+def compute_bucket_metrics(predictions: Sequence[dict[str, Any]], threshold: float) -> dict[str, Any]:
+    by_split = compute_metric_blocks_by_key(predictions, "split", threshold)
+    by_source = compute_metric_blocks_by_key(predictions, "source", threshold)
+    by_length_bucket = compute_metric_blocks_by_key(predictions, "length_bucket", threshold)
+    return {
+        "threshold": threshold,
+        "by_split": by_split,
+        "by_source": by_source,
+        "by_length_bucket": by_length_bucket,
+        "summary": {
+            "split": summarize_bucket_axis(by_split),
+            "source": summarize_bucket_axis(by_source),
+            "length_bucket": summarize_bucket_axis(by_length_bucket),
+        },
     }
 
 
@@ -955,6 +1040,14 @@ def format_float(value: Optional[float]) -> str:
     return f"{value:.6f}"
 
 
+# Changed: escape user/manifest-derived strings before writing Markdown table cells.
+# Why: source names can contain pipes or newlines and must not break audit tables.
+def markdown_table_cell(value: Any) -> str:
+    text = str(value)
+    text = text.replace("\\", "\\\\").replace("|", "\\|")
+    return " ".join(text.splitlines())
+
+
 def metric_table_lines(metrics: dict[str, Any]) -> list[str]:
     lines = [
         "| 구간 | n | Accuracy | Macro F1 | Balanced Acc | Fail Precision | Fail Recall | Fail F1 | Brier | ECE | TP | TN | FP | FN | mean p_fail(pass) | mean p_fail(fail) |",
@@ -1009,6 +1102,42 @@ def threshold_sweep_markdown_lines(threshold_sweep: dict[str, Any]) -> list[str]
             f"{format_percent(overall['f1_fail'])} | {format_percent(overall['macro_f1'])} | "
             f"{format_percent(overall['balanced_accuracy'])} | {format_float(overall['brier_score'])} | "
             f"{format_float(overall['ece'])} |"
+        )
+    return lines
+
+
+# Changed: add a compact Korean Markdown summary for base-threshold bucket metrics.
+# Why: reviewers need quick worst-bucket visibility without opening the JSON report.
+def bucket_metrics_markdown_lines(bucket_metrics: Optional[dict[str, Any]]) -> list[str]:
+    if not bucket_metrics:
+        return []
+    axis_labels = {
+        "split": "split",
+        "source": "source",
+        "length_bucket": "length bucket",
+    }
+    lines = [
+        "",
+        "## Bucket Metrics",
+        "",
+        f"- threshold: `{bucket_metrics['threshold']}`",
+        "",
+        "| Axis | Bucket Count | Total n | Worst Bucket | Worst n | Worst Accuracy | Worst Macro F1 | Worst Fail F1 |",
+        "|---|---:|---:|---|---:|---:|---:|---:|",
+    ]
+    for axis in ("split", "source", "length_bucket"):
+        summary = bucket_metrics["summary"][axis]
+        worst = summary["worst_accuracy"]
+        if worst is None:
+            lines.append(
+                f"| {axis_labels[axis]} | {summary['bucket_count']} | {summary['total_n']} | "
+                "N/A | 0 | N/A | N/A | N/A |"
+            )
+            continue
+        lines.append(
+            f"| {axis_labels[axis]} | {summary['bucket_count']} | {summary['total_n']} | "
+            f"{markdown_table_cell(worst['bucket'])} | {worst['n']} | {format_percent(worst['accuracy'])} | "
+            f"{format_percent(worst['macro_f1'])} | {format_percent(worst['fail_f1'])} |"
         )
     return lines
 
@@ -1069,6 +1198,7 @@ def write_markdown_report(path: Path, report: dict[str, Any]) -> None:
             ]
         )
         lines.extend(metric_table_lines(report["metrics"]))
+        lines.extend(bucket_metrics_markdown_lines(report.get("bucket_metrics")))
         lines.extend(threshold_sweep_markdown_lines(report["threshold_sweep"]))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -1093,6 +1223,9 @@ def main() -> int:
         # Why: downstream consumers should not special-case missing metrics or predictions keys.
         report["model"] = None
         report["metrics"] = None
+        # Changed: keep dry-run JSON schema aligned after adding base bucket metrics.
+        # Why: dry-run has no predictions, so bucket metrics are intentionally absent.
+        report["bucket_metrics"] = None
         report["threshold_sweep"] = build_threshold_sweep_report([], threshold_sweep)
         report["predictions"] = []
         report["dry_run"] = {"model_loaded": False}
@@ -1118,6 +1251,9 @@ def main() -> int:
         "label_token_ids": label_token_report,
     }
     report["metrics"] = compute_metrics(predictions, args.threshold)
+    # Changed: add source and deterministic length bucket metrics only to the base threshold report.
+    # Why: threshold sweep should remain focused on threshold-level metrics from cached p_fail values.
+    report["bucket_metrics"] = compute_bucket_metrics(predictions, args.threshold)
     report["threshold_sweep"] = build_threshold_sweep_report(predictions, threshold_sweep)
     report["predictions"] = predictions
     write_json_report(output_json, report)
