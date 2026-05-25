@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -112,6 +113,69 @@ class RunManifestLoraSweepTest(unittest.TestCase):
         self.assertEqual(0, exit_code)
         self.assertIn('"status": "planned"', report_text)
         self.assertIn("--lora-r", report_text)
+
+    def test_completed_eval_must_match_train_hyperparameters_to_skip(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            run_root = Path(temp_name)
+            artifacts = run_root / "artifacts"
+            artifacts.mkdir()
+            eval_json = artifacts / "r32.eval_manifest.json"
+            eval_json.write_text(
+                json.dumps(
+                    {
+                        "arguments": {
+                            "base_model": "Qwen/Qwen3.5-4B",
+                            "threshold": 0.5,
+                            "threshold_sweep": sweep.DEFAULT_THRESHOLD_SWEEP,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            train_report = artifacts / "r32.train_report.json"
+            train_report.write_text(
+                json.dumps(
+                    {
+                        "hyperparameters": {
+                            "lr": 0.001,
+                            "epochs": 5.0,
+                            "batch_size": 2,
+                            "grad_accum": 4,
+                            "lora_r": 16,
+                            "lora_alpha": 32,
+                            "lora_dropout": 0.1,
+                            "weight_decay": 0.05,
+                            "label_smoothing": 0.1,
+                            "max_seq_len": 2048,
+                            "warmup_ratio": 0.05,
+                            "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj"],
+                            "seed": 42,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                run_root=temp_name,
+                base_model="Qwen/Qwen3.5-4B",
+                threshold=0.5,
+                threshold_sweep=sweep.DEFAULT_THRESHOLD_SWEEP,
+            )
+            config = sweep.SweepConfig(
+                name="r32",
+                lr=0.001,
+                epochs=5.0,
+                batch_size=2,
+                grad_accum=4,
+                lora_r=32,
+                lora_alpha=64,
+                lora_dropout=0.1,
+            )
+
+            matches, reason = sweep.completed_eval_matches_config(eval_json, config, args)
+
+        self.assertFalse(matches)
+        self.assertIn("lora_r", reason)
 
 
 if __name__ == "__main__":

@@ -318,6 +318,7 @@ def load_eval_summary(eval_json: Path) -> dict[str, Any]:
         "metrics": data.get("metrics"),
         "threshold_sweep": data.get("threshold_sweep"),
         "selection": data.get("selection"),
+        "arguments": data.get("arguments"),
     }
 
 
@@ -401,14 +402,80 @@ def format_optional_float(value: float | None) -> str:
     return "N/A" if value is None else f"{value:.6f}"
 
 
+def completed_eval_matches_config(
+    eval_json: Path,
+    config: SweepConfig,
+    args: argparse.Namespace,
+) -> tuple[bool, str]:
+    # Changed: only skip a completed run when the archived eval report matches the current config.
+    # Why: stale eval JSON from a same-name run must not silently replace a changed hyperparameter trial.
+    if not eval_json.exists():
+        return False, "missing eval json"
+    try:
+        data = json.loads(eval_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return False, f"invalid eval json: {exc}"
+    arguments = data.get("arguments")
+    if not isinstance(arguments, dict):
+        return False, "eval json missing arguments"
+    if arguments.get("base_model") != args.base_model:
+        return False, "base_model mismatch"
+    if arguments.get("threshold") != args.threshold:
+        return False, "threshold mismatch"
+    if arguments.get("threshold_sweep") != args.threshold_sweep:
+        return False, "threshold_sweep mismatch"
+
+    training_report = Path(args.run_root).expanduser().resolve() / "artifacts" / f"{config.name}.train_report.json"
+    if not training_report.exists():
+        return False, "missing train report"
+    try:
+        train_data = json.loads(training_report.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return False, f"invalid train report: {exc}"
+    hyperparameters = train_data.get("hyperparameters")
+    if not isinstance(hyperparameters, dict):
+        return False, "train report missing hyperparameters"
+    expected = {
+        "lr": config.lr,
+        "epochs": config.epochs,
+        "batch_size": config.batch_size,
+        "grad_accum": config.grad_accum,
+        "lora_r": config.lora_r,
+        "lora_alpha": config.lora_alpha,
+        "lora_dropout": config.lora_dropout,
+        "weight_decay": config.weight_decay,
+        "label_smoothing": config.label_smoothing,
+        "max_seq_len": config.max_seq_len,
+        "warmup_ratio": config.warmup_ratio,
+        "target_modules": [part.strip() for part in config.target_modules.split(",") if part.strip()],
+        "seed": config.seed,
+    }
+    for key, expected_value in expected.items():
+        if hyperparameters.get(key) != expected_value:
+            return False, f"train hyperparameter mismatch: {key}"
+    return True, "matched"
+
+
 def run_config(args: argparse.Namespace, config: SweepConfig, run_root: Path) -> dict[str, Any]:
     paths = config_paths(run_root, config)
     serial_paths = {key: str(value) for key, value in paths.items()}
     if paths["eval_json"].exists() and not args.force:
+        matches, reason = completed_eval_matches_config(paths["eval_json"], config, args)
+        if not matches:
+            return {
+                "config": config.asdict(),
+                "paths": serial_paths,
+                "status": "stale_completed",
+                "stale_reason": reason,
+                "train": None,
+                "eval": None,
+                "eval_summary": load_eval_summary(paths["eval_json"]),
+            }
         return {
             "config": config.asdict(),
             "paths": serial_paths,
             "status": "skipped_completed",
+            "skip_reason": "eval and train reports match current config",
             "train": None,
             "eval": None,
             "eval_summary": load_eval_summary(paths["eval_json"]),
