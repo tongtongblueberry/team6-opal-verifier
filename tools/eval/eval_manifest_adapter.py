@@ -24,6 +24,7 @@ VALID_EVAL_SPLITS = {"calibration", "hidden"}
 FORBIDDEN_DATASET_PATH = "/dl2026/dataset"
 KST = timezone(timedelta(hours=9), name="KST")
 MIN_COMPACT_SUBSTRING_PATTERN_LEN = 6
+ECE_BIN_COUNT = 10
 PUBLIC_HOLDOUT_PATTERNS = (
     "public",
     "public20",
@@ -127,6 +128,11 @@ def parse_args() -> argparse.Namespace:
         help="Evaluation split: calibration or hidden. May be repeated or comma-separated.",
     )
     parser.add_argument("--threshold", type=float, default=0.5, help="Predict fail when p_fail >= threshold.")
+    parser.add_argument(
+        "--threshold-sweep",
+        default=None,
+        help="Optional comma-separated thresholds to evaluate from cached p_fail values, e.g. 0.30,0.35,0.40.",
+    )
     parser.add_argument("--max-seq-len", type=int, default=2048, help="Maximum tokenized sequence length.")
     parser.add_argument("--batch-size", type=int, default=1, help="Evaluation batch size.")
     parser.add_argument("--output-json", required=True, help="Output JSON report path.")
@@ -152,17 +158,43 @@ def parse_splits(values: Sequence[str]) -> list[str]:
     return splits
 
 
-def validate_args(args: argparse.Namespace) -> list[str]:
+def parse_threshold_sweep(value: Optional[str]) -> list[float]:
+    # Changed: parse optional threshold sweep values without changing default single-threshold behavior.
+    # Why: sweep metrics must reuse the same model scores instead of rerunning inference per threshold.
+    if value is None or not value.strip():
+        return []
+    thresholds: list[float] = []
+    seen: set[float] = set()
+    for raw_part in value.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        try:
+            threshold = float(part)
+        except ValueError:
+            fail(f"Invalid threshold in --threshold-sweep: {part!r}")
+        if not 0.0 <= threshold <= 1.0:
+            fail("--threshold-sweep values must be between 0.0 and 1.0")
+        if threshold not in seen:
+            thresholds.append(threshold)
+            seen.add(threshold)
+    if not thresholds:
+        fail("--threshold-sweep was provided but no numeric thresholds were found")
+    return thresholds
+
+
+def validate_args(args: argparse.Namespace) -> tuple[list[str], list[float]]:
     selected_splits = parse_splits(args.split)
     if not 0.0 <= args.threshold <= 1.0:
         fail("--threshold must be between 0.0 and 1.0")
+    threshold_sweep = parse_threshold_sweep(args.threshold_sweep)
     if args.max_seq_len <= 0:
         fail("--max-seq-len must be positive")
     if args.batch_size <= 0:
         fail("--batch-size must be positive")
     if args.limit is not None and args.limit <= 0:
         fail("--limit must be positive when provided")
-    return selected_splits
+    return selected_splits, threshold_sweep
 
 
 # Changed: scan raw manifest rows for public/eval/holdout/leaderboard/rule-context/solver signals.
@@ -584,6 +616,7 @@ def evaluate_rows(
                     "p_fail": p_fail,
                     "logit_pass_first_token": pass_score.logit,
                     "logit_fail_first_token": fail_score.logit,
+                    "logit_margin_fail_minus_pass": fail_score.logit - pass_score.logit,
                     "pass_first_token_id": pass_score.token_id,
                     "fail_first_token_id": fail_score.token_id,
                 }
@@ -591,21 +624,91 @@ def evaluate_rows(
     return predictions
 
 
-# Changed: compute fail-class metrics by split and overall from prediction rows only.
-# Why: reports must be auditable without consulting any external labels or leaderboard results.
+def prediction_at_threshold(p_fail: float, threshold: float) -> str:
+    # Changed: centralize p_fail thresholding for base metrics and threshold sweep metrics.
+    # Why: metrics for alternate thresholds must not depend on the stored base-threshold prediction string.
+    return "fail" if p_fail >= threshold else "pass"
+
+
+def divide_or_none(numerator: int, denominator: int) -> Optional[float]:
+    return numerator / denominator if denominator else None
+
+
+def f1_or_none(precision: Optional[float], recall: Optional[float]) -> Optional[float]:
+    if precision is None or recall is None or not precision + recall:
+        return None
+    return 2 * precision * recall / (precision + recall)
+
+
+def brier_score(predictions: Sequence[dict[str, Any]]) -> Optional[float]:
+    # Changed: add threshold-independent probability calibration metric.
+    # Why: p_fail quality must be visible even when a threshold happens to optimize accuracy.
+    if not predictions:
+        return None
+    total = 0.0
+    for item in predictions:
+        target = 1.0 if item["gold"] == "fail" else 0.0
+        error = float(item["p_fail"]) - target
+        total += error * error
+    return total / len(predictions)
+
+
+def expected_calibration_error(
+    predictions: Sequence[dict[str, Any]],
+    threshold: float,
+    bin_count: int = ECE_BIN_COUNT,
+) -> Optional[float]:
+    # Changed: compute binary ECE from predicted-class confidence at the evaluated threshold.
+    # Why: leaderboard decisions depend on calibrated pass/fail confidence, not only class accuracy.
+    if not predictions:
+        return None
+    bins: list[list[tuple[float, bool]]] = [[] for _ in range(bin_count)]
+    for item in predictions:
+        p_fail = float(item["p_fail"])
+        prediction = prediction_at_threshold(p_fail, threshold)
+        confidence = p_fail if prediction == "fail" else 1.0 - p_fail
+        correct = prediction == item["gold"]
+        bin_index = min(bin_count - 1, int(confidence * bin_count))
+        bins[bin_index].append((confidence, correct))
+
+    total = len(predictions)
+    ece = 0.0
+    for items in bins:
+        if not items:
+            continue
+        mean_confidence = sum(confidence for confidence, _ in items) / len(items)
+        accuracy = sum(1 for _, correct in items if correct) / len(items)
+        ece += (len(items) / total) * abs(accuracy - mean_confidence)
+    return ece
+
+
+# Changed: compute fail/pass, macro, balanced, Brier, and ECE metrics from p_fail at a threshold.
+# Why: reports must be auditable and sweepable without consulting external labels or leaderboard results.
 def compute_metric_block(predictions: Sequence[dict[str, Any]], threshold: float) -> dict[str, Any]:
-    tp = sum(1 for item in predictions if item["gold"] == "fail" and item["prediction"] == "fail")
-    tn = sum(1 for item in predictions if item["gold"] == "pass" and item["prediction"] == "pass")
-    fp = sum(1 for item in predictions if item["gold"] == "pass" and item["prediction"] == "fail")
-    fn = sum(1 for item in predictions if item["gold"] == "fail" and item["prediction"] == "pass")
+    tp = tn = fp = fn = 0
+    for item in predictions:
+        prediction = prediction_at_threshold(float(item["p_fail"]), threshold)
+        if item["gold"] == "fail" and prediction == "fail":
+            tp += 1
+        elif item["gold"] == "pass" and prediction == "pass":
+            tn += 1
+        elif item["gold"] == "pass" and prediction == "fail":
+            fp += 1
+        elif item["gold"] == "fail" and prediction == "pass":
+            fn += 1
     n = len(predictions)
     # Changed: represent undefined fail-class metrics as None.
     # Why: zero predicted positives or zero gold positives should render as JSON null and Markdown N/A.
-    precision = tp / (tp + fp) if tp + fp else None
-    recall = tp / (tp + fn) if tp + fn else None
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if precision is not None and recall is not None and precision + recall
+    precision = divide_or_none(tp, tp + fp)
+    recall = divide_or_none(tp, tp + fn)
+    f1 = f1_or_none(precision, recall)
+    precision_pass = divide_or_none(tn, tn + fn)
+    recall_pass = divide_or_none(tn, tn + fp)
+    f1_pass = f1_or_none(precision_pass, recall_pass)
+    macro_f1 = (f1 + f1_pass) / 2 if f1 is not None and f1_pass is not None else None
+    balanced_accuracy = (
+        (recall + recall_pass) / 2
+        if recall is not None and recall_pass is not None
         else None
     )
     p_fail_by_gold: dict[str, list[float]] = defaultdict(list)
@@ -622,6 +725,14 @@ def compute_metric_block(predictions: Sequence[dict[str, Any]], threshold: float
         "precision_fail": precision,
         "recall_fail": recall,
         "f1_fail": f1,
+        "precision_pass": precision_pass,
+        "recall_pass": recall_pass,
+        "f1_pass": f1_pass,
+        "macro_f1": macro_f1,
+        "balanced_accuracy": balanced_accuracy,
+        "brier_score": brier_score(predictions),
+        "ece": expected_calibration_error(predictions, threshold),
+        "ece_bins": ECE_BIN_COUNT,
         "confusion_matrix": {
             "TP": tp,
             "TN": tn,
@@ -644,6 +755,54 @@ def compute_metrics(predictions: Sequence[dict[str, Any]], threshold: float) -> 
     return {
         "overall": compute_metric_block(predictions, threshold),
         "by_split": by_split,
+    }
+
+
+def metric_value_for_best(metrics: dict[str, Any], metric_name: str) -> float:
+    value = metrics["overall"].get(metric_name)
+    return float(value) if value is not None else float("-inf")
+
+
+def best_threshold_entry(entries: Sequence[dict[str, Any]], metric_name: str) -> Optional[dict[str, Any]]:
+    if not entries:
+        return None
+    best = max(entries, key=lambda item: metric_value_for_best(item["metrics"], metric_name))
+    value = best["metrics"]["overall"].get(metric_name)
+    if value is None:
+        return None
+    return {
+        "threshold": best["threshold"],
+        "value": value,
+    }
+
+
+def build_threshold_sweep_report(
+    predictions: Sequence[dict[str, Any]],
+    thresholds: Sequence[float],
+) -> dict[str, Any]:
+    # Changed: persist per-threshold metrics and simple best-threshold selections.
+    # Why: threshold decisions should be reproducible from one inference pass and archived JSON.
+    if not predictions:
+        return {
+            "enabled": bool(thresholds),
+            "thresholds": list(thresholds),
+            "metrics_by_threshold": [],
+            "best_accuracy": None,
+            "best_fail_f1": None,
+        }
+    entries = [
+        {
+            "threshold": threshold,
+            "metrics": compute_metrics(predictions, threshold),
+        }
+        for threshold in thresholds
+    ]
+    return {
+        "enabled": bool(thresholds),
+        "thresholds": list(thresholds),
+        "metrics_by_threshold": entries,
+        "best_accuracy": best_threshold_entry(entries, "accuracy"),
+        "best_fail_f1": best_threshold_entry(entries, "f1_fail"),
     }
 
 
@@ -674,6 +833,8 @@ def base_report(
             "adapter_path": args.adapter_path,
             "split": list(selected_splits),
             "threshold": args.threshold,
+            "threshold_sweep": args.threshold_sweep,
+            "ece_bins": ECE_BIN_COUNT,
             "max_seq_len": args.max_seq_len,
             "batch_size": args.batch_size,
             "limit": args.limit,
@@ -722,8 +883,8 @@ def format_float(value: Optional[float]) -> str:
 
 def metric_table_lines(metrics: dict[str, Any]) -> list[str]:
     lines = [
-        "| 구간 | n | Accuracy | Fail Precision | Fail Recall | Fail F1 | TP | TN | FP | FN | mean p_fail(pass) | mean p_fail(fail) |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| 구간 | n | Accuracy | Macro F1 | Balanced Acc | Fail Precision | Fail Recall | Fail F1 | Brier | ECE | TP | TN | FP | FN | mean p_fail(pass) | mean p_fail(fail) |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     rows = [("overall", metrics["overall"])] + [
         (split, block) for split, block in sorted(metrics.get("by_split", {}).items())
@@ -733,10 +894,39 @@ def metric_table_lines(metrics: dict[str, Any]) -> list[str]:
         means = block["mean_p_fail_by_gold"]
         lines.append(
             f"| {name} | {block['n']} | {format_percent(block['accuracy'])} | "
+            f"{format_percent(block['macro_f1'])} | {format_percent(block['balanced_accuracy'])} | "
             f"{format_percent(block['precision_fail'])} | {format_percent(block['recall_fail'])} | "
-            f"{format_percent(block['f1_fail'])} | {confusion['TP']} | {confusion['TN']} | "
+            f"{format_percent(block['f1_fail'])} | {format_float(block['brier_score'])} | "
+            f"{format_float(block['ece'])} | {confusion['TP']} | {confusion['TN']} | "
             f"{confusion['FP']} | {confusion['FN']} | {format_float(means['pass'])} | "
             f"{format_float(means['fail'])} |"
+        )
+    return lines
+
+
+def threshold_sweep_markdown_lines(threshold_sweep: dict[str, Any]) -> list[str]:
+    # Changed: summarize optional threshold sweep results in Korean Markdown.
+    # Why: archive reviewers need to see why a threshold was selected without opening JSON.
+    if not threshold_sweep.get("enabled"):
+        return []
+    lines = [
+        "",
+        "## Threshold Sweep",
+        "",
+        f"- thresholds: `{threshold_sweep['thresholds']}`",
+        f"- best accuracy: `{threshold_sweep['best_accuracy']}`",
+        f"- best fail F1: `{threshold_sweep['best_fail_f1']}`",
+        "",
+        "| Threshold | Accuracy | Fail F1 | Macro F1 | Balanced Acc | Brier | ECE |",
+        "|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for entry in threshold_sweep["metrics_by_threshold"]:
+        overall = entry["metrics"]["overall"]
+        lines.append(
+            f"| {entry['threshold']:.6f} | {format_percent(overall['accuracy'])} | "
+            f"{format_percent(overall['f1_fail'])} | {format_percent(overall['macro_f1'])} | "
+            f"{format_percent(overall['balanced_accuracy'])} | {format_float(overall['brier_score'])} | "
+            f"{format_float(overall['ece'])} |"
         )
     return lines
 
@@ -754,6 +944,8 @@ def write_markdown_report(path: Path, report: dict[str, Any]) -> None:
         f"- adapter path: `{args['adapter_path']}`",
         f"- split: `{args['split']}`",
         f"- threshold: `{args['threshold']}`",
+        f"- threshold sweep: `{args['threshold_sweep']}`",
+        f"- ECE bins: `{args['ece_bins']}`",
         f"- max seq len: `{args['max_seq_len']}`",
         f"- batch size: `{args['batch_size']}`",
         f"- limit: `{args['limit']}`",
@@ -795,6 +987,7 @@ def write_markdown_report(path: Path, report: dict[str, Any]) -> None:
             ]
         )
         lines.extend(metric_table_lines(report["metrics"]))
+        lines.extend(threshold_sweep_markdown_lines(report["threshold_sweep"]))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -802,7 +995,7 @@ def write_markdown_report(path: Path, report: dict[str, Any]) -> None:
 # Why: the script must not touch any non-manifest data source or repo file outside explicit outputs.
 def main() -> int:
     args = parse_args()
-    selected_splits = validate_args(args)
+    selected_splits, threshold_sweep = validate_args(args)
     manifest_path = Path(args.manifest)
     output_json = Path(args.output_json)
     output_md = Path(args.output_md)
@@ -818,6 +1011,7 @@ def main() -> int:
         # Why: downstream consumers should not special-case missing metrics or predictions keys.
         report["model"] = None
         report["metrics"] = None
+        report["threshold_sweep"] = build_threshold_sweep_report([], threshold_sweep)
         report["predictions"] = []
         report["dry_run"] = {"model_loaded": False}
         write_json_report(output_json, report)
@@ -842,6 +1036,7 @@ def main() -> int:
         "label_token_ids": label_token_report,
     }
     report["metrics"] = compute_metrics(predictions, args.threshold)
+    report["threshold_sweep"] = build_threshold_sweep_report(predictions, threshold_sweep)
     report["predictions"] = predictions
     write_json_report(output_json, report)
     write_markdown_report(output_md, report)

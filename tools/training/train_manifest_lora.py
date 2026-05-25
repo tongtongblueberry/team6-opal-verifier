@@ -27,6 +27,9 @@ IGNORE_INDEX = -100
 VALID_LABELS = {"pass", "fail"}
 FORBIDDEN_PUBLIC_PATH = "/dl2026/dataset"
 TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]
+# Changed: keep the argparse default derived from the legacy target module list.
+# Why: default CLI behavior must remain identical to the previous fixed LoraConfig.
+DEFAULT_TARGET_MODULES = ",".join(TARGET_MODULES)
 KST = timezone(timedelta(hours=9), name="KST")
 PUBLIC_HOLDOUT_PATTERNS = (
     "public",
@@ -107,6 +110,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--label-smoothing", type=float, default=0.1)
     parser.add_argument("--max-seq-len", type=int, default=2048)
     parser.add_argument("--warmup-ratio", type=float, default=0.05)
+    # Changed: expose LoRA capacity knobs through CLI while preserving existing defaults.
+    # Why: Cycle 3 compares r16/r32/r64 and dropout variants without editing trainer code.
+    parser.add_argument("--lora-r", type=int, default=16)
+    parser.add_argument("--lora-alpha", type=int, default=32)
+    parser.add_argument("--lora-dropout", type=float, default=0.1)
+    parser.add_argument(
+        "--target-modules",
+        default=DEFAULT_TARGET_MODULES,
+        help="Comma-separated LoRA target module names.",
+    )
     parser.add_argument("--resume", action="store_true", help="Resume from the latest checkpoint if present.")
     parser.add_argument("--dry-run", action="store_true", help="Load manifest and tokenize a small sample only.")
     parser.add_argument("--dry-run-samples", type=int, default=4)
@@ -182,6 +195,18 @@ def normalize_split(value: Any) -> str:
     if isinstance(value, str) and value.strip():
         return value.strip().lower()
     return "unspecified"
+
+
+def parse_target_modules(value: Any) -> List[str]:
+    # Changed: normalize the CLI comma list once during validation.
+    # Why: report generation and LoraConfig must receive the exact same target module list.
+    if isinstance(value, (list, tuple)):
+        modules = [str(item).strip() for item in value]
+    else:
+        modules = [item.strip() for item in str(value).split(",")]
+    if not modules or any(not module for module in modules):
+        fail("--target-modules must contain non-empty comma-separated module names")
+    return modules
 
 
 def row_public_path_violation(row: Dict[str, Any]) -> Optional[str]:
@@ -466,7 +491,12 @@ def base_report(args: argparse.Namespace, paths: RunPaths, manifest_summary: Dic
             "label_smoothing": args.label_smoothing,
             "max_seq_len": args.max_seq_len,
             "warmup_ratio": args.warmup_ratio,
-            "target_modules": TARGET_MODULES,
+            # Changed: record LoRA CLI values in every run report.
+            # Why: high-rank sweeps must be auditable from archived artifacts.
+            "lora_r": args.lora_r,
+            "lora_alpha": args.lora_alpha,
+            "lora_dropout": args.lora_dropout,
+            "target_modules": args.target_modules,
             "seed": args.seed,
         },
         "environment": {
@@ -646,10 +676,12 @@ def run_training(
 
     lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.1,
-        target_modules=TARGET_MODULES,
+        # Changed: use validated CLI LoRA hyperparameters instead of fixed constants.
+        # Why: sufficient-training comparisons need r16/r32/r64 and dropout sweeps.
+        r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
+        target_modules=args.target_modules,
     )
     model = get_peft_model(model, lora_config)
     model.gradient_checkpointing_enable()
@@ -732,6 +764,15 @@ def validate_args(args: argparse.Namespace) -> None:
         fail("--label-smoothing must be in [0, 1)")
     if not 0 <= args.warmup_ratio < 1:
         fail("--warmup-ratio must be in [0, 1)")
+    # Changed: validate LoRA hyperparameters before loading data or model weights.
+    # Why: invalid sweep entries should fail fast and never start a GPU job.
+    if args.lora_r <= 0:
+        fail("--lora-r must be > 0")
+    if args.lora_alpha <= 0:
+        fail("--lora-alpha must be > 0")
+    if not 0 <= args.lora_dropout < 1:
+        fail("--lora-dropout must be in [0, 1)")
+    args.target_modules = parse_target_modules(args.target_modules)
 
 
 def main() -> int:
