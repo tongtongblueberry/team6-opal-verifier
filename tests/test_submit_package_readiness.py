@@ -93,6 +93,23 @@ class SubmitPackageReadinessTest(unittest.TestCase):
             errors = check_submit_package(Path(temp_name))
         self.assertTrue(any("merged model weight" in error for error in errors), errors)
 
+    def test_index_only_merged_model_fails_readiness(self) -> None:
+        # Changed: reject shard-index metadata without the referenced weight shards.
+        # Why: static readiness must catch packages that would fail AutoModel loading at runtime.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root, artifact=None) as temp_name:
+            merged_dir = Path(temp_name) / "artifacts" / "merged_model"
+            merged_dir.mkdir(parents=True)
+            (merged_dir / "config.json").write_text("{}", encoding="utf-8")
+            (merged_dir / "tokenizer_config.json").write_text("{}", encoding="utf-8")
+            (merged_dir / "model.safetensors.index.json").write_text(
+                '{"weight_map": {"model.layers.0.weight": "model-00001-of-00002.safetensors"}}',
+                encoding="utf-8",
+            )
+            errors = check_submit_package(Path(temp_name))
+        self.assertTrue(any("missing merged model weight shard" in error for error in errors), errors)
+        self.assertTrue(any("references missing shards" in error for error in errors), errors)
+
     def test_missing_offline_setup_env_fails_readiness(self) -> None:
         root = Path(__file__).resolve().parents[1]
         with _make_package(root) as temp_name:

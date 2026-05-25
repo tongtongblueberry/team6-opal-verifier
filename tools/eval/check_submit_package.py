@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import re
 import tokenize
 from dataclasses import dataclass
@@ -42,7 +43,9 @@ LORA_ADAPTER_RELATIVE_DIRS = (
 MERGED_MODEL_WEIGHT_PATTERNS = (
     "model*.safetensors",
     "pytorch_model*.bin",
-    "*.safetensors.index.json",
+)
+MERGED_MODEL_INDEX_FILES = (
+    "model.safetensors.index.json",
     "pytorch_model.bin.index.json",
 )
 MERGED_MODEL_TOKENIZER_FILES = (
@@ -109,6 +112,49 @@ def _python_code_without_comments_or_strings(source: str) -> str:
     return " ".join(parts)
 
 
+# Changed: collect only real merged model weight files, not shard index metadata.
+# Why: an index-only artifacts/merged_model directory passes static strings but cannot load at runtime.
+def _merged_weight_files(merged_dir: Path) -> list[Path]:
+    files: set[Path] = set()
+    for pattern in MERGED_MODEL_WEIGHT_PATTERNS:
+        for path in merged_dir.glob(pattern):
+            if path.is_file() and not path.name.endswith(".index.json"):
+                files.add(path)
+    return sorted(files)
+
+
+# Changed: validate shard index references when an index file is present.
+# Why: a merged package with missing referenced shards should fail before evaluator runtime.
+def _check_index_referenced_weights(merged_dir: Path) -> list[str]:
+    errors: list[str] = []
+    for index_name in MERGED_MODEL_INDEX_FILES:
+        index_path = merged_dir / index_name
+        if not index_path.exists():
+            continue
+        try:
+            index_data = json.loads(index_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            errors.append(f"{MERGED_MODEL_RELATIVE_DIR}/{index_name} is not valid JSON")
+            continue
+        weight_map = index_data.get("weight_map")
+        if not isinstance(weight_map, dict) or not weight_map:
+            errors.append(f"{MERGED_MODEL_RELATIVE_DIR}/{index_name} missing non-empty weight_map")
+            continue
+        missing = sorted(
+            {
+                str(relative_path)
+                for relative_path in weight_map.values()
+                if isinstance(relative_path, str) and not (merged_dir / relative_path).is_file()
+            }
+        )
+        if missing:
+            errors.append(
+                f"{MERGED_MODEL_RELATIVE_DIR}/{index_name} references missing shards: "
+                + ", ".join(missing[:5])
+            )
+    return errors
+
+
 # Changed: detect a usable merged model by config, weights, and tokenizer files.
 # Why: solver.py selects artifacts/merged_model when config.json exists, so incomplete merged packages must fail early.
 def _check_merged_model_artifact(package_dir: Path) -> tuple[bool, list[str]]:
@@ -121,10 +167,11 @@ def _check_merged_model_artifact(package_dir: Path) -> tuple[bool, list[str]]:
         return False, []
 
     errors: list[str] = []
-    # Changed: consume each glob iterator when checking for merged weight files.
-    # Why: a glob iterator object is truthy even when it yields no files.
-    if not any(any(merged_dir.glob(pattern)) for pattern in MERGED_MODEL_WEIGHT_PATTERNS):
-        errors.append(f"{MERGED_MODEL_RELATIVE_DIR}/ missing merged model weight shard or index")
+    # Changed: require actual weight files and validate optional shard indexes.
+    # Why: index metadata without referenced shards cannot be loaded by AutoModelForCausalLM.
+    if not _merged_weight_files(merged_dir):
+        errors.append(f"{MERGED_MODEL_RELATIVE_DIR}/ missing merged model weight shard")
+    errors.extend(_check_index_referenced_weights(merged_dir))
     if not any((merged_dir / name).exists() for name in MERGED_MODEL_TOKENIZER_FILES):
         errors.append(f"{MERGED_MODEL_RELATIVE_DIR}/ missing tokenizer file")
     return not errors, errors

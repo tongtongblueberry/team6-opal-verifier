@@ -96,6 +96,87 @@ class SolverMergedModelPathTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "OPAL_MERGED_MODEL_DIR"):
                     solver.Solver()
 
+    def test_resolve_repo_local_merged_model_path(self) -> None:
+        # Changed: cover repo-local artifacts/merged_model detection independent of env overrides.
+        # Why: packaged merged artifacts should be selected before any LoRA adapter scanning.
+        with tempfile.TemporaryDirectory() as temp_name:
+            root = Path(temp_name)
+            merged_dir = root / "artifacts" / "merged_model"
+            merged_dir.mkdir(parents=True)
+            (merged_dir / "config.json").write_text("{}", encoding="utf-8")
+
+            with patch.dict(os.environ, {}, clear=True):
+                resolved, source = solver._resolve_merged_model_path(root)
+
+        self.assertEqual(merged_dir, resolved)
+        self.assertEqual("repo-local artifacts/merged_model", source)
+
+    def test_solver_repo_local_merged_model_skips_lora_loader(self) -> None:
+        # Changed: assert Solver stops after a repo-local merged artifact is selected.
+        # Why: merged packages must not silently compose or prefer a LoRA adapter at runtime.
+        with tempfile.TemporaryDirectory() as temp_name:
+            merged_dir = Path(temp_name)
+            (merged_dir / "config.json").write_text("{}", encoding="utf-8")
+            loads: list[str] = []
+
+            def fake_load_merged(instance, path: str) -> None:
+                loads.append(path)
+                instance.model = object()
+                instance.tokenizer = object()
+                instance._pass_id = 1
+                instance._fail_id = 2
+                instance._available = True
+
+            with patch.object(
+                solver,
+                "_resolve_merged_model_path",
+                return_value=(merged_dir, "repo-local artifacts/merged_model"),
+            ), patch.object(
+                solver.Solver,
+                "_load_merged_model",
+                fake_load_merged,
+            ), patch.object(
+                solver.Solver,
+                "_load_model",
+            ) as load_lora:
+                instance = solver.Solver()
+
+        self.assertEqual("merged_model", instance._artifact_mode)
+        self.assertEqual([str(merged_dir)], loads)
+        load_lora.assert_not_called()
+
+    def test_solver_falls_back_to_env_lora_when_no_merged_model(self) -> None:
+        # Changed: cover LoRA fallback after merged model resolution returns no artifact.
+        # Why: legacy adapter packages remain valid while Cycle 2 merged packages are prepared.
+        with tempfile.TemporaryDirectory() as temp_name:
+            adapter_dir = Path(temp_name) / "adapter"
+            adapter_dir.mkdir()
+            (adapter_dir / "adapter_config.json").write_text("{}", encoding="utf-8")
+            loads: list[tuple[str, str]] = []
+
+            def fake_load_lora(instance, adapter_path: str, base_model: str) -> None:
+                loads.append((adapter_path, base_model))
+                instance.model = object()
+                instance.tokenizer = object()
+                instance._pass_id = 1
+                instance._fail_id = 2
+                instance._available = True
+
+            env = {"OPAL_LORA_ADAPTER": str(adapter_dir), "RAG_MODEL": "Qwen/Qwen3.5-4B"}
+            with patch.dict(os.environ, env, clear=False), patch.object(
+                solver,
+                "_resolve_merged_model_path",
+                return_value=(None, ""),
+            ), patch.object(
+                solver.Solver,
+                "_load_model",
+                fake_load_lora,
+            ):
+                instance = solver.Solver()
+
+        self.assertEqual("lora_adapter", instance._artifact_mode)
+        self.assertEqual([(str(adapter_dir), "Qwen/Qwen3.5-4B")], loads)
+
 
 if __name__ == "__main__":
     unittest.main()
