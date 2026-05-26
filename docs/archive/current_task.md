@@ -1,12 +1,13 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 13:03 KST
+- 최종 갱신: 2026-05-26 13:08 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최신 로컬 commit:
+  - `28bcacd refresh handoff after prepare submit test`
   - `3ba0f46 add prepare submit integration test`
   - `1c41129 harden data audit input roots`
   - `61d375e refresh current cycle handoff after guard cleanup`
@@ -20,11 +21,12 @@
   - `c552158 archive legacy pipeline entrypoints`
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
-  - 마지막 확인된 remote: `93389d8 refresh handoff after data audit hardening`
-  - 다음 push 대상: local branch HEAD → `origin/sinjeongmin`
+  - `origin/sinjeongmin` 확인 완료: `28bcacd refresh handoff after prepare submit test`
 - 서버 sync용 최신 bundle:
-  - 최신 push 후 `/tmp/opal_cycle3_<head>_after_fca0652.bundle`를 재생성해야 한다.
+  - `/tmp/opal_cycle3_28bcacd_after_fca0652.bundle`
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
+- 로컬 테스트:
+  - `python3 -m unittest discover -s tests -v`: 61 tests OK
 - leaderboard 제출 판단: 현재 no-go. 새 artifact의 학습 완료, calibration/hidden 평가, package `<12GB`, offline first-forward smoke가 아직 없다.
 
 ## 현재 Cycle 결론
@@ -133,6 +135,7 @@
 - 2026-05-26 12:43:30~12:46:45 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:53:05~12:56:20 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:58:54~13:02:10 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 13:04:53~13:08:08 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
@@ -142,14 +145,13 @@
 
 ## 다음 실행 순서
 
-1. local HEAD를 `origin/sinjeongmin`에 fast-forward push하고 bundle을 재생성한다.
-2. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
-3. 서버 연결이 회복되면 local commits를 서버 repo에 fast-forward 방식으로 sync한다.
-4. v4.1 strict reference validate를 실행한다.
-5. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
-6. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
-7. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.
-8. 이후 0.8B/0.9B급 full FT를 비교한다.
+1. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
+2. 서버 연결이 회복되면 local commit `28bcacd`를 서버 repo에 fast-forward 방식으로 sync한다.
+3. v4.1 strict reference validate를 실행한다.
+4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
+5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
+6. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.
+7. 이후 0.8B/0.9B급 full FT를 비교한다.
 
 ## 보안
 
