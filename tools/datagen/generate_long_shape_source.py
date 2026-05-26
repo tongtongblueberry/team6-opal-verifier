@@ -457,7 +457,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enrichment-value-repeat", type=int, default=1)
     parser.add_argument("--single-record-per-label", type=int, default=0)
     parser.add_argument("--source-name", default=DEFAULT_SOURCE_NAME)
-    return parser.parse_args()
+    parser.add_argument("--allow-deprecated-v4-v41", action="store_true",
+                        help="Allow audit-only reproduction of deprecated v4/v4.1 shape data")
+    args = parser.parse_args()
+
+    # 변경: v4/v4.1 shape-source CLI 기본 실행을 차단하고 감사 재현 전용으로 남긴다.
+    # 이유: 이 도구는 label-invalid long trajectory source를 상속해 학습 데이터로 쓰면 안 된다.
+    if not args.allow_deprecated_v4_v41:
+        parser.error(
+            "deprecated v4/v4.1 shape datagen is audit-only; see "
+            "docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md"
+        )
+    return args
 
 
 def main() -> int:

@@ -1,6 +1,6 @@
 # 현재 서버 운영 절차
 
-- 최종 갱신: 2026-05-26 13:35 KST
+- 최종 갱신: 2026-05-26 14:13 KST
 - 원칙: 제출/학습 architecture는 LLM-only다. rule engine, public label supervised 학습, legacy `/workspace/team6` 작업 root를 사용하지 않는다.
 - SSH alias: `team6`
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
@@ -82,8 +82,8 @@ test "$(git rev-parse HEAD)" = "$expected"
    - run root: `/workspace/sinjeongmin_opal_verifier/ops/runs/20260526_1051_KST_train_v3_alllinear_lora_r64_bs2`
    - adapter: `qwen35_4b_v3_alllinear_r64_lr2e4_e10_bs2ga4`
 3. GPU 상태: `nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu --format=csv,noheader`.
-4. v4.1 strict reference validation:
-   - manifest/reference는 `docs/current_task.md`의 최신 경로를 따른다.
+4. v4/v4.1 데이터 제외 확인:
+   - `docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md` 기준으로 v4/v4.1 raw/manifest는 학습과 제출 판단에서 제외한다.
 5. LoRA baseline이 완료되어 있으면 calibration/hidden threshold sweep 평가.
 6. package `<12GB`, `check_submit_package.py`, offline first-forward smoke가 모두 통과할 때만 leaderboard 제출을 검토한다.
 

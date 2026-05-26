@@ -1,6 +1,6 @@
 # 문서 구조
 
-최종 갱신: 2026-05-26 13:35 KST
+최종 갱신: 2026-05-26 14:13 KST
 
 ## Active 문서
 
@@ -16,3 +16,9 @@
 - [archive/submissions/](archive/submissions/): 과거 제출 시도와 제출 로그.
 
 Archive 파일은 현재 실행 기준이 아니다. 현재 기준은 `README.md`, `PROGRESS.md`, `docs/current_task.md`, `docs/server_operations_current.md`다.
+
+## 현재 정리 기준
+
+- 날짜가 붙은 실행 기록과 폐기 판단은 `archive/cycles/<YYYY-MM-DD>/` 아래에 둔다.
+- v4/v4.1 데이터 폐기 판단은 [archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md](archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md)에 둔다.
+- active 문서에는 다음 실행 기준만 남긴다. 오래된 pending/evidence는 archive 문서를 링크한다.

@@ -32,8 +32,6 @@ tools/analysis/
 +-- data_audit.py
 
 tools/datagen/
-+-- generate_long_shape_source.py
-+-- generate_long_trajectories.py
 +-- generate_spec_data.py
 +-- generate_gap_data.py
 
@@ -53,6 +51,8 @@ tools/eval/
 
 과거 rule pipeline, rule-prompt solver, public-label eval script, `/workspace/team6` 기반 script는 `tools/archive/legacy_rule_pipeline/` 아래에만 보존한다. 현재 학습/제출 실행 경로로 사용하지 않는다.
 
+v4/v4.1 long trajectory datagen인 `tools/datagen/generate_long_trajectories.py`와 `tools/datagen/generate_long_shape_source.py`는 label alignment 문제 때문에 deprecated/audit-only다. 삭제하지 않고 근거 보존용으로 남기지만 기본 CLI 실행은 차단한다.
+
 현재 active `configs/` 폴더는 없다. `wandb` sweep은 사용하지 않는다.
 
 ## 현재 운영 문서
@@ -70,7 +70,7 @@ python3 -m py_compile src/solver.py tools/eval/check_submit_package.py
 git diff --check
 ```
 
-현재 로컬 회귀 테스트는 package readiness, no-rule marker gate, manifest trajectory 구조, v4.1 shape generation, data audit root guard, full/selective fine-tuning CLI, LoRA sweep CLI, runtime smoke 계약을 포함한다.
+현재 로컬 회귀 테스트는 package readiness, no-rule marker gate, manifest trajectory 구조, data audit root guard, full/selective fine-tuning CLI, LoRA sweep CLI, runtime smoke 계약을 포함한다. v4/v4.1 shape generation은 deprecated/audit-only 근거 보존 대상으로 본다.
 
 ## 서버 Sync 원칙
 

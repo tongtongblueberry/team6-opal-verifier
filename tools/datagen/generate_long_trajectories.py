@@ -18,9 +18,12 @@ Design principles:
   - PairCFR (ACL 2024): paired counterfactual training
   - Long Is More (ICML 2024): longer training examples improve generalization
 
-Usage: python tools/datagen/generate_long_trajectories.py
+Changed: deprecated v4/v4.1 audit reproduction now requires an explicit opt-in flag.
+Why: default execution must not recreate label-invalid long trajectory training data.
+
+Usage: python tools/datagen/generate_long_trajectories.py --allow-deprecated-v4-v41
   Output: training_data/long_trajectories.json (on server)
-  Local test: python tools/datagen/generate_long_trajectories.py --local
+  Local test: python tools/datagen/generate_long_trajectories.py --local --allow-deprecated-v4-v41
 """
 from __future__ import annotations
 
@@ -499,7 +502,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--local", action="store_true", help="Save to local path")
     parser.add_argument("--no-pad", action="store_true", help="Skip length padding")
+    parser.add_argument("--allow-deprecated-v4-v41", action="store_true",
+                        help="Allow audit-only reproduction of deprecated v4/v4.1 data")
     args = parser.parse_args()
+
+    # 변경: v4/v4.1 폐기 근거 보존용으로만 남기고 CLI 기본 실행은 차단한다.
+    # 이유: fail label case 다수가 마지막 EndSession SUCCESS로 끝나는 라벨 오염을 재생산하기 때문이다.
+    if not args.allow_deprecated_v4_v41:
+        parser.error(
+            "deprecated v4/v4.1 datagen is audit-only; see "
+            "docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md"
+        )
 
     cases = gen_all()
     print(f"Generated {len(cases)} raw cases")
