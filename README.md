@@ -74,6 +74,8 @@ tools/eval/
 +-- runtime_smoke_submit_package.py
 +-- eval_manifest_adapter.py
 +-- eval_manifest_full_model.py
++-- eval_trl_sft_public20_generation.py
++-- eval_trl_sft_public20_logprob.py
 +-- select_manifest_sweep_candidate.py
 +-- export_merged_model.py
 ```
@@ -163,6 +165,15 @@ base model path를 직접 로드해 `val` rows의 next-token `pass`/`fail` logpr
 보고 metric은 accuracy, macro-F1, fail recall, pass recall, confusion matrix, per-sample
 prediction/logprob이다. public20-only full FT early stopping은 epoch별 이 report를 비교해
 val macro-F1 정체 또는 fail recall 하락 시 no-go/patience 중단으로 판단한다.
+
+<!-- Changed: add the TRL public20 logprob evaluator to the model validation surface. -->
+<!-- Why: generation recall failures must be separable from conditional pass/fail likelihood failures. -->
+TRL public20 prompt-completion SFT 평가는 `tools/eval/eval_trl_sft_public20_generation.py`와
+`tools/eval/eval_trl_sft_public20_logprob.py`를 분리해 본다. logprob evaluator는
+`prompt + pass`와 `prompt + fail` candidate completion을 각각 forward하고, prompt/pad
+label을 `-100`으로 masking한 candidate token mean logprob이 큰 label을 예측한다.
+이 결과는 decoding/formatting 실패와 discriminative likelihood 실패를 분리하기 위한
+validation evidence다.
 
 이 문제는 pure RAG는 아니지만 RAG 성격이 강하다. rulebook/spec은 weight에 모두 암기시키기
 어렵고, trajectory state transition은 검색만으로 해결되지 않는다. 따라서 retrieval만 하는

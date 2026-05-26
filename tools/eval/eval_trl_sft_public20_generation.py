@@ -170,9 +170,34 @@ def adapter_has_tokenizer(path_text: str) -> bool:
     return path.is_dir() and any((path / filename).is_file() for filename in TOKENIZER_MARKER_FILES)
 
 
+def adapter_base_model_name(path_text: str) -> str | None:
+    # Changed: expose the PEFT base model from a direct adapter directory.
+    # Why: direct adapter-dir evaluation may need the base tokenizer when the adapter did not save tokenizer files.
+    path = Path(path_text).expanduser()
+    config_path = path / ADAPTER_CONFIG_FILE
+    if not config_path.is_file():
+        return None
+    try:
+        value = json.loads(config_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(f"Invalid {ADAPTER_CONFIG_FILE} at {config_path}: {exc}")
+    if not isinstance(value, dict):
+        fail(f"{ADAPTER_CONFIG_FILE} at {config_path} is not an object")
+    base_model = value.get("base_model_name_or_path")
+    if isinstance(base_model, str) and base_model.strip():
+        return base_model.strip()
+    return None
+
+
 def tokenizer_source_for(model_name_or_path: str, adapter_path: str | None) -> str:
     if adapter_path and adapter_has_tokenizer(adapter_path):
         return adapter_path
+    if not adapter_path and is_local_adapter_dir(model_name_or_path):
+        if adapter_has_tokenizer(model_name_or_path):
+            return model_name_or_path
+        base_model = adapter_base_model_name(model_name_or_path)
+        if base_model:
+            return base_model
     return model_name_or_path
 
 
