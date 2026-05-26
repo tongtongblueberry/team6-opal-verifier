@@ -1,10 +1,13 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 16:26 KST
+- 최종 갱신: 2026-05-26 20:39 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
+<!-- Changed: clarify the document/git lane local root. -->
+<!-- Why: workers must not treat the adjacent team folder as the active repo. -->
+- 작업 금지 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team`은 현재 작업 repo가 아니므로 수정/검증/commit/push하지 않는다.
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최근 주요 commit:
   - `0f9214d refresh current operations docs`
@@ -37,6 +40,17 @@
 
 <!-- Changed: mirror the latest agent_handoff.md operating criteria. -->
 <!-- Why: resumed workers must see the active architecture, data, public20, model, server, and branch/push rules in current_task.md. -->
+<!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status. -->
+<!-- Why: current task state must separate completed no-go outcomes from conditional synthetic candidates. -->
+- 완료 결과 archive: `docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_2035_completed_results_archive.md`
+- 0.9B full FT epoch 5는 서버 run 성공 후 validation no-go다. val accuracy `0.25`, fail recall `0.0`,
+  pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`이며 epoch `10/20`은 no-go다.
+- `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다.
+  `sample.md` 생성은 no-go다.
+- `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
+  label `pass=6/fail=3`, record_count min/mean/max `8/13.0/18`이다. Gate v2 결과는 Gate A `pass`, Gate B `conditional pass`,
+  Gate C `pass`, final `conditional`이다. strict full-pass 기준에서 `sample.md` 생성은 no-go이며 larger/balanced batch v3가 필요하다.
+  raw run 산출물은 commit하지 않고 경로와 counts만 기록한다.
 - 가장 큰 문제는 데이터 구조와 shape mismatch다.
 - runtime rule engine 금지, LLM-only architecture.
 <!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
@@ -125,6 +139,16 @@
 
 ## 학습 현황
 
+<!-- Changed: record current public20-only full FT stopping decision. -->
+<!-- Why: next workers should not continue epoch 10/20 after fail recall collapsed at epoch 5. -->
+- 0.9B full FT epoch 5:
+  - 서버 run 성공
+  - OOM 1회 후 `label_smoothing=0`으로 성공
+  - val accuracy `0.25`
+  - fail recall `0.0`
+  - pass recall `0.5`
+  - confusion `TP=0 TN=1 FP=1 FN=2`
+  - epoch `10/20` no-go
 - 서버에서 v3 기반 Qwen3.5-4B all-linear LoRA r64 baseline 학습을 시작했다.
 - 안정 run:
   - `/workspace/sinjeongmin_opal_verifier/ops/runs/20260526_1051_KST_train_v3_alllinear_lora_r64_bs2`
@@ -217,13 +241,13 @@
 
 ## 다음 실행 순서
 
-1. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
-2. 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다. branch/push 기준: origin `sinjeongmin`에 반영.
-3. v4/v4.1 및 spec/gap synthetic raw/manifest가 새 학습 입력이나 제출 판단에 포함되지 않는지 확인한다.
-4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
-5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
-6. public20-only train/val runner를 만들고 0.9B full FT `5/10/20` epoch patience `2`와 4B LoRA/QLoRA `3/5/10` epoch patience `1-2`를 실제 학습으로 비교한다. full/selective FT 후보는 epoch별 model path를 `eval_manifest_full_model.py --split val`로 평가한다.
-7. retrieval context를 붙인 0.9B/4B 후보와 RAFT-style public20-only `1/3/5` smoke/overfit check를 이어서 비교한다.
+<!-- Changed: update next actions for completed conditional Gate v2 and epoch5 no-go. -->
+<!-- Why: immediate work should archive the conditional result, avoid raw-run commits, and avoid extending failed epoch runs. -->
+1. `gemini_batch_v2` Gate v2 결과를 archive와 active docs에 반영한다: Gate A `pass`, Gate B `conditional pass`, Gate C `pass`, final `conditional`, `sample.md` no-go.
+2. raw run 산출물은 commit하지 않고 `PROGRESS.md`, `docs/agent_handoff.md`, `docs/current_task.md`, archive note에 경로와 counts만 기록한다.
+3. larger/balanced batch v3로 Gate B full pass를 목표로 한다.
+4. 0.9B full FT epoch `10/20`은 epoch 5 fail recall `0.0` 근거로 중단 상태를 유지한다.
+5. 서버 SSH가 별도 작업에 필요하면 10회 이상 단위로 재시도하고, 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다.
 
 ## 보안
 

@@ -1,6 +1,6 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 17:27 KST
+- 최종 갱신: 2026-05-26 20:39 KST
 <!-- Changed: mirror the current agent_handoff.md criteria in the progress header. -->
 <!-- Why: progress readers need the active architecture, data, server, and branch/push rules before following older entries. -->
 - 현재 원칙: runtime rule engine 금지, LLM-only architecture. rule engine, rule fallback, rule-id runtime은 사용하지 않는다.
@@ -11,6 +11,10 @@
 - `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다. public20 validation 결과를 test 결과로 기록하지 않는다.
 - main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않고 worker agent 결과를 종합해 최종 판단한다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
+- 현재 로컬 작업 root: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
+<!-- Changed: record the only valid local repository root for this lane. -->
+<!-- Why: workers must not confuse the adjacent team folder with the active worktree. -->
+- `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team` 폴더는 현재 작업 repo가 아니며 수정/검증/commit/push 대상이 아니다.
 - 현재 GitHub branch: `origin/sinjeongmin`
 <!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
 - 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](docs/archive/legacy/server_access.md); 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
@@ -44,6 +48,19 @@ LLM next-token/logit decision
 
 ## 현재 데이터/학습 상태
 
+<!-- Changed: record completed epoch5, external probe, and batch_v2 Gate v2 outcomes. -->
+<!-- Why: active progress must distinguish no-go results from conditional synthetic candidates. -->
+- 0.9B full FT epoch 5 서버 run은 성공했지만 validation 기준 no-go다.
+  - val accuracy `0.25`, fail recall `0.0`, pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`
+  - OOM 1회 후 `label_smoothing=0`으로 성공했다.
+  - fail recall `0.0`이므로 epoch `10/20` 확장은 no-go다.
+- `runs/self_instruct/external_llm_probe/`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다.
+  `sample.md` 생성은 no-go다.
+- `runs/self_instruct/gemini_batch_v2/`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`,
+  judge accepted/rejected `9/0`, label `pass=6/fail=3`, record_count min/mean/max `8/13.0/18`이다.
+  Gate v2 결과는 Gate A `pass`, Gate B `conditional pass`, Gate C `pass`, final `conditional`이다.
+  strict full-pass 기준에서는 `sample.md` 생성 no-go이며, larger/balanced batch v3가 필요하다.
+  raw run 산출물은 원문과 큰 파일을 포함할 수 있으므로 commit하지 않고 경로와 counts만 문서에 기록한다.
 - 가장 큰 병목은 데이터 구조와 public/reference shape mismatch다.
 - manifest builder의 records flatten 문제는 수정되어 전체 `records` trajectory가 하나의 supervised input으로 들어간다.
 - public20 local reference를 확보했다.

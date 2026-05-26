@@ -3,7 +3,7 @@
 
 # Agent Handoff
 
-- 최종 갱신: 2026-05-26 16:50 KST
+- 최종 갱신: 2026-05-26 20:39 KST
 - 목적: 새 agent가 단발 작업만 수행하지 않고, 현재 논의 맥락과 금지사항을 유지한 채 작업하게 한다.
 - 적용 범위: repo 작업, 문서 정리, 데이터 생성/검증, 학습 실행, 서버 SSH 재시도, git push를 맡는 모든 worker agent.
 
@@ -20,11 +20,24 @@
 - active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/current_task.md`, `docs/current_self_instruct_data_plan.md`, `docs/agent_handoff.md`, `docs/samples/README.md`다. 데이터/학습/제출/sample 공개/cleanup 기준을 바꾸면 이 묶음을 함께 점검한다.
 - git push 대상은 `origin/sinjeongmin`이다.
 - destructive git command, 다른 사람 변경 revert, `/workspace/team6` 의존 복구는 금지한다.
+- 현재 로컬 작업 root는 `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`다.
+<!-- Changed: pin the document/git lane to the active local worktree. -->
+<!-- Why: the adjacent team folder is not the current repo and must not be touched by workers. -->
+- `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team` 폴더는 현재 작업 repo가 아니며 파일 수정, 검증, commit, push 대상에서 제외한다.
 - main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않는다.
   실행/검색/수정/학습은 worker agent가 맡고, main agent는 결과 종합과 최종 판단을 맡는다.
 
 ## 현재 결정사항
 
+<!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status to handoff. -->
+<!-- Why: next worker agents must not wait on epoch5 or treat conditional batch_v2 as accepted data. -->
+- 0.9B full FT epoch 5는 서버 run 성공 후 validation no-go로 종료했다.
+  val accuracy `0.25`, fail recall `0.0`, pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`이며 epoch `10/20` 확장은 no-go다.
+- `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다. `sample.md` 생성은 no-go다.
+- `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
+  label `pass=6/fail=3`, record_count min/mean/max `8/13.0/18`이다. Gate v2 결과는 Gate A `pass`, Gate B `conditional pass`,
+  Gate C `pass`, final `conditional`이다. strict full-pass 기준에서는 `sample.md` 생성 no-go이며 larger/balanced batch v3가 필요하다.
+  raw run 산출물은 commit하지 않고 경로와 counts만 기록한다.
 - 프로젝트 목표는 LLM-only Opal verifier다. Opal command-response trajectory에서 마지막 response가 명세와 현재 상태에 맞는지 `pass`/`fail`로 판정한다.
 - 현재 병목은 모델보다 데이터다. 검증 대상은 우리가 새로 생성한 synthetic data만이다.
   public20은 이미 주어진 기준 입력이므로 "public20 자체를 검증"하지 않는다.
@@ -163,6 +176,7 @@
 - RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 `3/5/10` epoch으로 확장한다.
 - invariant checker/state-transition audit는 데이터 품질 gate이지 runtime rule engine이 아니다.
 - 작업 root는 /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst 이고 서버 기준 root는 /workspace/sinjeongmin_opal_verifier 이다.
+- /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team 폴더는 현재 작업 repo가 아니므로 수정/검증/commit/push하지 않는다.
 - push 대상은 origin/sinjeongmin 이다.
 - 기록은 한국어, 시간은 KST, secret/password 출력/저장 금지.
 <!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
@@ -186,6 +200,12 @@
 
 ## 이번 cycle의 다음 우선순위
 
+<!-- Changed: put the completed conditional Gate v2 verdict ahead of older generic generation steps. -->
+<!-- Why: batch_v2 now needs archive/sample no-go handling and a larger follow-up batch, not pending-result waiting. -->
+- Gate v2 결과는 `gemini_batch_v2` final `conditional`로 기록됐다. Gate A/C는 pass지만 Gate B가 conditional이므로 accepted-data `sample.md` 생성은 no-go다.
+- larger/balanced batch v3로 Gate B full pass를 목표로 한다.
+- `runs/self_instruct/gemini_batch_v2/` raw run 산출물은 원문과 큰 파일을 포함할 수 있으므로 commit하지 않는다. 문서에는 경로와 counts만 남긴다.
+- 0.9B full FT epoch 5 no-go 때문에 epoch `10/20` 확장은 중단 상태를 유지한다.
 - 새 Self-Instruct pipeline 구현 전에 Gate A-D를 실행 가능한 도구와 문서로 고정한다.
 - public20 input-only와 local label reference는 확보됐다. 다음 agent는 public20을 synthetic 데이터 검증의 대상처럼 다루지 말고 dimension/schema/distribution reference로만 써야 한다. public20-only 모델 후보 검증에서는 `train`/`val`만 사용한다.
 - public20-only 모델 검증 split은 `tools/analysis/build_public20_train_val_split.py`로 만들며, 현재 seed `11`, `29`, `47` 산출물이 `runs/model_validation/public20_splits/`에 있다. 각 split은 `16 train / 4 val`, val `pass=2/fail=2`, public20 test `0`이다.
