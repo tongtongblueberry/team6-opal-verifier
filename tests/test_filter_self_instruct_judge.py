@@ -9,6 +9,23 @@ import unittest
 from pathlib import Path
 
 from tools.analysis import filter_self_instruct_judge as judge
+from tools.datagen import parse_self_instruct_outputs as parser
+
+
+# Changed: load parser/judge fixtures from tests/fixtures only.
+# Why: mock fixtures validate wiring without creating accepted synthetic data artifacts.
+FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "self_instruct_gate_wiring"
+MOCK_RAW_OUTPUT_FIXTURE = FIXTURE_ROOT / "mock_raw_outputs.jsonl"
+MOCK_JUDGE_BOOL_FIXTURE = FIXTURE_ROOT / "mock_judge_results_required_booleans.jsonl"
+
+
+def _fixture_rows(path: Path) -> list[tuple[int, dict[str, object]]]:
+    rows: list[tuple[int, dict[str, object]]] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        stripped = line.strip()
+        if stripped:
+            rows.append((line_number, json.loads(stripped)))
+    return rows
 
 
 def _record(method: str, status: str) -> dict[str, object]:
@@ -51,6 +68,35 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
 
 
 class FilterSelfInstructJudgeTests(unittest.TestCase):
+    # Changed: use a judge response fixture that flips every required boolean once.
+    # Why: decision=accept must still reject unless the complete required-boolean contract is satisfied.
+    def test_required_boolean_fixture_accepts_only_full_contract(self) -> None:
+        candidates, parser_rejected = parser.parse_raw_output_rows(_fixture_rows(MOCK_RAW_OUTPUT_FIXTURE))
+        self.assertEqual([], parser_rejected)
+        self.assertEqual(["fixture-spec-grounded-pass"], [row["sample_id"] for row in candidates])
+
+        judge_rows = _fixture_rows(MOCK_JUDGE_BOOL_FIXTURE)
+        violated_fields = {row["fixture_violated_field"] for _line, row in judge_rows if "fixture_violated_field" in row}
+        accepted, rejected, decisions = judge.apply_judge_results(candidates, judge_rows)
+
+        self.assertEqual(set(judge.REQUIRED_BOOL_FIELDS), violated_fields)
+        self.assertEqual(["fixture-spec-grounded-pass"], [row["sample_id"] for row in accepted])
+        self.assertEqual(8, len(rejected))
+        self.assertEqual(9, len(decisions))
+        self.assertEqual(
+            {
+                "intermediate_label_leak",
+                "label_not_plausible",
+                "manifest_loader_incompatible",
+                "missing_spec_grounding",
+                "not_final_response_targeted",
+                "public_or_rule_leakage",
+                "source_span_not_supportive",
+                "state_transition_inconsistent",
+            },
+            {row["reason"] for row in rejected},
+        )
+
     def test_cli_writes_judge_request_payload(self) -> None:
         candidate = _candidate("si-judge-1", "pass", [_record("Get", "SUCCESS")])
 

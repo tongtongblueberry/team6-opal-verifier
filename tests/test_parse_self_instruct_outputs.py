@@ -11,6 +11,12 @@ from pathlib import Path
 from tools.datagen import parse_self_instruct_outputs as parser
 
 
+# Changed: keep raw parser fixtures under tests/fixtures instead of runs or accepted data directories.
+# Why: mock raw outputs prove wiring only and must not become synthetic training artifacts.
+FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "self_instruct_gate_wiring"
+MOCK_RAW_OUTPUT_FIXTURE = FIXTURE_ROOT / "mock_raw_outputs.jsonl"
+
+
 def _record(method: str, status: str) -> dict[str, object]:
     return {
         "input": {"method": {"name": method}},
@@ -51,6 +57,46 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
 
 
 class ParseSelfInstructOutputsTests(unittest.TestCase):
+    # Changed: parse a spec-grounded mock raw output fixture through the CLI.
+    # Why: raw->parser wiring must be verified without placing mock data in runs/ or accepted datasets.
+    def test_spec_grounded_mock_raw_fixture_passes_parser(self) -> None:
+        self.assertTrue(MOCK_RAW_OUTPUT_FIXTURE.is_file())
+        self.assertIn("tests/fixtures", str(MOCK_RAW_OUTPUT_FIXTURE))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            output_path = tmp / "parser.accepted.jsonl"
+            reject_path = tmp / "parser.rejects.jsonl"
+            report_path = tmp / "parser.report.json"
+            profile_path = tmp / "parser.profile.json"
+
+            exit_code = parser.main(
+                [
+                    "--input",
+                    str(MOCK_RAW_OUTPUT_FIXTURE),
+                    "--output",
+                    str(output_path),
+                    "--reject-output",
+                    str(reject_path),
+                    "--report-json",
+                    str(report_path),
+                    "--profile-output",
+                    str(profile_path),
+                ]
+            )
+
+            self.assertEqual(0, exit_code)
+            accepted = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
+            rejected = [json.loads(line) for line in reject_path.read_text(encoding="utf-8").splitlines()]
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual([], rejected)
+            self.assertEqual(1, len(accepted))
+            self.assertEqual("fixture-spec-grounded-pass", accepted[0]["sample_id"])
+            self.assertEqual("self_instruct.candidate.v1", accepted[0]["schema_version"])
+            self.assertEqual("docs/legacy_spec_rules.md:10-15", accepted[0]["spec_grounding"][0]["source_span"])
+            self.assertEqual(1, report["accepted_count"])
+            self.assertEqual(0, report["rejected_count"])
+
     def test_parses_raw_llm_output_and_writes_reject_report(self) -> None:
         valid = _candidate("si-parse-ok", "pass", [_record("Get", "SUCCESS")])
         rows = [

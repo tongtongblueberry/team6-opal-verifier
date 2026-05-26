@@ -781,6 +781,63 @@ candidate와 supervised manifest를 비교하고, lightweight trainer loader의 
 loader가 silent filtering, order-dependent relabeling, default deprecated source fallback,
 rule-context enrichment를 수행하면 fail이다.
 
+## Gate A/B/C command wiring artifact contract
+
+<!-- Changed: record Gate A/B/C command wiring artifacts separately from pass/fail claims. -->
+<!-- Why: parser/judge/Gate wiring can be tested with mock fixtures, but mock fixtures are not accepted synthetic data. -->
+
+이 절은 command wiring과 required artifact만 기록한다. 실제 Gate pass 선언은 real LLM raw output,
+parser/dedup/judge 결과, Gate audit/report artifact가 모두 생성되고 archive 근거가 있을 때만 가능하다.
+`tests/fixtures/self_instruct_gate_wiring/` 아래 mock fixture는 parser/judge wiring 검증 전용이며
+`runs/` 산출물, accepted synthetic data, `docs/samples/self_instruct_sample.md` 근거가 아니다.
+
+Gate A command wiring:
+
+```bash
+python tools/analysis/audit_self_instruct_quality.py \
+  --accepted-jsonl <post-judge-accepted-candidates.jsonl> \
+  --sample-size 200 \
+  --seed <audit-seed> \
+  --invariant-jsonl <gate-a-invariant.jsonl> \
+  --audit-pack-md <gate-a-audit-pack.md> \
+  --audit-report-json <gate-a-report.json> \
+  --audit-report-md <gate-a-report.md>
+```
+
+- Required input artifact: post-judge accepted candidate JSONL from real parser/dedup/judge flow.
+- Required output artifacts: invariant JSONL, qualitative audit pack MD, Gate A report JSON, Gate A report MD.
+- No-go boundary: mock parser/judge fixture success does not create an accepted pool and does not declare Gate A pass.
+
+Gate B command wiring:
+
+```bash
+python tools/analysis/compare_public20_dimensions.py \
+  --public-profile <public20-profile.json> \
+  --generated-profile <generated-candidate-profile.json> \
+  --public-label-distribution <public20-label-aggregate.json> \
+  --output-json <gate-b-comparison.json> \
+  --output-md <gate-b-comparison.md>
+```
+
+- Required input artifacts: public20 profile JSON and generated candidate profile JSON.
+- Pass/fail distribution input: public20 labels only as local aggregate JSON, never row-level judge/generation/manifest input.
+- Required output artifacts for archive: Gate B comparison JSON and MD.
+- No-go boundary: a comparison command returning without parser error is not by itself a Gate B pass declaration.
+
+Gate C command wiring:
+
+```bash
+python tools/analysis/check_manifest_model_input_equivalence.py \
+  --candidates-jsonl <normalized-candidates.jsonl> \
+  --manifest-jsonl <supervised-manifest.jsonl> \
+  --output-json <gate-c-equivalence.json> \
+  --output-md <gate-c-equivalence.md>
+```
+
+- Required input artifacts: normalized candidates JSONL and supervised manifest JSONL built from the same accepted candidate pool.
+- Required output artifacts: Gate C equivalence JSON and MD.
+- No-go boundary: Gate C is not runnable as a real pass check until a generated manifest candidate exists after Gate A/B.
+
 ## data size ablation
 
 <!-- Changed: fix ablation sizes and selection criterion. -->
@@ -860,6 +917,10 @@ leaderboard 제출은 다음이 모두 참일 때만 go다.
     required spec grounding, source-span support, state-transition consistency,
     manifest-loader compatibility를 JSON boolean으로 요구한다.
 15. `tools/eval/eval_manifest_full_model.py`로 full/selective FT standalone checkpoint를 `val` manifest에서 평가하는 도구를 구현했다. LoRA adapter evaluator를 사용하지 않고 full model path를 직접 로드한다.
+16. `tests/fixtures/self_instruct_gate_wiring/` mock raw/judge fixture와 `tests/test_self_instruct_gate_wiring_contract.py`를 추가해 raw→parser→judge와 Gate A/B/C command wiring을 검증한다. 이 fixture는 accepted synthetic data가 아니며 Gate pass 근거가 아니다.
+
+<!-- Changed: make sample.md creation contingent on real Gate A/B/C/D pass archive. -->
+<!-- Why: mock fixture wiring tests must not publish synthetic accepted samples. -->
 
 다음 구현 순서:
 
@@ -870,7 +931,7 @@ leaderboard 제출은 다음이 모두 참일 때만 go다.
 4. Gate B comparison report를 generated candidate profile에 적용한다.
 5. generated manifest 후보가 생기면 Gate C 도구를 적용하고 report를 archive한다.
 6. Gate A/B/C 통과 뒤 synthetic `train`, `val`, `test`와 `public20_reference`를 물리적으로 분리한다.
-7. `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 기록한다.
+7. Gate A/B/C/D pass archive가 생긴 뒤에만 `docs/samples/self_instruct_sample.md` 작성 여부를 결정한다. 현재 mock fixture 검증 단계에서는 sample 생성이 no-go다.
 8. public20-only train/val validation runner를 작성한다.
 9. 모델 후보는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA를 public20 train/val로 비교한다.
 10. training code는 Gate A-C가 통과한 manifest가 생긴 뒤에만 연결한다.
