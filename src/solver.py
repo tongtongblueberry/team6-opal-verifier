@@ -607,18 +607,19 @@ class Solver:
         self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
 
     def predict(self, dataset: Any) -> dict[str, str]:
-        """dataset의 각 케이스에 대해 pass/fail 예측.
+        """케이스 목록에 대해 pass/fail 예측.
 
-        Changed: use only the loaded LLM artifact for prediction.
-        Why: LLM-only architecture gate: deterministic fallback is not allowed.
+        Changed: skeleton evaluate.py 인터페이스 유지 — predict(dataset) -> dict.
+        Why: /dl2026/skeleton/evaluate.py가 [{"id": "tc1.json", "steps": [...]}] 형태로
+             전달하고 {"tc1.json": "pass"} dict를 기대한다.
 
         Args:
-            dataset: 리스트 형태 [{id, steps}, ...] 또는 [{records: [...]}, ...]
+            dataset: [{"id": ..., "steps": [...]}, ...] 또는 단일 trajectory list
 
         Returns:
             {case_id: "pass" or "fail", ...}
         """
-        if not isinstance(dataset, list):
+        if not isinstance(dataset, list) or not dataset:
             return {}
 
         # Changed: fail closed if model initialization did not complete.
@@ -631,127 +632,91 @@ class Solver:
             or self._fail_id is None
         ):
             raise RuntimeError("LLM-only architecture gate: LLM model artifact unavailable")
-        return self._predict_lora(dataset)
-
-    def _predict_lora(self, dataset: list) -> dict[str, str]:
-        """LLM artifact primary 예측.
-
-        Changed: keep one logit comparison implementation for merged and LoRA artifacts.
-        Why: merged model path must use the same threshold/pass/fail inference as the adapter path.
-             format_trajectory_rich로 포맷 → chat template 적용 → logit 비교.
-
-        Changed: threshold 파라미터화 + self-consistency 통합.
-        Why: OPAL_THRESHOLD 환경변수로 threshold 주입 (기본 0.70).
-             OPAL_SC_PASSES>1이면 여러 temperature로 logit 수집 → p_fail 평균.
-        """
-        import torch
-
-        # Changed: self-consistency용 temperature 목록.
-        # Why: K=5일 때 다양한 temperature에서 logit → softmax → p_fail 평균.
-        #      eval_consistency.py의 구현을 참고하되, solver 내 인라인으로 통합.
-        SC_TEMPERATURES = [0.7, 0.8, 1.0, 1.2, 1.5]
 
         predictions: dict[str, str] = {}
 
-        for index, item in enumerate(dataset):
-            if isinstance(item, dict):
-                case_id = str(item.get('id', f'case_{index}'))
-                steps = item.get('steps', item)
-            else:
-                case_id = f'case_{index}'
-                steps = item
+        # Changed: detect batch vs single-trajectory mode.
+        # Why: skeleton evaluate.py sends [{"id":..,"steps":[...]},...] (batch),
+        #      local evaluate.py may send [step1, step2, ...] (single trajectory).
+        first = dataset[0]
+        is_batch = isinstance(first, dict) and ("steps" in first or "id" in first)
 
-            # Changed: records 파싱 — _parse_records()로 통일.
-            # Why: LLM-only path should share one minimal input parser.
-            records = _parse_records(steps)
-
+        if is_batch:
+            for index, item in enumerate(dataset):
+                case_id = str(item.get("id", f"case_{index}"))
+                steps = item.get("steps", item)
+                records = _parse_records(steps)
+                if not records:
+                    raise RuntimeError(f"LLM-only architecture gate: no records for {case_id}")
+                predictions[case_id] = self._predict_one_trajectory(records)
+        else:
+            # Single trajectory mode: dataset IS the list of step dicts
+            records = _parse_records(dataset)
             if not records:
-                # Changed: fail closed instead of returning a deterministic default.
-                # Why: empty/unparseable inputs must not bypass the LLM-only gate.
-                raise RuntimeError(f"LLM-only architecture gate: no records for {case_id}")
-
-            # Changed: format_trajectory_rich_inline()로 trajectory 포맷.
-            # Why: 학습 시 사용한 포맷과 동일해야 모델이 올바르게 예측.
-            prompt = format_trajectory_rich_inline(records)
-
-            # Changed: chat template 적용 (system + user 메시지).
-            # Why: Qwen3.5 모델은 chat template 형식으로 학습됨.
-            messages = [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ]
-
-            try:
-                text = self.tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=True,
-                    enable_thinking=False,
-                )
-            except TypeError:
-                # Changed: enable_thinking 미지원 tokenizer 대응.
-                # Why: 일부 tokenizer 버전에서 enable_thinking 파라미터 없음.
-                text = self.tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=True,
-                )
-
-            # Changed: tokenize + forward pass → logit 비교.
-            # Why: generation 대신 단일 forward pass로 pass/fail logit을 비교.
-            #      ~0.5초/케이스 — 200케이스 × 0.5초 = ~100초, 3시간 제한 내 충분.
-            # Changed: max_length 1024 → 2048 (학습 시 max_length=2048 사용하므로 inference도 동일하게 맞춤)
-            inputs = self.tokenizer(
-                text, return_tensors="pt", truncation=True, max_length=2048
-            )
-            inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
-
-            with torch.no_grad():
-                logits = self.model(**inputs).logits[0, -1, :]
-
-            p_logit = logits[self._pass_id].item()
-            f_logit = logits[self._fail_id].item()
-
-            # Changed: self-consistency 적용 (SC_PASSES > 1일 때).
-            # Why: eval_consistency.py 참고 — 여러 temperature에서 logit/T → softmax → p_fail 수집 → 평균.
-            #      temperature scaling은 logit 후처리만으로 구현 (모델 재로딩 불필요, 추가 forward pass도 불필요).
-            #      단일 forward pass의 raw logit을 temperature로 나누어 다양한 확률 분포를 생성.
-            if SC_PASSES > 1:
-                temps = SC_TEMPERATURES[:SC_PASSES]
-                p_fail_list = []
-                for T in temps:
-                    scaled_p = p_logit / T
-                    scaled_f = f_logit / T
-                    mx = max(scaled_p, scaled_f)
-                    pf = math.exp(scaled_f - mx) / (
-                        math.exp(scaled_p - mx) + math.exp(scaled_f - mx)
-                    )
-                    p_fail_list.append(pf)
-                p_fail = sum(p_fail_list) / len(p_fail_list)
-                _logger.info(
-                    "케이스 %s: SC K=%d p_fails=%s -> avg_p_fail=%.4f",
-                    case_id,
-                    len(temps),
-                    [f"{pf:.4f}" for pf in p_fail_list],
-                    p_fail,
-                )
-            else:
-                # Changed: 단일 pass — p_fail을 softmax로 계산 후 THRESHOLD와 비교.
-                # Why: 기존 f_logit > p_logit (즉 threshold=0.5) 대신 파라미터화된 THRESHOLD 사용.
-                mx = max(p_logit, f_logit)
-                p_fail = math.exp(f_logit - mx) / (
-                    math.exp(p_logit - mx) + math.exp(f_logit - mx)
-                )
-
-            # Changed: prediction을 p_fail > THRESHOLD로 결정.
-            # Why: 기존 f_logit > p_logit (threshold=0.5 equivalent) 대신
-            #      환경변수 OPAL_THRESHOLD로 주입 가능한 threshold 사용 (기본 0.70).
-            prediction = "fail" if p_fail > THRESHOLD else "pass"
-            _logger.info(
-                "케이스 %s: pass_logit=%.4f fail_logit=%.4f p_fail=%.4f threshold=%.2f -> %s",
-                case_id,
-                p_logit,
-                f_logit,
-                p_fail,
-                THRESHOLD,
-                prediction,
-            )
-            predictions[case_id] = prediction
+                raise RuntimeError("LLM-only architecture gate: no records in trajectory")
+            predictions["case_0"] = self._predict_one_trajectory(records)
 
         return predictions
+
+    def _predict_one_trajectory(self, records: list) -> str:
+        """단일 trajectory의 records로 pass/fail logit 비교.
+
+        Changed: 기존 _predict_lora 배치 루프를 단일 trajectory 함수로 분리.
+        Why: evaluate.py 인터페이스(단일 trajectory → str)와 내부 배치 호출 모두 지원.
+        """
+        import torch
+
+        SC_TEMPERATURES = [0.7, 0.8, 1.0, 1.2, 1.5]
+
+        prompt = format_trajectory_rich_inline(records)
+
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+
+        try:
+            text = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+                enable_thinking=False,
+            )
+        except TypeError:
+            text = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+            )
+
+        inputs = self.tokenizer(
+            text, return_tensors="pt", truncation=True, max_length=2048
+        )
+        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            logits = self.model(**inputs).logits[0, -1, :]
+
+        p_logit = logits[self._pass_id].item()
+        f_logit = logits[self._fail_id].item()
+
+        if SC_PASSES > 1:
+            temps = SC_TEMPERATURES[:SC_PASSES]
+            p_fail_list = []
+            for T in temps:
+                scaled_p = p_logit / T
+                scaled_f = f_logit / T
+                mx = max(scaled_p, scaled_f)
+                pf = math.exp(scaled_f - mx) / (
+                    math.exp(scaled_p - mx) + math.exp(scaled_f - mx)
+                )
+                p_fail_list.append(pf)
+            p_fail = sum(p_fail_list) / len(p_fail_list)
+        else:
+            mx = max(p_logit, f_logit)
+            p_fail = math.exp(f_logit - mx) / (
+                math.exp(p_logit - mx) + math.exp(f_logit - mx)
+            )
+
+        prediction = "fail" if p_fail > THRESHOLD else "pass"
+        _logger.info(
+            "pass_logit=%.4f fail_logit=%.4f p_fail=%.4f threshold=%.2f -> %s",
+            p_logit, f_logit, p_fail, THRESHOLD, prediction,
+        )
+        return prediction

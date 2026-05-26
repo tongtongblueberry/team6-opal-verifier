@@ -1,11 +1,16 @@
-# Changed: define a minimal package with no network-time dependencies.
-# Why: the evaluation phase has no network access and the deterministic solver uses stdlib only.
+# Changed: match skeleton dependencies so uv sync creates a working venv.
+# Why: uv sync uses this file to build .venv/; empty deps strips torch/transformers → import Error.
 [project]
 name = "team6-opal-verifier"
 version = "0.1.0"
-description = "Deterministic SSD TCG/Opal command-response trajectory verifier for Team 6"
-requires-python = ">=3.10"
-dependencies = []
+description = "LLM-only SSD TCG/Opal command-response trajectory verifier for Team 6"
+requires-python = "==3.12.3"
+dependencies = [
+    "accelerate>=1.13.0",
+    "torch>=2.11.0",
+    "transformers>=5.7.0",
+    "peft>=0.15.0",
+]
 
 [tool.ruff]
 line-length = 100
