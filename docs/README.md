@@ -1,6 +1,6 @@
 # 문서 구조
 
-최종 갱신: 2026-05-26 16:26 KST
+최종 갱신: 2026-05-26 16:50 KST
 
 ## Active 문서
 
@@ -17,6 +17,7 @@
 - [archive/legacy/](archive/legacy/): 현재 실행하면 안 되는 과거 운영/규칙/문서.
 - [archive/legacy_datagen/](archive/legacy_datagen/): active datagen에서 제거한 synthetic generator 정리 기록.
 - [archive/research/](archive/research/): 조사/방법론 요약 기록.
+  - [self_instruct_implementation_plan_2026-05-26_kst.md](archive/research/self_instruct_implementation_plan_2026-05-26_kst.md): Self-Instruct 공식 논문/공식 코드 기반 구현 기준.
 - [archive/submissions/](archive/submissions/): 과거 제출 시도와 제출 로그.
 
 Archive 파일은 현재 실행 기준이 아니다. 현재 기준은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/current_task.md`, `docs/agent_handoff.md`, `docs/server_operations_current.md`, `docs/current_self_instruct_data_plan.md`, `docs/samples/README.md`다.
@@ -44,6 +45,11 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - Gate B dimension comparison 도구는 `tools/analysis/compare_public20_dimensions.py`이며, public20 label은 local aggregate distribution으로만 사용한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data.
   논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은 active tools/runs에 두지 않는다.
+- Self-Instruct synthetic generation은 Wang et al. 2023 ACL 논문과 `yizhongw/self-instruct`
+  공식 repository 기준으로만 진행한다. 현재는 [../third_party/self_instruct/README.md](../third_party/self_instruct/README.md)에
+  출처와 차용 범위만 문서화하고 vendor code는 두지 않는다.
+- 다음 구현 순서는 LLM 호출 없는 parser, ROUGE-L/exact/conflict dedup/filter,
+  Gate C manifest/model input equivalence, 이후 LLM API generation wrapper다.
 - Self-Instruct synthetic data가 Gate A/B/C를 통과하면 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체, label, target, primary evidence, profile, public20 raw sample 1개 전체, Gate A audit summary, Gate B comparison summary, Gate C manifest/model-input summary를 기록한다.
 - public20 reference audit pack은 public20 검증 결과가 아니라 reference structure/profile 확인용 산출물로 표현한다.
 - Gate A/B/C 전에는 raw synthetic sample을 "합격 데이터"로 제시하지 않는다.

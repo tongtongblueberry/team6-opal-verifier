@@ -1,6 +1,6 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 16:26 KST
+- 최종 갱신: 2026-05-26 16:50 KST
 - 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime은 사용하지 않는다.
 - public20은 synthetic 데이터 검증 대상이 아니다. public20 label은 synthetic generation/judge/generated manifest target으로 쓰지 않는다. public20-only 모델 후보 검증에서는 `train`/`val`만 쓰고, test는 leaderboard hidden 평가다.
 - `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다. public20 validation 결과를 test 결과로 기록하지 않는다.
@@ -50,6 +50,12 @@ LLM next-token/logit decision
     public20-only 모델 검증 artifact에서는 train target과 `val` metric에만 쓴다.
 - 임의 deterministic fixture/smoke synthetic data는 논문 기반 생성 데이터가 아니므로 active surface에서 제거한다.
   accepted synthetic data는 Self-Instruct output-first generation, LLM-only filtering, Gate A/B/C를 통과한 후보만 의미한다.
+- Self-Instruct 공식 출처 기준을 고정했다.
+  - 논문: Wang et al. 2023 ACL Self-Instruct.
+  - 공식 코드: `https://github.com/yizhongw/self-instruct`.
+  - License: Apache-2.0.
+  - 현재는 코드를 vendor하지 않고 [third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 출처와 차용 범위를 문서화한다.
+  - 구현 순서는 LLM 호출 없는 `parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence를 먼저 하고, 이후 LLM API generation wrapper를 붙인다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -115,3 +121,4 @@ LLM next-token/logit decision
 - 비교 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full fine-tuning, 4B QLoRA/LoRA selective fine-tuning, RAFT-style RAG+SFT/QLoRA다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제이므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 둔다.
 - val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard 제출은 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 단위로 판단한다.
+- Self-Instruct 공식 구현 계획은 [docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md)에 아카이빙했다.

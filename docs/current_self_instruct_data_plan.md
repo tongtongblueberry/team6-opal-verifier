@@ -12,6 +12,21 @@
 Self-Instruct 하나를 제대로 구현해 `final response` 판단용 supervised 데이터를
 만들고, 학습 전 품질 gate와 평가 protocol을 고정하는 것이다.
 
+<!-- Changed: lock the generation plan to the official Self-Instruct paper/code source. -->
+<!-- Why: previous ad-hoc fixture generation drifted from the user-requested paper-backed data pipeline. -->
+
+공식 기준은 다음이다.
+
+- 논문: Wang et al. 2023 ACL Self-Instruct.
+- 공식 코드: `https://github.com/yizhongw/self-instruct`.
+- License: Apache-2.0.
+- repo 내 문서 기준: `third_party/self_instruct/README.md`.
+- research archive: `docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md`.
+
+현재 단계에서는 공식 코드를 vendor하지 않는다. 코드 차용이 필요하면 commit hash, license
+notice, 수정 범위, 검증 결과를 별도 기록한 뒤 진행한다. 공식 Self-Instruct 절차 없는
+ad-hoc generator는 active `tools/datagen/`에 둘 수 없다.
+
 비범위는 다음과 같다.
 
 - v4/v4.1 deprecated generator를 학습 데이터 생성에 재사용하지 않는다.
@@ -233,6 +248,15 @@ LLM이 생성하고 invalid 또는 near-duplicate sample을 필터링한 뒤 원
 finetune하는 pipeline이다. 이 repo에서는 일반 instruction tuning이 아니라
 Opal trajectory의 `final response` pass/fail 판단 데이터 생성으로 좁혀 적용한다.
 
+공식 pipeline 대응은 다음처럼 고정한다.
+
+- Instruction generation: Opal verification case family generation으로 축소한다.
+- Classification identification: 우리 과제는 항상 `pass`/`fail`이므로 고정 `true`다.
+- Classification instance generation: output-first로 target label과 final verdict step을 먼저 만든다.
+- Filtering: ROUGE-L near duplicate, exact duplicate, conflicting label/input, invalid output을 제거한다.
+- Quality audit: accepted synthetic sample을 label별로 sampling해 state-transition audit한다.
+- Data size/data quality ablation: `200/500/1k/2k/4k` 후보와 stronger judge regeneration variant를 비교한다.
+
 ## 현재 repo 구조 감사
 
 <!-- Changed: record the audited local structure that the plan builds on. -->
@@ -318,34 +342,48 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`,
    - `label`, `target`, `primary_evidence`는 candidate schema에만 존재한다.
    - `check_final_response_label_invariant()`는 candidate schema에서만 적용한다.
 
-3. Self-Instruct candidate generator
-   - output-first Self-Instruct candidate를 JSONL로 생성하는 future implementation target이다.
-   - v4/v4.1 generator를 import하지 않는다.
-   - LLM API key, server token, secret 값을 log 또는 output JSON에 쓰지 않는다.
-   - 임의 deterministic fixture/smoke mode는 허용하지 않는다.
-   - Self-Instruct 논문 protocol, LLM-only judge filtering, Gate A/B/C 산출물을 함께 남기는
-     후보만 active implementation으로 둘 수 있다.
+3. `tools/datagen/parse_self_instruct_outputs.py`
+   - 공식 output-first response를 candidate schema로 파싱한다.
+   - 아직 LLM API를 호출하지 않는다.
+   - label, target, primary evidence, records를 명시하고 candidate invariant로 검증한다.
+   - malformed output, missing final target, label-like leakage는 reject한다.
 
-4. `tools/analysis/filter_self_instruct_judge.py`
+4. `tools/analysis/dedup_self_instruct_candidates.py`
+   - 공식 filtering 원칙을 반영해 ROUGE-L near duplicate, exact duplicate, same input conflicting label을 제거한다.
+   - public20 exact/near duplicate와 archived verifier/rule marker도 reject한다.
+   - LLM 호출 없이 local JSONL filtering과 report만 수행한다.
+
+5. `tools/analysis/check_manifest_model_input_equivalence.py`
+   - raw candidate, normalized candidate, manifest, training loader, first-forward input이 같은 trajectory 단위인지 검증한다.
+   - Gate C 전용이며 trainer/eval/submission prompt mismatch를 no-go로 기록한다.
+
+6. `tools/analysis/filter_self_instruct_judge.py`
    - LLM-only judge로 candidate를 accept/reject한다.
    - judge prompt에는 rule engine, rule id, public label, archived verifier output을 넣지 않는다.
    - output은 accepted JSONL, rejected JSONL, judge report JSON/MD다.
 
-5. `tools/analysis/self_instruct_invariants.py`
+7. `tools/datagen/run_self_instruct_generation.py`
+   - output-first Self-Instruct candidate를 생성하는 LLM API wrapper다.
+   - LLM API key, server token, secret 값을 log 또는 output JSON에 쓰지 않는다.
+   - 임의 deterministic fixture/smoke mode는 허용하지 않는다.
+   - 공식 Self-Instruct prompt/metadata 계약, LLM-only judge filtering, Gate A/B/C 산출물을 함께 남기는
+     후보만 active implementation으로 둘 수 있다.
+
+8. `tools/analysis/self_instruct_invariants.py`
    - final-response label invariant를 검사한다.
    - 이 모듈은 데이터 품질 gate 전용이다. `src/solver.py`, inference runtime,
      package script에서 import하면 안 된다.
 
-6. `tools/analysis/audit_self_instruct_quality.py`
+9. `tools/analysis/audit_self_instruct_quality.py`
    - accepted pool에서 200-sample quality audit pack과 report를 만든다.
    - manifest validation과 중복되지 않는 Self-Instruct 전용 gate를 기록한다.
 
-7. `tools/analysis/compare_public20_dimensions.py`
+10. `tools/analysis/compare_public20_dimensions.py`
    - Gate B에서 public20 reference profile과 generated candidate profile을 비교한다.
    - 평균 record_count 차이, final_status blank, unknown method/status, schema warning을
      no-go warning으로 보고하되, public20 label은 local aggregate distribution으로만 쓴다.
 
-8. `tools/eval/eval_self_instruct_public20_train_val.py`
+11. `tools/eval/eval_self_instruct_public20_train_val.py`
    - public20-only train/val model validation을 실행한다.
    - public labels는 validation metric 계산에만 사용한다.
    - public20 train labels는 이 별도 public20-only validation artifact 안에서만 train target으로 쓴다.
@@ -353,7 +391,7 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`,
    - fold-held `val` seed input은 해당 fold의 public20-only training input과
      generation seed/prompt/training data에서 제외한다.
 
-9. `tests/test_self_instruct_final_response_invariant.py`
+12. `tests/test_self_instruct_final_response_invariant.py`
    - invariant checker 구현 전 API와 실패 사례를 고정한다.
    - v4/v4.1의 핵심 실패 모드인 "중간 실패 뒤 성공 final response"를 회귀 테스트로 둔다.
 
@@ -664,13 +702,15 @@ leaderboard 제출은 다음이 모두 참일 때만 go다.
 
 다음 구현 순서:
 
-1. Self-Instruct 논문 protocol을 따르는 output-first candidate generator를 JSON contract first로 작성한다.
-2. `tools/analysis/filter_self_instruct_judge.py`를 LLM-only judge filter로 작성한다.
-3. Gate A qualitative sampling state-transition audit와 200-sample audit tool을 generated accepted data에 적용한다.
-4. Gate B comparison report를 generated candidate profile에 적용한다.
-5. Gate A/B/C 통과 뒤 synthetic `train`, `val`, `test`와 `public20_reference`를 물리적으로 분리한다.
-6. `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 기록한다.
-7. public20-only train/val validation runner를 작성한다.
-8. ablation manifest builder를 작성한다.
-9. Gate C manifest/model input path equivalence check를 training loader/first-forward smoke로 작성한다.
-10. training code는 Gate A-C가 통과한 manifest가 생긴 뒤에만 연결한다.
+1. 공식 Self-Instruct output-first response parser를 먼저 작성한다. LLM 호출은 아직 붙이지 않는다.
+2. ROUGE-L near duplicate, exact duplicate, conflicting label/input, public20 near duplicate filtering을 작성한다.
+3. Gate C manifest/model input path equivalence check를 training loader/first-forward smoke로 작성한다.
+4. 그 다음 공식 prompt/metadata 계약을 따르는 LLM API generation wrapper를 작성한다.
+5. LLM-only judge filtering과 duplicate/conflict filtering report를 만든다.
+6. Gate A qualitative sampling state-transition audit와 200-sample audit tool을 generated accepted data에 적용한다.
+7. Gate B comparison report를 generated candidate profile에 적용한다.
+8. Gate A/B/C 통과 뒤 synthetic `train`, `val`, `test`와 `public20_reference`를 물리적으로 분리한다.
+9. `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 기록한다.
+10. public20-only train/val validation runner를 작성한다.
+11. 모델 후보를 prompt-only, frozen RAG, 0.9B full FT, 4B QLoRA/LoRA, RAFT-style RAG+SFT 순으로 비교한다.
+12. training code는 Gate A-C가 통과한 manifest가 생긴 뒤에만 연결한다.

@@ -1,6 +1,6 @@
 # Sample 공개 정책
 
-- 최종 갱신: 2026-05-26 16:26 KST
+- 최종 갱신: 2026-05-26 16:50 KST
 
 <!-- Changed: add a stable location for raw sample disclosure rules. -->
 <!-- Why: raw generated data should be shown only after the agreed quality gates, not while it is still unverified. -->
@@ -36,3 +36,7 @@ leaderboard hidden 평가로 둔다.
 ad-hoc fixture/smoke generated data is not accepted synthetic data.
 논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은
 `self_instruct_sample.md`에 합격 sample로 공개하지 않는다.
+
+Self-Instruct synthetic generation은 공식 논문과 `yizhongw/self-instruct` 공식 코드
+기준을 따른 후보만 대상으로 한다. LLM 호출 없는 parser, dedup/filter, Gate C
+equivalence가 먼저 구현되고, 그 뒤 생성 wrapper와 Gate A/B/C를 통과한 sample만 공개한다.

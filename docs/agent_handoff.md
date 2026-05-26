@@ -3,7 +3,7 @@
 
 # Agent Handoff
 
-- 최종 갱신: 2026-05-26 16:26 KST
+- 최종 갱신: 2026-05-26 16:50 KST
 - 목적: 새 agent가 단발 작업만 수행하지 않고, 현재 논의 맥락과 금지사항을 유지한 채 작업하게 한다.
 - 적용 범위: repo 작업, 문서 정리, 데이터 생성/검증, 학습 실행, 서버 SSH 재시도, git push를 맡는 모든 worker agent.
 
@@ -40,6 +40,10 @@
   - output-first classification generation을 사용한다.
   - LLM-only judge filtering을 사용한다.
   - 논문식 quality audit, evaluation, data-size/data-quality ablation을 구현 대상으로 둔다.
+  - 공식 코드 기준은 `https://github.com/yizhongw/self-instruct`이고 license는 Apache-2.0이다.
+  - 공식 출처와 차용 범위는 `third_party/self_instruct/README.md`와
+    `docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md`에 둔다.
+  - 공식 Self-Instruct 절차 없는 ad-hoc generator는 active tools에 추가하지 않는다.
 - public20 seed schema는 input-only다. `label`, `gold_label`, `expected_label`, `answer`
   계열 필드는 default에서 reject하고 output에도 쓰지 않는다.
 - public20 local reference는 확보되어 있다.
@@ -106,6 +110,8 @@
 - [docs/server_operations_current.md](server_operations_current.md): 서버 접속, sync, 제출 판단 절차.
 - [docs/README.md](README.md): active/archive/delete 문서 정리 기준.
 - [docs/samples/README.md](samples/README.md): raw sample 공개 정책.
+- [../third_party/self_instruct/README.md](../third_party/self_instruct/README.md): Self-Instruct 공식 출처, license, 차용 범위, 금지사항.
+- [archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](archive/research/self_instruct_implementation_plan_2026-05-26_kst.md): 공식 Self-Instruct 구현 계획 archive.
 - [../README.md](../README.md): 현재 repo 운영 원칙과 도구 목록.
 - [../PROGRESS.md](../PROGRESS.md): 현재 진행 상황 요약.
 - [archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md](archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md): v4/v4.1 폐기 근거.
@@ -124,6 +130,8 @@
 - v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
 - active datagen은 Self-Instruct seed/candidate schema만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
 - 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
+- Self-Instruct 공식 code source는 yizhongw/self-instruct이고 Apache-2.0이다. 현재는 vendor code 없이 문서 기준만 둔다.
+- 다음 구현은 LLM 호출 없는 parse_self_instruct_outputs, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence를 먼저 한다. 이후 LLM API generation wrapper를 붙인다.
 - Gate A/B/C가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C 요약을 기록한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data. sample.md는 Gate A/B/C를 통과한 Self-Instruct synthetic data에만 생성한다.
 - synthetic 데이터 검증 완료 뒤 dataset은 train/val/test/public20_reference로 분리한다. public20-only 모델 후보 검증은 train/val만 쓰고, test는 leaderboard hidden 평가다.
@@ -158,5 +166,7 @@
 - public20 reference structure/profile audit pack은 `runs/self_instruct/public20_baseline/gate_a/public20_reference_audit_pack.md`에 있다. 이것은 public20 검증 결과가 아니라 reference 구조 확인용 pack이다. sample별 label은 노출하지 않았고 local label은 aggregate report에만 있다.
 - 생성 candidate가 만들어지면 일부 sample을 직접 state-transition audit한 뒤에 `compare_public20_dimensions.py`로 public20 dimension 비교 report를 만든다.
 - 현재 Gate A/B/C를 통과한 generated candidate는 없다. 다음 단계는 real LLM output-first generation과 judge filtering을 논문 protocol에 맞게 구현하는 것이다.
+- 단, 구현 순서는 LLM 호출 없는 공식-output parser, ROUGE-L/exact/conflict dedup/filter,
+  Gate C manifest/model input equivalence를 먼저 완료한 뒤 real LLM generation wrapper로 넘어간다.
 - 서버 SSH는 main이 직접 치지 말고 agent가 10회 이상 재시도 단위로 수행한다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.

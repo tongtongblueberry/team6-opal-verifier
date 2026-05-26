@@ -13,6 +13,8 @@ SNU Introduction to Deep Learning (M2177.0043) Opal command-response trajectory 
   hidden 평가다.
 - Gate A/B/C 통과 후 generated synthetic 데이터는 `train`, `val`, `test`로 분리하고,
   public20은 `public20_reference`로 따로 둔다.
+- synthetic generation은 Self-Instruct 공식 논문과 공식 코드 기준으로만 진행한다.
+  공식 출처와 차용 범위는 [third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 둔다.
 - 서버 작업 root는 `/workspace/sinjeongmin_opal_verifier`다. `/workspace/team6`는 현재 작업 root로 사용하지 않는다.
 - 서버 비밀번호나 token은 repo, 문서, script, shell command argument에 저장하지 않는다.
 - main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않는다.
@@ -80,6 +82,7 @@ v4/v4.1 long trajectory datagen과 spec/gap synthetic datagen은 active `tools/d
 - archive index: [docs/README.md](docs/README.md)
 - sample 공개 정책: [docs/samples/README.md](docs/samples/README.md)
 - 최신 cycle 기록: [docs/archive/cycles/2026-05-26/](docs/archive/cycles/2026-05-26/)
+- Self-Instruct 공식 구현 archive: [docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md)
 
 ## 로컬 검증
 
@@ -137,6 +140,15 @@ classifier를 최종 유력 후보로 둔다.
 active datagen에는 public20 input-only seed schema와 label-bearing candidate schema만 둔다.
 새 synthetic generation 구현은 Self-Instruct output-first generation, LLM-only filtering,
 논문식 quality audit protocol을 따르는 후보만 허용한다.
+
+<!-- Changed: lock synthetic generation to the official Self-Instruct source and no-LLM-first implementation order. -->
+<!-- Why: the next implementation must follow verified paper/code structure and avoid another ad-hoc generator. -->
+Self-Instruct 공식 출처는 Wang et al. 2023 ACL 논문과 `yizhongw/self-instruct`
+공식 repository, Apache-2.0 license다. 현재는 코드를 vendor하지 않고
+[third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 출처와
+차용 범위만 문서화한다. 다음 구현 순서는 LLM 호출이 없는 단계부터다:
+`parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter,
+Gate C manifest/model input equivalence, 그 다음 LLM API generation wrapper.
 
 ## 서버 Sync 원칙
 
