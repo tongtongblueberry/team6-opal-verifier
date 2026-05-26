@@ -72,9 +72,9 @@
   다만 전체 자원을 모델 검증에 몰아주지 않고, synthetic 데이터 생성의 질적/정량 검증을 계속 병렬 진행한다.
   RAG/FT 후보 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
   이때 `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다.
-- 사용자 요청 중심 모델 후보는 Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
-- non-training prompt/logprob baseline은 agent가 추가한 sanity baseline이며, 사용자 요청 후보가 아니라 RAG/FT 비교 결과가 의미 있는지 확인하는 최소 비학습 대조군이다.
-- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요하므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 둔다.
+- 모델 학습 후보 5개는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA다.
+- public20-only 검증은 public20 train 16개로 실제 학습을 진행하는 검증이다.
+- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요하므로 retrieval + fine-tuning/RAFT-style 학습을 최종 유력 방향으로 둔다.
 - val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard는 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 사용한다.
 
 ## 데이터 Gate 순서
@@ -142,8 +142,8 @@
 - active docs update set은 README.md, PROGRESS.md, docs/README.md, docs/current_task.md, docs/current_self_instruct_data_plan.md, docs/agent_handoff.md, docs/samples/README.md 이다.
 - Gate 순서: A synthetic 질적 state-transition audit, B public20 reference dimension/schema/pass-fail 분포 비교, C manifest/model input path equivalence, D leaderboard 제출 판단.
 - 모델 후보 조사는 데이터 검증 이후 또는 병렬 보조로만 진행한다. RAG/FT 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
-- 사용자 요청 중심 모델 후보는 Frozen RAG, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
-- agent가 추가한 sanity baseline은 non-training prompt/logprob baseline 하나뿐이며, 사용자 지시 후보처럼 취급하지 않는다.
+- 모델 학습 후보 5개는 0.9B full FT `5/10/20` epoch patience `2`, 0.9B full FT + retrieved rulebook/spec context `5/10/20` epoch patience `2`, 4B LoRA/QLoRA selective FT `3/5/10` epoch patience `1-2`, 4B LoRA/QLoRA + retrieved context `3/5/10` epoch patience `1-2`, RAFT-style retrieval-augmented SFT/QLoRA public20-only `1/3/5` smoke/overfit check다.
+- RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 `3/5/10` epoch으로 확장한다.
 - invariant checker/state-transition audit는 데이터 품질 gate이지 runtime rule engine이 아니다.
 - 작업 root는 /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst 이고 서버 기준 root는 /workspace/sinjeongmin_opal_verifier 이다.
 - push 대상은 origin/sinjeongmin 이다.
@@ -174,5 +174,6 @@
 - 현재 Gate A/B/C를 통과한 generated candidate는 없다. 다음 단계는 real LLM output-first generation과 judge filtering을 논문 protocol에 맞게 구현하는 것이다.
 - 단, LLM 호출 없는 공식-output parser, ROUGE-L/exact/conflict dedup/filter,
   Gate C manifest/model input equivalence를 먼저 둔 뒤 real LLM generation wrapper로 넘어간다.
+- public20-only 모델 검증은 병렬 보조로 진행하되, 위 5개 실제 학습 후보를 기준으로 train/val 결과를 비교한다.
 - 서버 SSH는 main이 직접 치지 말고 agent가 10회 이상 재시도 단위로 수행한다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.

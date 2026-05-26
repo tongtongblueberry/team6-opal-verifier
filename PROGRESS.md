@@ -1,6 +1,6 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 16:50 KST
+- 최종 갱신: 2026-05-26 17:27 KST
 - 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime은 사용하지 않는다.
 - public20은 synthetic 데이터 검증 대상이 아니다. public20 label은 synthetic generation/judge/generated manifest target으로 쓰지 않는다. public20-only 모델 후보 검증에서는 `train`/`val`만 쓰고, test는 leaderboard hidden 평가다.
 - `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다. public20 validation 결과를 test 결과로 기록하지 않는다.
@@ -123,9 +123,11 @@ LLM next-token/logit decision
 - Self-Instruct dedup/filter는 `tools/analysis/dedup_self_instruct_candidates.py`로 수행한다. 이 도구는 ROUGE-L 0.7 near duplicate, exact duplicate, same-input conflicting label, public20 duplicate를 reject한다.
 - public20 reference structure/profile audit pack을 `runs/self_instruct/public20_baseline/gate_a/`에 생성했다. 이 pack은 public20 검증 결과가 아니라 reference 구조 확인용이며, sample별 label을 노출하지 않고 state-transition/shape 메모용 빈 섹션만 제공한다.
 - 모델 방법론 조사는 데이터 검증 이후 또는 병렬 보조로 진행한다. RAG/full FT/selective FT 구현은 관련 논문과 검증된 라이브러리/reference code를 따르며, synthetic 데이터의 질적/정량 검증을 중단하지 않는다.
+  <!-- Changed: correct public20 model validation plan to training-based candidates only. -->
+  <!-- Why: public20-only model verification must actually train on public20 train split. -->
 - public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이고, val은 `pass 2 / fail 2`를 목표로 한다.
-- 사용자 요청 중심 모델 후보는 Frozen RAG classifier, 0.9B full fine-tuning, 4B QLoRA/LoRA selective fine-tuning, RAFT-style RAG+SFT/QLoRA다.
-- non-training prompt/logprob baseline은 agent가 추가한 sanity baseline이며, 사용자 요청 후보가 아니라 RAG/FT 비교 결과가 의미 있는지 확인하는 최소 비학습 대조군이다.
-- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제이므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 둔다.
+- 모델 학습 후보 5개는 다음으로 고정한다: 0.9B full FT `5/10/20` epoch patience `2`, 0.9B full FT + retrieved rulebook/spec context `5/10/20` epoch patience `2`, 4B LoRA/QLoRA selective FT `3/5/10` epoch patience `1-2`, 4B LoRA/QLoRA + retrieved context `3/5/10` epoch patience `1-2`, RAFT-style retrieval-augmented SFT/QLoRA public20-only `1/3/5` smoke/overfit check.
+- RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 epoch `3/5/10`으로 확장한다.
+- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제다. 따라서 retrieval만 하는 비학습 대체물이 아니라 retrieval + fine-tuning/RAFT-style 학습을 최종 방향으로 둔다.
 - val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard 제출은 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 단위로 판단한다.
 - Self-Instruct 공식 구현 계획은 [docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md)에 아카이빙했다.

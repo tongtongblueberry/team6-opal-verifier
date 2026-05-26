@@ -40,7 +40,7 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - public20-only 모델 후보 검증은 public20 20개를 `train`/`val`로만 나누며 public20 `test` split은 만들지 않는다. test는 leaderboard hidden 평가다.
 - 이때 `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 공개되지 않은 leaderboard hidden 평가다.
 - 기본 split은 stratified `16 train / 4 val`이고, val은 `pass 2 / fail 2`를 목표로 한다.
-- 모델 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- 모델 학습 후보는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA다.
 - public20 local reference facts는 rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
 - Gate B dimension comparison 도구는 `tools/analysis/compare_public20_dimensions.py`이며, public20 label은 local aggregate distribution으로만 사용한다.
 - Gate C manifest/model input equivalence 도구는 `tools/analysis/check_manifest_model_input_equivalence.py`이며, synthetic candidate가 manifest와 trainer loader에서 전체 trajectory 단위로 유지되는지 검증한다.

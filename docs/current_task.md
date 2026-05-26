@@ -170,9 +170,11 @@
 - 임의 fixture/smoke generator와 관련 runs 산출물은 삭제 대상이다.
   학습, 검증, leaderboard 제출 근거로 사용하지 않는다.
 - RAG/full fine-tuning/selective fine-tuning 후보 검증은 데이터 검증 이후 또는 병렬 보조로만 진행한다. 구현은 논문과 검증된 라이브러리/reference code를 우선 따른다.
-- 사용자 요청 중심 모델 후보는 Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
-- non-training prompt/logprob baseline은 agent가 추가한 sanity baseline이며, 사용자 요청 후보가 아니라 RAG/FT 비교 결과가 의미 있는지 확인하는 최소 비학습 대조군이다.
-- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory state reasoning이 모두 필요하므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 본다.
+  <!-- Changed: correct the model plan to public20 training candidates only. -->
+  <!-- Why: user requested actual public20 train/val learning while verified synthetic data is not ready. -->
+- 모델 학습 후보 5개는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA다.
+- public20-only 검증은 public20 train 16개로 실제 학습을 진행하는 검증이다.
+- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory state reasoning이 모두 필요하므로 retrieval + fine-tuning/RAFT-style 학습을 최종 유력 방향으로 본다.
 
 ## 서버 상태
 
@@ -201,8 +203,8 @@
 3. v4/v4.1 및 spec/gap synthetic raw/manifest가 새 학습 입력이나 제출 판단에 포함되지 않는지 확인한다.
 4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
 5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
-6. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.
-7. 이후 0.8B/0.9B급 full FT를 비교한다.
+6. public20-only train/val runner를 만들고 0.9B full FT `5/10/20` epoch patience `2`와 4B LoRA/QLoRA `3/5/10` epoch patience `1-2`를 실제 학습으로 비교한다.
+7. retrieval context를 붙인 0.9B/4B 후보와 RAFT-style public20-only `1/3/5` smoke/overfit check를 이어서 비교한다.
 
 ## 보안
 

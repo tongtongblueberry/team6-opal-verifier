@@ -195,40 +195,39 @@ Tasks*. In *Advances in Neural Information Processing Systems, 33*.
 (2023). *QLoRA: Efficient Finetuning of Quantized LLMs*. In *Advances in Neural
 Information Processing Systems, 36*.
 
-사용자 요청 중심 후보는 RAG, full fine-tuning, selective/QLoRA fine-tuning,
-RAFT-style RAG+SFT/QLoRA다. non-training prompt/logprob baseline은 agent가 추가한
-sanity baseline이며, 사용자 요청 후보가 아니라 RAG/FT 비교 결과가 의미 있는지 확인하는
-최소 비학습 대조군이다.
+<!-- Changed: replace comparison-only candidates with the active five training candidates. -->
+<!-- Why: the immediate model validation request is to train on public20 train split because verified synthetic data is not available yet. -->
+모델 후보는 public20 `16 train / 4 val` split에서 실제 학습을 수행하는 다음 5개로 고정한다.
 
-1. Frozen RAG classifier
-   - rulebook/spec chunk retrieval과 base LLM logprob pass/fail 판정으로 평가한다.
-   - fine-tuning은 하지 않는다.
-   - RAG가 이 문제에 맞는지 확인하는 baseline이다.
-
-2. 0.9B full fine-tuning
-   - public20 train만 사용한다.
+1. 0.9B full fine-tuning
+   - public20 train 16개만 사용한다.
    - 12GB 제출 한계를 활용하는 후보로 둔다.
-   - epoch 후보는 `5`, `10`, `20`이고 val loss/F1가 악화되면 early stopping한다.
+   - epoch 후보는 `5`, `10`, `20`이고 patience는 `2`다.
 
-3. 4B QLoRA/LoRA selective fine-tuning
+2. 0.9B full fine-tuning + retrieved rulebook/spec context
+   - 0.9B full FT 입력에 retrieved rulebook/spec context를 함께 제공한다.
+   - epoch 후보는 `5`, `10`, `20`이고 patience는 `2`다.
+   - retrieval이 weight-only full FT보다 도움이 되는지 비교한다.
+
+3. 4B LoRA/QLoRA selective fine-tuning
    - PEFT/Transformers 계열 검증 코드와 reference implementation을 우선 사용한다.
-   - epoch 후보는 `3`, `5`, `10`이고 val overfit이 보이면 즉시 중단한다.
+   - epoch 후보는 `3`, `5`, `10`이고 patience는 `1-2`다.
 
-4. RAFT-style RAG + SFT/QLoRA
-   - trajectory와 retrieved spec chunks를 함께 넣는다.
-   - pure RAG와 pure fine-tuning의 중간 후보다.
-   - 최종 유력 후보지만 frozen RAG와 FT baseline을 먼저 본 뒤 진행한다.
+4. 4B LoRA/QLoRA + retrieved rulebook/spec context
+   - 4B selective tuning 입력에 retrieved rulebook/spec context를 함께 제공한다.
+   - epoch 후보는 `3`, `5`, `10`이고 patience는 `1-2`다.
+   - retrieval이 selective FT의 rulebook coverage를 보완하는지 본다.
 
-5. Agent 추가 sanity baseline: non-training prompt/logprob baseline
-   - public20 train examples만 prompt examples로 사용한다.
-   - 학습은 하지 않는다.
-   - val로 prompt format과 logprob calibration만 확인한다.
-   - 사용자 요청 후보가 아니라 RAG/FT 후보 검증의 최소 대조군이다.
+5. RAFT-style retrieval-augmented SFT/QLoRA
+   - trajectory와 retrieved spec chunks를 함께 넣고, retrieved evidence를 사용하는 방식으로 학습한다.
+   - public20-only에서는 epoch `1`, `3`, `5`만 smoke/overfit check로 수행한다.
+   - synthetic Gate A/B/C 통과 데이터가 생기면 epoch `3`, `5`, `10`으로 확장한다.
 
 이 문제는 pure RAG 문제는 아니다. rulebook/spec이 커서 weight에 모두 암기시키기 어렵고,
 trajectory state transition은 단순 검색만으로 해결되지 않는다. 따라서 retrieval된 규칙,
 trajectory reasoning, final response classification을 함께 처리하는 문제로 본다.
-최종 후보는 pure RAG보다 RAFT-style retrieval-augmented classifier가 맞다.
+최종 후보는 retrieval만 하는 비학습 대체물이 아니라 retrieval + fine-tuning/RAFT-style
+학습 조합이 맞다.
 
 학습 중단 기준은 다음이다.
 
@@ -726,5 +725,5 @@ leaderboard 제출은 다음이 모두 참일 때만 go다.
 6. Gate A/B/C 통과 뒤 synthetic `train`, `val`, `test`와 `public20_reference`를 물리적으로 분리한다.
 7. `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 기록한다.
 8. public20-only train/val validation runner를 작성한다.
-9. 모델 후보는 사용자 요청 중심 후보인 frozen RAG, 0.9B full FT, 4B QLoRA/LoRA, RAFT-style RAG+SFT를 비교하고, agent 추가 sanity baseline으로 non-training prompt/logprob baseline을 별도 비교한다.
+9. 모델 후보는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA를 public20 train/val로 비교한다.
 12. training code는 Gate A-C가 통과한 manifest가 생긴 뒤에만 연결한다.
