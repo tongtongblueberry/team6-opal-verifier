@@ -180,6 +180,24 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--min-template-entropy", type=float, default=0.75)
     parser.add_argument("--max-top-template-share", type=float, default=0.20)
     parser.add_argument("--max-length-jsd", type=float, default=0.08)
+    parser.add_argument(
+        "--min-char-mean-ratio",
+        type=float,
+        default=0.60,
+        help="Minimum manifest/reference input char-length mean ratio when reference text is available.",
+    )
+    parser.add_argument(
+        "--min-char-median-ratio",
+        type=float,
+        default=0.60,
+        help="Minimum manifest/reference input char-length median ratio when reference text is available.",
+    )
+    parser.add_argument(
+        "--max-min-record-count-gap",
+        type=int,
+        default=1,
+        help="Maximum allowed manifest_min_record_count - reference_min_record_count gap when both are available.",
+    )
     return parser.parse_args(argv)
 
 
@@ -217,6 +235,112 @@ def as_text(value: Any) -> str:
 
 def token_count(text: str) -> int:
     return len(re.findall(r"\S+", text))
+
+
+# Changed: collect input-shape statistics separately from manifest construction.
+# Why: data gates need to detect char-length drift and missing shortest trajectories without importing solver/rulebase code.
+def new_shape_values() -> Dict[str, List[int]]:
+    return {"char_lengths": [], "token_counts": [], "record_counts": []}
+
+
+def infer_record_count(value: Any) -> Optional[int]:
+    decoded = value
+    if isinstance(decoded, str):
+        stripped = decoded.strip()
+        if not stripped or stripped[0] not in "[{":
+            return None
+        try:
+            decoded = json.loads(stripped)
+        except json.JSONDecodeError:
+            return None
+
+    if isinstance(decoded, dict):
+        for key in ("records", "steps"):
+            child = decoded.get(key)
+            if isinstance(child, list):
+                return len(child)
+        return None
+    if isinstance(decoded, list):
+        return len(decoded)
+    return None
+
+
+def add_shape_value(shape_values: Dict[str, List[int]], value: Any) -> None:
+    if value is None:
+        return
+    text = as_text(value)
+    if not text:
+        return
+    shape_values["char_lengths"].append(len(text))
+    shape_values["token_counts"].append(token_count(text))
+    record_count = infer_record_count(value)
+    if record_count is not None:
+        shape_values["record_counts"].append(record_count)
+
+
+def median_from_sorted(values: Sequence[int]) -> float:
+    count = len(values)
+    middle = count // 2
+    if count % 2:
+        return float(values[middle])
+    return (values[middle - 1] + values[middle]) / 2.0
+
+
+def summarize_numeric(values: Sequence[int]) -> Dict[str, Any]:
+    if not values:
+        return {"count": 0, "min": None, "median": None, "mean": None, "max": None}
+    ordered = sorted(values)
+    return {
+        "count": len(ordered),
+        "min": ordered[0],
+        "median": round(median_from_sorted(ordered), 6),
+        "mean": round(sum(ordered) / len(ordered), 6),
+        "max": ordered[-1],
+    }
+
+
+def summarize_shape_values(shape_values: Mapping[str, Sequence[int]]) -> Dict[str, Dict[str, Any]]:
+    return {
+        "char_lengths": summarize_numeric(shape_values.get("char_lengths", [])),
+        "token_counts": summarize_numeric(shape_values.get("token_counts", [])),
+        "record_counts": summarize_numeric(shape_values.get("record_counts", [])),
+    }
+
+
+def empty_shape_summary() -> Dict[str, Dict[str, Any]]:
+    return summarize_shape_values(new_shape_values())
+
+
+def stat_ratio(left: Any, right: Any) -> Optional[float]:
+    if not isinstance(left, (int, float)) or not isinstance(right, (int, float)) or right <= 0:
+        return None
+    return round(left / right, 6)
+
+
+def stat_gap(left: Any, right: Any) -> Optional[int]:
+    if not isinstance(left, int) or not isinstance(right, int):
+        return None
+    return left - right
+
+
+def add_optional_reference_gate(
+    gates: Dict[str, Dict[str, Any]],
+    name: str,
+    value: Any,
+    threshold: Any,
+    passed: bool,
+    detail: Any,
+) -> None:
+    if value is None:
+        gates[name] = {
+            "value": None,
+            "threshold": threshold,
+            "passed": True,
+            "skipped": True,
+            "detail": detail,
+        }
+        return
+    add_gate(gates, name, value, threshold, passed, detail)
 
 
 def load_manifest(path: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -445,11 +569,12 @@ def extract_length_bin(record: Mapping[str, Any]) -> Optional[str]:
 
 # Changed: support manifest-like references while skipping auxiliary score/report files explicitly.
 # Why: length JSD must use eligible corpus rows, and auxiliary artifacts must not hide eligible parse/schema failures.
-def load_reference_length_counts(path: Path) -> Tuple[Counter, List[Dict[str, Any]], int, Dict[str, Any]]:
+def load_reference_length_counts(path: Path) -> Tuple[Counter, List[Dict[str, Any]], int, Dict[str, Any], Dict[str, Dict[str, Any]]]:
     counts: Counter = Counter()
     errors: List[Dict[str, Any]] = []
     eligible_records = 0
     skipped = new_reference_skip_summary()
+    reference_shape_values = new_shape_values()
 
     # Changed: pass path-level auxiliary context into per-record eligibility.
     # Why: auxiliary score/report files without length sources should be skipped, not reported as malformed references.
@@ -467,6 +592,10 @@ def load_reference_length_counts(path: Path) -> Tuple[Counter, List[Dict[str, An
             return False
 
         eligible_records += 1
+        # Changed: collect reference input shape stats from the same eligible records used for length JSD.
+        # Why: char-length and shortest-trajectory gates must compare against the actual reference validation corpus.
+        text_value = extract_reference_text_value(record)
+        add_shape_value(reference_shape_values, text_value)
         bin_label = extract_length_bin(record)
         if bin_label is None:
             errors.append(
@@ -536,7 +665,7 @@ def load_reference_length_counts(path: Path) -> Tuple[Counter, List[Dict[str, An
             reason = auxiliary_path_reason or "no_eligible_reference_records"
             add_reference_skip(skipped, "file", file_path, reason, detail=f"records_seen={file_seen_records}")
 
-    return counts, errors, eligible_records, skipped
+    return counts, errors, eligible_records, skipped, summarize_shape_values(reference_shape_values)
 
 
 def normalized_entropy(counter: Counter) -> float:
@@ -763,11 +892,15 @@ def build_report(
     reference_errors: Sequence[Mapping[str, Any]],
     reference_skipped: Mapping[str, Any],
     reference_record_count: int,
+    reference_shape_summary: Mapping[str, Mapping[str, Any]],
     report_json_path: Path,
     report_md_path: Path,
     min_template_entropy: float,
     max_top_template_share: float,
     max_length_jsd: float,
+    min_char_mean_ratio: float,
+    min_char_median_ratio: float,
+    max_min_record_count_gap: int,
 ) -> Dict[str, Any]:
     missing_required: List[Dict[str, Any]] = []
     unknown_labels: List[Dict[str, Any]] = []
@@ -785,6 +918,7 @@ def build_report(
     hash_to_records: DefaultDict[str, List[Mapping[str, Any]]] = defaultdict(list)
     group_to_splits: DefaultDict[str, set] = defaultdict(set)
     group_to_records: DefaultDict[str, List[Mapping[str, Any]]] = defaultdict(list)
+    manifest_shape_values = new_shape_values()
 
     for record in records:
         line = record.get("_manifest_line")
@@ -819,6 +953,9 @@ def build_report(
             if not is_blank(record.get("split")):
                 group_to_splits[group_id].add(str(record.get("split")))
             group_to_records[group_id].append(record)
+        # Changed: collect manifest input shape stats during the existing row scan.
+        # Why: this keeps shape gates data-only and avoids another pass with different filtering semantics.
+        add_shape_value(manifest_shape_values, record.get("input"))
 
         source = record.get("source")
         path = record.get("path")
@@ -849,6 +986,24 @@ def build_report(
     split_issue_data = split_label_issues(split_label_counts, label_counts)
     length_jsd = jensen_shannon_divergence(length_counts, reference_length_counts) if reference_path else None
     reference_skip_report = finalize_reference_skip_summary(reference_skipped)
+    manifest_shape_summary = summarize_shape_values(manifest_shape_values)
+    manifest_char_stats = manifest_shape_summary["char_lengths"]
+    reference_char_stats = reference_shape_summary.get("char_lengths", {})
+    manifest_record_stats = manifest_shape_summary["record_counts"]
+    reference_record_stats = reference_shape_summary.get("record_counts", {})
+    char_mean_ratio = stat_ratio(manifest_char_stats.get("mean"), reference_char_stats.get("mean"))
+    char_median_ratio = stat_ratio(manifest_char_stats.get("median"), reference_char_stats.get("median"))
+    min_record_count_gap = stat_gap(manifest_record_stats.get("min"), reference_record_stats.get("min"))
+    record_gap_detail = {
+        "manifest_min_record_count": manifest_record_stats.get("min"),
+        "reference_min_record_count": reference_record_stats.get("min"),
+        "message": "reference와 manifest의 최단 trajectory record_count 차이를 비교했습니다.",
+    }
+    if reference_record_stats.get("min") == 1 and isinstance(manifest_record_stats.get("min"), int) and manifest_record_stats.get("min") >= 2:
+        record_gap_detail["message"] = (
+            "reference에는 1-record shortest case가 있지만 manifest 최단 record_count가 "
+            f"{manifest_record_stats.get('min')}라서 shortest case coverage가 부족할 수 있습니다."
+        )
 
     gates: Dict[str, Dict[str, Any]] = {}
     add_gate(gates, "manifest_jsonl_parse_errors_0", len(parse_errors), 0, len(parse_errors) == 0)
@@ -899,6 +1054,40 @@ def build_report(
             max_length_jsd,
             length_jsd is not None and length_jsd <= max_length_jsd,
         )
+        # Changed: add optional reference shape gates for char length and shortest trajectory coverage.
+        # Why: length-bin JSD can pass even when raw chars are short or 1-record cases are absent.
+        add_optional_reference_gate(
+            gates,
+            "char_length_mean_ratio_gte_threshold",
+            char_mean_ratio,
+            min_char_mean_ratio,
+            char_mean_ratio is not None and char_mean_ratio >= min_char_mean_ratio,
+            {
+                "manifest_mean_chars": manifest_char_stats.get("mean"),
+                "reference_mean_chars": reference_char_stats.get("mean"),
+                "message": "manifest/reference input char length mean ratio입니다.",
+            },
+        )
+        add_optional_reference_gate(
+            gates,
+            "char_length_median_ratio_gte_threshold",
+            char_median_ratio,
+            min_char_median_ratio,
+            char_median_ratio is not None and char_median_ratio >= min_char_median_ratio,
+            {
+                "manifest_median_chars": manifest_char_stats.get("median"),
+                "reference_median_chars": reference_char_stats.get("median"),
+                "message": "manifest/reference input char length median ratio입니다.",
+            },
+        )
+        add_optional_reference_gate(
+            gates,
+            "min_record_count_gap_lte_threshold",
+            min_record_count_gap,
+            max_min_record_count_gap,
+            min_record_count_gap is not None and min_record_count_gap <= max_min_record_count_gap,
+            record_gap_detail,
+        )
     else:
         gates["length_jsd_lte_threshold"] = {
             "value": None,
@@ -907,6 +1096,30 @@ def build_report(
             "skipped": True,
             "detail": "reference가 없어서 actual length JSD를 계산하지 못했습니다.",
         }
+        add_optional_reference_gate(
+            gates,
+            "char_length_mean_ratio_gte_threshold",
+            None,
+            min_char_mean_ratio,
+            True,
+            "reference가 없어서 char length mean ratio를 계산하지 않았습니다.",
+        )
+        add_optional_reference_gate(
+            gates,
+            "char_length_median_ratio_gte_threshold",
+            None,
+            min_char_median_ratio,
+            True,
+            "reference가 없어서 char length median ratio를 계산하지 않았습니다.",
+        )
+        add_optional_reference_gate(
+            gates,
+            "min_record_count_gap_lte_threshold",
+            None,
+            max_min_record_count_gap,
+            True,
+            "reference가 없어서 min record_count gap을 계산하지 않았습니다.",
+        )
 
     overall_passed = all(status.get("passed") is True for status in gates.values())
     return {
@@ -920,6 +1133,9 @@ def build_report(
             "min_template_entropy": min_template_entropy,
             "max_top_template_share": max_top_template_share,
             "max_length_jsd": max_length_jsd,
+            "min_char_mean_ratio": min_char_mean_ratio,
+            "min_char_median_ratio": min_char_median_ratio,
+            "max_min_record_count_gap": max_min_record_count_gap,
         },
         "counts": {
             "records": total_records,
@@ -939,6 +1155,15 @@ def build_report(
             "length_bins": counter_to_dict(length_counts),
             "reference_length_bins": counter_to_dict(reference_length_counts),
             "split_label_counts": {split: counter_to_dict(counter) for split, counter in sorted(split_label_counts.items())},
+            "char_length_stats": manifest_char_stats,
+            "reference_char_length_stats": reference_char_stats,
+            "token_count_stats": manifest_shape_summary["token_counts"],
+            "reference_token_count_stats": reference_shape_summary.get("token_counts", {}),
+            "record_count_stats": manifest_record_stats,
+            "reference_record_count_stats": reference_record_stats,
+            "char_length_mean_ratio": char_mean_ratio,
+            "char_length_median_ratio": char_median_ratio,
+            "min_record_count_gap": min_record_count_gap,
             "normalized_template_entropy": round(template_entropy, 6),
             "top_template_share": round(top_template_share, 6),
             "top_template_count": top_template_count,
@@ -989,7 +1214,7 @@ def render_markdown(report: Mapping[str, Any]) -> str:
 
     for name, status in gates.items():
         if status.get("skipped"):
-            state = "실패(건너뜀)"
+            state = "건너뜀" if status.get("passed") else "실패(건너뜀)"
         elif status.get("passed"):
             state = "통과"
         else:
@@ -1004,6 +1229,13 @@ def render_markdown(report: Mapping[str, Any]) -> str:
             f"- normalized template entropy: {metrics['normalized_template_entropy']}",
             f"- top template share: {metrics['top_template_share']} ({metrics['top_template_count']} records)",
             f"- length JSD: {metrics['length_jsd']}",
+            f"- char length mean ratio: {metrics['char_length_mean_ratio']}",
+            f"- char length median ratio: {metrics['char_length_median_ratio']}",
+            f"- min record_count gap: {metrics['min_record_count_gap']}",
+            f"- manifest char stats: {metrics['char_length_stats']}",
+            f"- reference char stats: {metrics['reference_char_length_stats']}",
+            f"- manifest record_count stats: {metrics['record_count_stats']}",
+            f"- reference record_count stats: {metrics['reference_record_count_stats']}",
             f"- duplicate content_hash groups: {metrics['duplicate_content_hash_group_count']}",
             f"- group leakage groups: {metrics['group_leakage_count']}",
             "",
@@ -1084,11 +1316,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     reference_errors: List[Dict[str, Any]] = []
     reference_skipped: Dict[str, Any] = new_reference_skip_summary()
     reference_record_count = 0
+    reference_shape_summary = empty_shape_summary()
     if reference_path:
         try:
             # Changed: load reference corpus with eligible/auxiliary accounting.
             # Why: validation should fail only on malformed eligible corpus records while reporting skipped artifacts.
-            reference_length_counts, reference_errors, reference_record_count, reference_skipped = load_reference_length_counts(reference_path)
+            (
+                reference_length_counts,
+                reference_errors,
+                reference_record_count,
+                reference_skipped,
+                reference_shape_summary,
+            ) = load_reference_length_counts(reference_path)
         except ValueError as exc:
             reference_errors = [{"path": str(reference_path), "line": None, "error": str(exc)}]
 
@@ -1101,11 +1340,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         reference_errors=reference_errors,
         reference_skipped=reference_skipped,
         reference_record_count=reference_record_count,
+        reference_shape_summary=reference_shape_summary,
         report_json_path=report_json_path,
         report_md_path=report_md_path,
         min_template_entropy=args.min_template_entropy,
         max_top_template_share=args.max_top_template_share,
         max_length_jsd=args.max_length_jsd,
+        min_char_mean_ratio=args.min_char_mean_ratio,
+        min_char_median_ratio=args.min_char_median_ratio,
+        max_min_record_count_gap=args.max_min_record_count_gap,
     )
     write_reports(report, report_json_path, report_md_path)
 
