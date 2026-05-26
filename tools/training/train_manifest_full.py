@@ -111,6 +111,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--label-smoothing", type=float, default=0.05)
     parser.add_argument("--max-seq-len", type=int, default=2048)
+    parser.add_argument("--min-tokenized-ratio", type=float, default=0.95)
     parser.add_argument("--warmup-ratio", type=float, default=0.03)
     parser.add_argument("--torch-dtype", choices=sorted(VALID_TORCH_DTYPES), default="float16")
     parser.add_argument("--device-map", default="auto", help="Use 'none' to avoid passing device_map to from_pretrained.")
@@ -570,6 +571,13 @@ def planned_freeze_summary(args: argparse.Namespace) -> Dict[str, Any]:
     }
 
 
+def tokenized_ratio(tokenized: int, skipped: int) -> float:
+    total = tokenized + skipped
+    if total <= 0:
+        return 0.0
+    return tokenized / total
+
+
 def apply_train_mode(model: Any, args: argparse.Namespace) -> Dict[str, Any]:
     total_before, _ = count_parameters(model)
     for param in model.parameters():
@@ -719,6 +727,7 @@ def base_report(args: argparse.Namespace, paths: RunPaths, manifest_summary: Dic
             "weight_decay": args.weight_decay,
             "label_smoothing": args.label_smoothing,
             "max_seq_len": args.max_seq_len,
+            "min_tokenized_ratio": args.min_tokenized_ratio,
             "warmup_ratio": args.warmup_ratio,
             "torch_dtype": args.torch_dtype,
             "device_map": args.device_map,
@@ -783,17 +792,28 @@ def run_dry_run(
         model = load_model_for_training(args)
         freeze_plan = apply_train_mode(model, args)
 
+    ratio = tokenized_ratio(len(answer_token_counts), skipped)
     report["parameter_freeze_plan"] = freeze_plan
     report["dry_run"] = {
         "sample_rows": len(sample_rows),
         "tokenized_examples": len(answer_token_counts),
         "skipped_examples": skipped,
+        # Added: fail the first gate when max_seq_len truncates labels from many examples.
+        # Why: v3 data has long trajectories, and silent skipping would bias training.
+        "tokenized_ratio": ratio,
+        "min_tokenized_ratio": args.min_tokenized_ratio,
         "answer_token_counts": answer_token_counts,
         "tokenizer_fallback": fallback,
         "tokenizer_error": tokenizer_error,
         "model_loaded_for_freeze_plan": bool(args.dry_run_load_model),
     }
     write_report(paths, report)
+    if ratio < args.min_tokenized_ratio:
+        fail(
+            f"Dry-run tokenized ratio {ratio:.4f} is below --min-tokenized-ratio "
+            f"{args.min_tokenized_ratio:.4f}; raise --max-seq-len or inspect long inputs",
+            exit_code=1,
+        )
     logger.info("Dry-run OK: tokenized_examples=%d report=%s", len(answer_token_counts), paths.report_json)
     return 0
 
@@ -815,6 +835,22 @@ def run_training(
     dataset = ManifestFullDataset(rows, tokenizer, args.max_seq_len)
     if len(dataset) == 0:
         fail("Tokenization produced zero training examples", exit_code=1)
+    ratio = tokenized_ratio(len(dataset), dataset.skipped)
+    if ratio < args.min_tokenized_ratio:
+        report["training"] = {
+            "tokenization_gate": {
+                "dataset_examples": len(dataset),
+                "skipped_examples": dataset.skipped,
+                "tokenized_ratio": ratio,
+                "min_tokenized_ratio": args.min_tokenized_ratio,
+            }
+        }
+        write_report(paths, report)
+        fail(
+            f"Training tokenized ratio {ratio:.4f} is below --min-tokenized-ratio "
+            f"{args.min_tokenized_ratio:.4f}; raise --max-seq-len or inspect long inputs",
+            exit_code=1,
+        )
 
     model = load_model_for_training(args)
     freeze_plan = apply_train_mode(model, args)
@@ -893,6 +929,8 @@ def validate_args(args: argparse.Namespace) -> None:
         fail("--grad-accum must be >= 1")
     if args.max_seq_len < 8:
         fail("--max-seq-len must be >= 8")
+    if not 0 < args.min_tokenized_ratio <= 1:
+        fail("--min-tokenized-ratio must be in (0, 1]")
     if args.epochs <= 0:
         fail("--epochs must be > 0")
     if args.lr <= 0:

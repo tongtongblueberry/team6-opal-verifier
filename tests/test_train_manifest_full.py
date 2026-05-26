@@ -27,6 +27,7 @@ def _args(**overrides: object) -> argparse.Namespace:
         "weight_decay": 0.01,
         "label_smoothing": 0.05,
         "warmup_ratio": 0.03,
+        "min_tokenized_ratio": 0.95,
         "torch_dtype": "float16",
         "save_steps": 100,
         "save_total_limit": 3,
@@ -66,6 +67,8 @@ class TrainManifestFullTest(unittest.TestCase):
             {"batch_size": 0},
             {"grad_accum": 0},
             {"max_seq_len": 7},
+            {"min_tokenized_ratio": 0},
+            {"min_tokenized_ratio": 1.1},
             {"epochs": 0},
             {"lr": 0},
             {"weight_decay": -0.1},
@@ -131,6 +134,7 @@ class TrainManifestFullTest(unittest.TestCase):
         self.assertEqual("last-n-layers", report["parameter_freeze_plan"]["train_mode"])
         self.assertEqual(2, report["parameter_freeze_plan"]["last_n_layers"])
         self.assertFalse(report["parameter_freeze_plan"]["exact_parameter_counts"])
+        self.assertEqual(1.0, report["dry_run"]["tokenized_ratio"])
         self.assertTrue(report["dry_run"]["tokenizer_fallback"])
 
 
