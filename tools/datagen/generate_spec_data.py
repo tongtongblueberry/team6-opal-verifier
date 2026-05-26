@@ -1,15 +1,21 @@
 # Changed: large-scale spec-based training data (target 3000+).
 # Why: 382 cases was insufficient. Need diverse combinations per rule.
-# Split: 60/20/20 random (not by rule) + public 20 always in train.
+# Split: 60/20/20 random (not by rule). Public seed inclusion is opt-in only.
 
 from __future__ import annotations
-import json, sys, itertools, random
+import argparse, json, os, sys, itertools, random
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+# Changed: spec datagen 산출물 기본 루트를 env로 재정의 가능하게 분리.
+# Why: 기본 실행이 이전 /workspace/team6/training_data에 쓰지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+DEFAULT_TRAINING_DATA_DIR = DEFAULT_RUNTIME_ROOT / "training_data"
 
 Json = dict[str, Any]
 random.seed(42)
@@ -311,13 +317,22 @@ def gen_all() -> list[dict]:
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Generate synthetic spec-labeled trajectory splits.")
+    parser.add_argument(
+        "--include-public-seed",
+        action="store_true",
+        help="Opt-in only: append public-labelled seed rows from runtime training_data/training_cases.json.",
+    )
+    args = parser.parse_args()
+
     cases = gen_all()
     random.shuffle(cases)
 
-    # ── Add public 20 to train (ground truth, always train) ──
-    public_path = Path("/workspace/team6/training_data/training_cases.json")
+    # Changed: public-labelled seed rows are excluded unless explicitly requested.
+    # Why: public 20 labels must not silently become supervised training anchors.
+    public_path = DEFAULT_TRAINING_DATA_DIR / "training_cases.json"
     public_cases = []
-    if public_path.exists():
+    if args.include_public_seed and public_path.exists():
         all_old = json.loads(public_path.read_text())
         for c in all_old:
             if c.get("source", "").startswith("public:"):
@@ -330,7 +345,7 @@ def main():
     train_spec = cases[:t1]
     val = cases[t1:t2]
     test = cases[t2:]
-    train = train_spec + public_cases  # public always in train
+    train = train_spec + public_cases
 
     for name, split in [("Train", train), ("Val", val), ("Test", test)]:
         p = sum(1 for c in split if c["label"] == "pass")
@@ -346,7 +361,9 @@ def main():
     print(f"Rules: {rules}")
 
     # ── Save ──
-    out = Path("/workspace/team6/training_data")
+    # Changed: spec split 출력 디렉토리를 새 runtime root/env 기반으로 변경.
+    # Why: 실행 코드가 이전 /workspace/team6에 산출물을 쓰지 않도록 함.
+    out = DEFAULT_TRAINING_DATA_DIR
     out.mkdir(parents=True, exist_ok=True)
     def save(data, path):
         s = [{"records": c["steps"], "label": c["label"], "source": f"spec:{c['spec_rule']}",

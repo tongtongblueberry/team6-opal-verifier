@@ -18,13 +18,13 @@
 사용법:
   # GPU 없이 길이 기반 필터링만:
   python tools/datagen/filter_data.py \\
-      --input /workspace/team6/training_data/mutation_cases.json \\
-      --output-dir /workspace/team6/training_data/filtered/
+      --input /workspace/sinjeongmin_opal_verifier/training_data/mutation_cases.json \\
+      --output-dir /workspace/sinjeongmin_opal_verifier/training_data/filtered/
 
   # IFD 포함 전체 파이프라인:
   python tools/datagen/filter_data.py \\
-      --input /workspace/team6/training_data/mutation_cases.json \\
-      --output-dir /workspace/team6/training_data/filtered/ \\
+      --input /workspace/sinjeongmin_opal_verifier/training_data/mutation_cases.json \\
+      --output-dir /workspace/sinjeongmin_opal_verifier/training_data/filtered/ \\
       --compute-ifd \\
       --top-k 150 200
 """
@@ -63,6 +63,12 @@ Json = dict[str, Any]
 # Changed: 서버 환경의 모델 캐시 경로
 BASE_MODEL = "Qwen/Qwen3.5-4B"
 MODEL_CACHE = "/workspace/cache/hf_cache/hub"
+# Changed: filter 입력/출력 기본 루트를 env로 재정의 가능하게 분리.
+# Why: 기본 실행이 이전 /workspace/team6/training_data에 접근하지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+DEFAULT_TRAINING_DATA_DIR = DEFAULT_RUNTIME_ROOT / "training_data"
 
 # Changed: lora_solver.py 및 train_exp_a.py와 동일한 시스템 프롬프트
 SYSTEM_PROMPT = (
@@ -516,13 +522,13 @@ def main():
     parser.add_argument(
         "--input",
         type=str,
-        default="/workspace/team6/training_data/mutation_cases.json",
+        default=str(DEFAULT_TRAINING_DATA_DIR / "mutation_cases.json"),
         help="입력 mutation 데이터 JSON 경로",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="/workspace/team6/training_data/filtered/",
+        default=str(DEFAULT_TRAINING_DATA_DIR / "filtered"),
         help="필터링 결과 출력 디렉토리",
     )
     parser.add_argument(

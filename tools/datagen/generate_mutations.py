@@ -25,15 +25,17 @@ Target: ~400 cases, 50/50 pass/fail, diverse lengths (1-39).
 Runs on server where public cases are at /dl2026/dataset/testcases/tc*.json.
 
 Usage:
-  cd /workspace/team6/team6-opal-verifier
-  PYTHONPATH=. python tools/datagen/generate_mutations.py
+  cd /workspace/sinjeongmin_opal_verifier/repo
+  PYTHONPATH=. python tools/datagen/generate_mutations.py --allow-public-derived-output
 """
 
 from __future__ import annotations
 
+import argparse
 import copy
 import glob
 import json
+import os
 import random
 import sys
 from collections import Counter
@@ -50,7 +52,12 @@ random.seed(42)
 # Changed: paths for server environment where public data lives.
 TESTCASE_DIR = Path("/dl2026/dataset/testcases")
 LABEL_PATH = Path("/dl2026/dataset/label.jsonl")
-OUTPUT_PATH = Path("/workspace/team6/training_data/mutation_cases.json")
+# Changed: mutation output 기본 루트를 env로 재정의 가능하게 분리.
+# Why: 기본 실행이 이전 /workspace/team6/training_data에 쓰지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+OUTPUT_PATH = DEFAULT_RUNTIME_ROOT / "training_data" / "mutation_cases.json"
 
 # Changed: error statuses to use for status flip mutations.
 # Why: these are the three most common error statuses in the TCG/Opal spec.
@@ -975,6 +982,24 @@ def balance_mutations(mutations: list[dict], target_ratio: float = 0.5) -> list[
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Generate public-derived mutation data for audit-only use.")
+    parser.add_argument(
+        "--allow-public-derived-output",
+        action="store_true",
+        help="Required because this script derives rows from public 20 cases and must not run accidentally.",
+    )
+    parser.add_argument(
+        "--output",
+        default=str(OUTPUT_PATH),
+        help="Output path for public-derived mutation rows.",
+    )
+    args = parser.parse_args()
+    if not args.allow_public_derived_output:
+        raise SystemExit(
+            "Refusing to generate public-derived training rows by default. "
+            "Use --allow-public-derived-output only for audit/quarantine experiments, not supervised training."
+        )
+
     print("=== Mutation-based Training Data Generator ===")
     print(f"  Approach: DISCO (ACL 2023) perturbation + PairCFR (ACL 2024) contrastive pairs")
     print()
@@ -1080,10 +1105,13 @@ def main():
         print(f"  {src}: {count}")
 
     # Step 8: Save
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(balanced, indent=2, default=str), encoding="utf-8")
-    print(f"\nSaved: {OUTPUT_PATH} ({len(balanced)} cases, "
-          f"{OUTPUT_PATH.stat().st_size / 1024:.1f} KB)")
+    # Changed: public-derived rows require explicit output selection at runtime.
+    # Why: accidental default generation can contaminate supervised LLM training data.
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(balanced, indent=2, default=str), encoding="utf-8")
+    print(f"\nSaved: {output_path} ({len(balanced)} cases, "
+          f"{output_path.stat().st_size / 1024:.1f} KB)")
 
     print("\nDone.")
 

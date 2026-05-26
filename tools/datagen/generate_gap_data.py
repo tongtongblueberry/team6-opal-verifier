@@ -17,17 +17,23 @@ Gap categories:
 9. Timeout validation
 
 Usage: Run on server, then re-run generate_uncertainty_data.py
-  cd /workspace/team6/team6-opal-verifier
+  cd /workspace/sinjeongmin_opal_verifier/repo
   PYTHONPATH=. python tools/datagen/generate_gap_data.py
 """
 from __future__ import annotations
-import json, sys, random
+import json, os, sys, random
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+# Changed: datagen 산출물 기본 루트를 env로 재정의 가능하게 분리.
+# Why: 기본 실행이 이전 /workspace/team6/training_data에 쓰지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+DEFAULT_TRAINING_DATA_DIR = DEFAULT_RUNTIME_ROOT / "training_data"
 
 # Reuse step builders from generate_spec_data
 from tools.datagen.generate_spec_data import (
@@ -322,7 +328,9 @@ def main():
         print(f"  {rule}: {count} (pass={p}, fail={f})")
 
     # Save as records format
-    out = Path("/workspace/team6/training_data")
+    # Changed: 기본 출력 디렉토리를 새 runtime root/env 기반으로 변경.
+    # Why: 실행 코드가 이전 /workspace/team6에 산출물을 쓰지 않도록 함.
+    out = DEFAULT_TRAINING_DATA_DIR
     out.mkdir(parents=True, exist_ok=True)
 
     records = [{"records": c["steps"], "label": c["label"],

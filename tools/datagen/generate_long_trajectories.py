@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import random
 import sys
 from collections import Counter
@@ -36,6 +37,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+# Changed: datagen 산출물 기본 루트를 env로 재정의 가능하게 분리.
+# Why: --local 미사용 실행이 이전 /workspace/team6/training_data에 쓰지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+DEFAULT_TRAINING_DATA_DIR = DEFAULT_RUNTIME_ROOT / "training_data"
 
 from tools.datagen.generate_spec_data import (
     _ss, _m, _auth, _data,
@@ -547,7 +554,9 @@ def main():
     if args.local:
         out_dir = ROOT / "training_data"
     else:
-        out_dir = Path("/workspace/team6/training_data")
+        # Changed: server 기본 출력은 새 runtime root/env 기반 경로 사용.
+        # Why: 실행 코드가 이전 /workspace/team6에 산출물을 쓰지 않도록 함.
+        out_dir = DEFAULT_TRAINING_DATA_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
 
     records = [{"records": c["steps"], "label": c["label"],

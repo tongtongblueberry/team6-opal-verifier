@@ -14,7 +14,7 @@ Why: LLM이 rule engine의 확실한 판단을 학습하도록 knowledge distill
 
 Usage:
   python tools/datagen/generate_distillation.py \
-      --output /workspace/team6/training_data/distillation_data.json \
+      --output /workspace/sinjeongmin_opal_verifier/training_data/distillation_data.json \
       --target-count 5000 \
       --dataset-root /dl2026/dataset
 """
@@ -36,10 +36,12 @@ from typing import Any
 # Why: src.solver, tools.datagen 모듈 import를 위해 필요.
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_PROJECT_ROOT))
-# Changed: 서버 환경 호환 — /workspace 경로도 추가.
-# Why: 서버에서 실행 시 로컬 경로가 아닌 서버 경로 사용.
-if Path("/workspace/team6/team6-opal-verifier").exists():
-    sys.path.insert(0, "/workspace/team6/team6-opal-verifier")
+# Changed: 실행 산출물 기본 루트를 env로 재정의 가능하게 분리.
+# Why: datagen 기본 출력이 이전 /workspace/team6에 쓰이지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+DEFAULT_TRAINING_DATA_DIR = DEFAULT_RUNTIME_ROOT / "training_data"
 
 Json = dict[str, Any]
 random.seed(42)
@@ -76,9 +78,39 @@ LOW_CONFIDENCE_RULES = {
 # VERIFIER 래퍼
 # ═══════════════════════════════════════════════════════════════
 
-def _get_verifier():
+def _add_rulebase_repo(rulebase_repo: str | None) -> Path | None:
+    """명시된 audit rulebase repo를 import 경로 앞에 추가."""
+    repo = rulebase_repo or os.environ.get("OPAL_RULEBASE_REPO")
+    if not repo:
+        return None
+    repo_path = Path(repo).expanduser().resolve()
+    if not repo_path.exists():
+        raise FileNotFoundError(
+            f"rulebase repo not found: {repo_path} "
+            "(set --rulebase-repo or OPAL_RULEBASE_REPO)"
+        )
+    repo_str = str(repo_path)
+    if repo_str in sys.path:
+        sys.path.remove(repo_str)
+    sys.path.insert(0, repo_str)
+    return repo_path
+
+
+def _get_verifier(rulebase_repo: str | None = None):
     """StatefulOpalVerifier 인스턴스를 생성하여 반환."""
-    from src.solver import StatefulOpalVerifier
+    # Changed: rulebase import는 명시 옵션/env에서만 허용.
+    # Why: LLM-only branch의 실행 아키텍처가 아니라 datagen audit/data source로만 사용.
+    audit_repo = _add_rulebase_repo(rulebase_repo)
+    try:
+        from src.solver import StatefulOpalVerifier
+    except ImportError as exc:
+        raise ImportError(
+            "StatefulOpalVerifier is unavailable in the current import path. "
+            "Pass --rulebase-repo or set OPAL_RULEBASE_REPO to an audit "
+            "repo that contains src.solver.StatefulOpalVerifier."
+        ) from exc
+    if audit_repo:
+        print(f"  audit rulebase repo: {audit_repo}")
     return StatefulOpalVerifier(trace=True)
 
 
@@ -928,7 +960,7 @@ def main():
     )
     parser.add_argument(
         "--output", type=str,
-        default="/workspace/team6/training_data/distillation_data.json",
+        default=str(DEFAULT_TRAINING_DATA_DIR / "distillation_data.json"),
         help="출력 JSON 파일 경로",
     )
     parser.add_argument(
@@ -942,6 +974,10 @@ def main():
     parser.add_argument(
         "--checkpoint-dir", type=str, default=None,
         help="체크포인트 디렉토리 (기본값: output 파일과 같은 디렉토리)",
+    )
+    parser.add_argument(
+        "--rulebase-repo", type=str, default=None,
+        help="StatefulOpalVerifier audit repo 경로 (또는 OPAL_RULEBASE_REPO)",
     )
     parser.add_argument(
         "--skip-spec", action="store_true",
@@ -972,7 +1008,7 @@ def main():
     # Changed: verifier 초기화.
     # Why: 모든 소스에서 공유하는 단일 verifier 인스턴스.
     print("StatefulOpalVerifier 초기화 중...")
-    verifier = _get_verifier()
+    verifier = _get_verifier(args.rulebase_repo)
     print("  완료")
     print()
 

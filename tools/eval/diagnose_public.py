@@ -7,12 +7,19 @@ directing LoRA training to fix the right cases.
 
 Output: per-case analysis + summary statistics.
 """
+import argparse
 import sys, json, glob, os, logging
 from pathlib import Path
 from collections import Counter
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+# Changed: 진단 결과 기본 루트를 env로 재정의 가능하게 분리.
+# Why: diagnose_public 기본 출력이 이전 /workspace/team6에 쓰이지 않도록 함.
+DEFAULT_RUNTIME_ROOT = Path(
+    os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinjeongmin_opal_verifier")
+)
+DEFAULT_OUTPUT = DEFAULT_RUNTIME_ROOT / "public_diagnosis.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("diagnose")
@@ -39,6 +46,14 @@ def get_tier(rule_id):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Diagnose rule engine on public cases")
+    parser.add_argument(
+        "--output",
+        default=str(DEFAULT_OUTPUT),
+        help="진단 JSON 출력 경로",
+    )
+    args = parser.parse_args()
+
     verifier = StatefulOpalVerifier()
 
     # Load public labels
@@ -129,7 +144,8 @@ def main():
                         r["filename"], r["gold"], r["pred"], r["rule_id"], r["detail"][:80])
 
     # Save detailed results
-    out_path = "/workspace/team6/public_diagnosis.json"
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     json.dump(results, open(out_path, "w"), indent=2)
     logger.info("\nSaved to %s", out_path)
 

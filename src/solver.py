@@ -455,13 +455,6 @@ class Solver:
                     root / "artifacts" / "lora_adapter_final",
                     "repo-local alternate final adapter for submission packaging",
                 ),
-                (
-                    Path(
-                        "/workspace/team6/ops/runs/20260522_164328_KST/adapters/"
-                        "dcv2_lora_qwen4b_lr1e3_bs2_ga4_ep5/final"
-                    ),
-                    "server absolute final adapter for operational verification only",
-                ),
                 (root / "artifacts" / "lora_adapter_v3", "repo-local legacy v3 adapter"),
                 (root / "artifacts" / "lora_adapter_v2", "repo-local legacy v2 adapter"),
                 (root / "artifacts" / "lora_adapter", "repo-local legacy adapter"),
@@ -493,9 +486,7 @@ class Solver:
         self._artifact_mode = "lora_adapter"
         _logger.info(
             "LoRA adapter selected: %s (%s). Submission packaging should include "
-            "repo-local artifacts/lora_adapter_dcv2_final or artifacts/lora_adapter_final; "
-            "the /workspace/team6 "
-            "absolute candidate is for operational verification only.",
+            "repo-local artifacts/lora_adapter_dcv2_final or artifacts/lora_adapter_final.",
             adapter_path,
             adapter_source,
         )
