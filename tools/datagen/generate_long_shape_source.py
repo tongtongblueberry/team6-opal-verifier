@@ -24,6 +24,7 @@ DEFAULT_RUNTIME_ROOT = Path(os.environ.get("OPAL_RUNTIME_ROOT", "/workspace/sinj
 DEFAULT_RUN_ROOT = DEFAULT_RUNTIME_ROOT / "ops" / "runs" / "long_shape_source"
 DEFAULT_TARGET_LENGTHS = "1,2,7,10,11,21,26,21,27,39,1,2,7,10,9,21,26,21,27,39"
 DEFAULT_ENRICH_FRACTION = 0.65
+DEFAULT_SOURCE_NAME = "long_shape_matched"
 
 PUBLIC_LIKE_PAYLOAD_FIELDS = (
     ("Authority", "00 00 00 09 00 01 00 01"),
@@ -38,6 +39,16 @@ PUBLIC_LIKE_PAYLOAD_FIELDS = (
     ("ActiveKey", "00 00 00 09 00 00 00 01"),
     ("HostChallenge", "AB CD EF 01 23 45 67 89"),
 )
+
+# 변경: public content를 쓰지 않는 1-record synthetic family의 로컬 object pool을 둔다.
+# 이유: target_lengths=1만으로는 기존 long case가 짧아지지 않아 min record_count=1을 만들 수 없기 때문이다.
+SINGLE_RECORD_OBJECTS = (
+    ("ShapeProbe_MSID", "00 00 00 0B 00 00 84 02"),
+    ("ShapeProbe_Locking", "00 00 08 02 00 00 00 01"),
+    ("ShapeProbe_Admin", "00 00 00 09 00 01 00 01"),
+    ("ShapeProbe_MBR", "00 00 08 03 00 00 00 01"),
+)
+SINGLE_RECORD_EXPECTED_ERRORS = ("NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL")
 
 
 Json = dict[str, Any]
@@ -58,6 +69,12 @@ def compact_records_text(steps: list[Json]) -> str:
 
 def token_count_for_steps(steps: list[Json]) -> int:
     return len(compact_records_text(steps).split())
+
+
+# 변경: char shape gate를 생성 단계에서 직접 목표로 삼을 수 있게 char counter를 분리한다.
+# 이유: v3는 token-bin gate를 통과했지만 char median ratio가 엄격 기준에서 낮았다.
+def char_count_for_steps(steps: list[Json]) -> int:
+    return len(compact_records_text(steps))
 
 
 def token_bin(count: int) -> str:
@@ -99,7 +116,25 @@ def ensure_first_return_value(step: Json) -> Json:
     return return_values[0]
 
 
-def enrich_get_success_payloads(case: Json, min_tokens: int = 257) -> Json:
+def repeated_enrichment_value(value: str, repeat: int) -> str:
+    if repeat <= 1:
+        return value
+    return "|".join(value for _ in range(repeat))
+
+
+def needs_enrichment(steps: list[Json], min_tokens: int, min_chars: int) -> bool:
+    return token_count_for_steps(steps) < min_tokens or char_count_for_steps(steps) < min_chars
+
+
+# 변경: enrichment 목표에 char length와 payload 반복 강도를 추가한다.
+# 이유: v3 기본 동작은 유지하면서 v4에서 char median을 더 강하게 끌어올릴 수 있게 하기 위해서다.
+def enrich_get_success_payloads(
+    case: Json,
+    min_tokens: int = 257,
+    min_chars: int = 0,
+    field_cycles: int = 2,
+    value_repeat: int = 1,
+) -> Json:
     # 변경: label-relevant final step이 아니라 benign Get SUCCESS filler payload만 풍부하게 만든다.
     # 이유: record_count는 유지하면서 public20 token-bin reference에 가까운 입력 밀도를 만들기 위해서다.
     next_case = json.loads(json.dumps(case, ensure_ascii=False))
@@ -109,27 +144,108 @@ def enrich_get_success_payloads(case: Json, min_tokens: int = 257) -> Json:
         return next_case
 
     field_round = 0
-    while token_count_for_steps(steps) < min_tokens and field_round < len(PUBLIC_LIKE_PAYLOAD_FIELDS) * 2:
+    max_field_rounds = len(PUBLIC_LIKE_PAYLOAD_FIELDS) * field_cycles
+    while needs_enrichment(steps, min_tokens=min_tokens, min_chars=min_chars) and field_round < max_field_rounds:
         for step_index in indexes:
             key, value = PUBLIC_LIKE_PAYLOAD_FIELDS[field_round % len(PUBLIC_LIKE_PAYLOAD_FIELDS)]
             payload = ensure_first_return_value(steps[step_index])
-            payload[f"{key}_{field_round}"] = value
-            if token_count_for_steps(steps) >= min_tokens:
+            payload[f"{key}_{field_round}"] = repeated_enrichment_value(value, value_repeat)
+            if not needs_enrichment(steps, min_tokens=min_tokens, min_chars=min_chars):
                 break
         field_round += 1
     return next_case
 
 
-def enrich_subset(cases: list[Json], fraction: float, min_tokens: int) -> list[Json]:
+def enrich_subset(
+    cases: list[Json],
+    fraction: float,
+    min_tokens: int,
+    min_chars: int = 0,
+    field_cycles: int = 2,
+    value_repeat: int = 1,
+) -> list[Json]:
     if not 0.0 <= fraction <= 1.0:
         raise ValueError("--enrich-fraction must be between 0 and 1")
-    token_counts = [token_count_for_steps(case["steps"]) for case in cases]
-    candidates = [index for index, count in enumerate(token_counts) if count < min_tokens]
+    if min_tokens < 0:
+        raise ValueError("--min-enriched-tokens must be non-negative")
+    if min_chars < 0:
+        raise ValueError("--min-enriched-chars must be non-negative")
+    if field_cycles <= 0:
+        raise ValueError("--enrichment-field-cycles must be positive")
+    if value_repeat <= 0:
+        raise ValueError("--enrichment-value-repeat must be positive")
+    candidates = [
+        index
+        for index, case in enumerate(cases)
+        if needs_enrichment(case["steps"], min_tokens=min_tokens, min_chars=min_chars)
+    ]
     selected = set(candidates[: int(len(candidates) * fraction)])
     return [
-        enrich_get_success_payloads(case, min_tokens=min_tokens) if index in selected else case
+        enrich_get_success_payloads(
+            case,
+            min_tokens=min_tokens,
+            min_chars=min_chars,
+            field_cycles=field_cycles,
+            value_repeat=value_repeat,
+        )
+        if index in selected
+        else case
         for index, case in enumerate(cases)
     ]
+
+
+# 변경: 별도 1-record family를 append할 수 있게 한다.
+# 이유: public20 shortest-case shape를 content 복사 없이 덮기 위한 v4 옵션이다.
+def single_record_step(method_name: str, object_name: str, object_uid: str, status: str, variant: int) -> Json:
+    required: Json = {}
+    if method_name == "Get":
+        required["Cellblock"] = [{"startColumn": 3}, {"endColumn": 3 + (variant % 3)}]
+    elif method_name == "Set":
+        required["Values"] = [{"3": f"shape_value_{variant:02d}"}]
+    else:
+        raise ValueError(f"unsupported single-record method: {method_name}")
+
+    return_values: list[Any]
+    if status == "SUCCESS" and method_name == "Get":
+        return_values = [{"3": f"shape_value_{variant:02d}"}]
+    else:
+        return_values = []
+
+    return {
+        "input": {
+            "method": {"name": method_name},
+            "invoking_id": {"uid": object_uid, "name": object_name},
+            "args": {"required": required, "optional": {"shape_family": "synthetic_single_record"}},
+        },
+        "output": {"return_values": return_values, "status_codes": status},
+    }
+
+
+def build_single_record_family(per_label: int) -> list[Json]:
+    if per_label < 0:
+        raise ValueError("--single-record-per-label must be non-negative")
+    cases: list[Json] = []
+    for index in range(per_label):
+        object_name, object_uid = SINGLE_RECORD_OBJECTS[index % len(SINGLE_RECORD_OBJECTS)]
+        method_name = "Get" if index % 2 == 0 else "Set"
+        expected_error = SINGLE_RECORD_EXPECTED_ERRORS[index % len(SINGLE_RECORD_EXPECTED_ERRORS)]
+        cases.append(
+            {
+                "steps": [single_record_step(method_name, object_name, object_uid, expected_error, index)],
+                "label": "pass",
+                "spec_rule": "single-record-nosession-expected-error",
+                "description": f"single-record {method_name}({object_name})->{expected_error}",
+            }
+        )
+        cases.append(
+            {
+                "steps": [single_record_step(method_name, object_name, object_uid, "SUCCESS", index)],
+                "label": "fail",
+                "spec_rule": "single-record-nosession-unexpected-success",
+                "description": f"single-record {method_name}({object_name})->SUCCESS",
+            }
+        )
+    return cases
 
 
 def stats(values: list[int]) -> dict[str, float | int]:
@@ -156,12 +272,24 @@ def write_jsonl(cases: list[Json], output_path: Path, source_name: str) -> None:
             handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
-def build_summary(cases: list[Json], output_path: Path, target_lengths: list[int], enrich_fraction: float) -> dict[str, Any]:
+def build_summary(
+    cases: list[Json],
+    output_path: Path,
+    target_lengths: list[int],
+    enrich_fraction: float,
+    single_record_per_label: int = 0,
+    min_enriched_tokens: int = 257,
+    min_enriched_chars: int = 0,
+    enrichment_field_cycles: int = 2,
+    enrichment_value_repeat: int = 1,
+    source_name: str = DEFAULT_SOURCE_NAME,
+) -> dict[str, Any]:
     record_counts = [len(case["steps"]) for case in cases]
     token_counts = [token_count_for_steps(case["steps"]) for case in cases]
-    char_counts = [len(compact_records_text(case["steps"])) for case in cases]
+    char_counts = [char_count_for_steps(case["steps"]) for case in cases]
     return {
         "output_path": str(output_path),
+        "source_name": source_name,
         "count": len(cases),
         "label_counts": dict(Counter(case["label"] for case in cases)),
         "record_count": stats(record_counts),
@@ -170,6 +298,12 @@ def build_summary(cases: list[Json], output_path: Path, target_lengths: list[int
         "token_bins": {key: Counter(token_bin(count) for count in token_counts)[key] for key in ("1-32", "33-64", "65-128", "129-256", "257-512", "513-1024", "1025+")},
         "target_length_counts": dict(Counter(target_lengths)),
         "enrich_fraction": enrich_fraction,
+        "single_record_per_label": single_record_per_label,
+        "single_record_total": single_record_per_label * 2,
+        "min_enriched_tokens": min_enriched_tokens,
+        "min_enriched_chars": min_enriched_chars,
+        "enrichment_field_cycles": enrichment_field_cycles,
+        "enrichment_value_repeat": enrichment_value_repeat,
     }
 
 
@@ -180,6 +314,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target-lengths", default=DEFAULT_TARGET_LENGTHS)
     parser.add_argument("--enrich-fraction", type=float, default=DEFAULT_ENRICH_FRACTION)
     parser.add_argument("--min-enriched-tokens", type=int, default=257)
+    parser.add_argument("--min-enriched-chars", type=int, default=0)
+    parser.add_argument("--enrichment-field-cycles", type=int, default=2)
+    parser.add_argument("--enrichment-value-repeat", type=int, default=1)
+    parser.add_argument("--single-record-per-label", type=int, default=0)
+    parser.add_argument("--source-name", default=DEFAULT_SOURCE_NAME)
     return parser.parse_args()
 
 
@@ -190,10 +329,29 @@ def main() -> int:
     target_lengths = parse_target_lengths(args.target_lengths)
 
     cases = add_length_padding(gen_all(), target_lengths)
-    cases = enrich_subset(cases, fraction=args.enrich_fraction, min_tokens=args.min_enriched_tokens)
-    write_jsonl(cases, output_path=output_path, source_name="long_shape_matched")
+    cases.extend(build_single_record_family(args.single_record_per_label))
+    cases = enrich_subset(
+        cases,
+        fraction=args.enrich_fraction,
+        min_tokens=args.min_enriched_tokens,
+        min_chars=args.min_enriched_chars,
+        field_cycles=args.enrichment_field_cycles,
+        value_repeat=args.enrichment_value_repeat,
+    )
+    write_jsonl(cases, output_path=output_path, source_name=args.source_name)
 
-    summary = build_summary(cases, output_path=output_path, target_lengths=target_lengths, enrich_fraction=args.enrich_fraction)
+    summary = build_summary(
+        cases,
+        output_path=output_path,
+        target_lengths=target_lengths,
+        enrich_fraction=args.enrich_fraction,
+        single_record_per_label=args.single_record_per_label,
+        min_enriched_tokens=args.min_enriched_tokens,
+        min_enriched_chars=args.min_enriched_chars,
+        enrichment_field_cycles=args.enrichment_field_cycles,
+        enrichment_value_repeat=args.enrichment_value_repeat,
+        source_name=args.source_name,
+    )
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
