@@ -1,6 +1,6 @@
 # 문서 구조
 
-최종 갱신: 2026-05-26 15:43 KST
+최종 갱신: 2026-05-26 16:00 KST
 
 ## Active 문서
 
@@ -37,6 +37,7 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - v4/v4.1 같은 실패 코드와 spec/gap synthetic generator는 audit evidence만 남기고 active `tools/datagen/`에서 제거한다.
 - Gate A/B/C 통과 후 데이터는 `train`, `val`, `test`, `public20_reference`로 분리한다.
 - public20 local reference facts는 rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
+- Gate B dimension comparison 도구는 `tools/analysis/compare_public20_dimensions.py`이며, public20 label은 local aggregate distribution으로만 사용한다.
 - Self-Instruct synthetic data가 Gate A/B/C를 통과하면 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체, label, target, primary evidence, profile, public20 raw sample 1개 전체, Gate A audit summary, Gate B comparison summary, Gate C manifest/model-input summary를 기록한다.
 - Gate A/B/C 전에는 raw synthetic sample을 "합격 데이터"로 제시하지 않는다.
 - secret, token, password가 들어간 파일은 archive하지 않고 삭제 대상으로 본다.

@@ -1,6 +1,6 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 15:43 KST
+- 최종 갱신: 2026-05-26 16:00 KST
 - 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime, public label supervised 학습은 사용하지 않는다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
 - 현재 GitHub branch: `origin/sinjeongmin`
@@ -40,6 +40,9 @@ LLM next-token/logit decision
   - labels local-only: `data/local/public20/public20_labels.local.jsonl`
   - rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`
   - public20은 `public20_reference`로만 두고 generated `train`, `val`, `test`와 섞지 않는다.
+- Gate B public20/generated profile 비교 도구 `tools/analysis/compare_public20_dimensions.py`를 추가했다.
+  - generated candidate 파일이 없어도 fixture로 JSON/MD report와 no-go warning 동작을 검증했다.
+  - public20 label은 local aggregate distribution report에만 쓰고 prompt/manifest/training 입력으로 쓰지 않는다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -98,3 +101,5 @@ LLM next-token/logit decision
 - `tools/archive/legacy_rule_pipeline/` 실행 코드는 active repo에서 삭제하고, 필요한 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 문서형 archive로 남겼다.
 - `docs/agent_handoff.md`는 README/PROGRESS/current docs와 함께 계속 갱신해야 하는 active 문서로 고정했다.
 - Gate A/B/C 통과 뒤에만 `docs/samples/self_instruct_sample.md`를 만들고, generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 포함한다.
+- Gate B dimension comparison은 `tools/analysis/compare_public20_dimensions.py`로 수행한다.
+- public20 reference용 Gate A qualitative audit pack을 `runs/self_instruct/public20_baseline/gate_a/`에 생성했다. 이 pack은 sample별 label을 노출하지 않고 state-transition/shape 검수용 빈 섹션만 제공한다.

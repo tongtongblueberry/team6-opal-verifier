@@ -1,6 +1,6 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 15:30 KST
+- 최종 갱신: 2026-05-26 16:00 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
@@ -39,6 +39,7 @@
 - manifest builder가 개별 step 단위로 flatten되던 문제는 수정되어 `records` trajectory 전체가 하나의 supervised input으로 들어간다.
 - `/workspace/team6`는 우리 작업 root가 아니므로 새 작업은 `/workspace/sinjeongmin_opal_verifier` 아래에서만 진행한다.
 - public20은 supervised 학습 소스가 아니라 shape reference로만 쓴다.
+- Gate B public20/generated profile 비교 도구는 `tools/analysis/compare_public20_dimensions.py`다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.
@@ -151,6 +152,7 @@
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - `tools/archive/legacy_rule_pipeline/` 실행 코드는 active `tools/` namespace 혼동을 줄이기 위해 삭제했고, 삭제 범위와 폐기 사유는 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 둔다.
 - raw synthetic sample은 Gate A/B/C 통과 전에는 "합격 데이터"로 제시하지 않는다. 통과 뒤에는 `docs/samples/self_instruct_sample.md`에 전체 trajectory, label, profile, Gate A/B/C 요약을 기록한다.
+- Gate B dimension comparison은 public20 label을 local aggregate distribution으로만 사용하고, row-level label을 generation/training 입력에 넣지 않는다.
 
 ## 서버 상태
 

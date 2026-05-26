@@ -33,6 +33,8 @@ tools/analysis/
 +-- data_audit.py
 +-- self_instruct_invariants.py
 +-- audit_self_instruct_quality.py
++-- compare_public20_dimensions.py
++-- audit_public20_reference.py
 
 tools/datagen/
 +-- self_instruct_seed_schema.py
@@ -89,6 +91,12 @@ git diff --check
 min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
 label 파일은 aggregate 비교와 held-out metric에만 쓰고 generation/training prompt나
 manifest target에는 넣지 않는다.
+
+<!-- Changed: add the Gate B dimension comparison tool to the active surface. -->
+<!-- Why: generated candidate profiles must be compared against public20 before Gate C model-input checks. -->
+Gate B dimension 비교는 `tools/analysis/compare_public20_dimensions.py`가 담당한다.
+이 도구는 public20 label을 row-level로 읽지 않고, local aggregate JSON만 선택적으로
+받아 distribution report에 기록한다.
 
 ## 서버 Sync 원칙
 

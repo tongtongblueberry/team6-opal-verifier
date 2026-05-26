@@ -1,0 +1,4904 @@
+{
+  "audit_targets": [
+    {
+      "final_method": "Properties",
+      "final_status": "SUCCESS",
+      "input_json_chars": 861,
+      "length_bin": "1-32",
+      "line_number": 1,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Properties",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 1,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "Properties",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        }
+      ],
+      "sample_id": "tc1"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "input_json_chars": 948,
+      "length_bin": "1-32",
+      "line_number": 2,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 2,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        }
+      ],
+      "sample_id": "tc2"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "input_json_chars": 3187,
+      "length_bin": "1-32",
+      "line_number": 3,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 7,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        }
+      ],
+      "sample_id": "tc3"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "input_json_chars": 4500,
+      "length_bin": "1-32",
+      "line_number": 4,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 10,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        }
+      ],
+      "sample_id": "tc4"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "input_json_chars": 4743,
+      "length_bin": "1-32",
+      "line_number": 5,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 11,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        }
+      ],
+      "sample_id": "tc5"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "SUCCESS",
+      "input_json_chars": 8880,
+      "length_bin": "1-32",
+      "line_number": 6,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 21,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Authority",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        }
+      ],
+      "sample_id": "tc6"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "input_json_chars": 11156,
+      "length_bin": "1-32",
+      "line_number": 7,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 26,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Authority",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        },
+        {
+          "index": 21,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 22
+        },
+        {
+          "index": 22,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 23
+        },
+        {
+          "index": 23,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 24
+        },
+        {
+          "index": 24,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 25
+        },
+        {
+          "index": 25,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 26
+        }
+      ],
+      "sample_id": "tc7"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "input_json_chars": 8990,
+      "length_bin": "1-32",
+      "line_number": 8,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 21,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 21
+        }
+      ],
+      "sample_id": "tc8"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "input_json_chars": 11437,
+      "length_bin": "1-32",
+      "line_number": 9,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 27,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        },
+        {
+          "index": 21,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 22
+        },
+        {
+          "index": 22,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 23
+        },
+        {
+          "index": 23,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 24
+        },
+        {
+          "index": 24,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 25
+        },
+        {
+          "index": 25,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 26
+        },
+        {
+          "index": 26,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 27
+        }
+      ],
+      "sample_id": "tc9"
+    },
+    {
+      "final_method": "Read",
+      "final_status": "RANDOM DATA",
+      "input_json_chars": 15256,
+      "length_bin": "33-64",
+      "line_number": 10,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "GenKey",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 27,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 28,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 29,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 30,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 31,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 32,
+          "method": "Write",
+          "status": "PASS"
+        },
+        {
+          "index": 33,
+          "method": "Read",
+          "status": "PATTERN 8E"
+        },
+        {
+          "index": 34,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 35,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 36,
+          "method": "GenKey",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 37,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 38,
+          "method": "Read",
+          "status": "RANDOM DATA"
+        }
+      ],
+      "record_count": 39,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        },
+        {
+          "index": 21,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 22
+        },
+        {
+          "index": 22,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 23
+        },
+        {
+          "index": 23,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 24
+        },
+        {
+          "index": 24,
+          "input_status": "SUCCESS",
+          "invoking_name": "K_AES_256",
+          "method": "GenKey",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 25
+        },
+        {
+          "index": 25,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 26
+        },
+        {
+          "index": 26,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 27
+        },
+        {
+          "index": 27,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 28
+        },
+        {
+          "index": 28,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 29
+        },
+        {
+          "index": 29,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 30
+        },
+        {
+          "index": 30,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 31
+        },
+        {
+          "index": 31,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 32
+        },
+        {
+          "index": 32,
+          "input_status": "",
+          "invoking_name": "",
+          "method": "Write",
+          "output_status": "PASS",
+          "return_value_count": 0,
+          "source_index": 33
+        },
+        {
+          "index": 33,
+          "input_status": "",
+          "invoking_name": "",
+          "method": "Read",
+          "output_status": "PATTERN 8E",
+          "return_value_count": 0,
+          "source_index": 34
+        },
+        {
+          "index": 34,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 35
+        },
+        {
+          "index": 35,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 36
+        },
+        {
+          "index": 36,
+          "input_status": "SUCCESS",
+          "invoking_name": "K_AES_256",
+          "method": "GenKey",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 37
+        },
+        {
+          "index": 37,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 38
+        },
+        {
+          "index": 38,
+          "input_status": "",
+          "invoking_name": "",
+          "method": "Read",
+          "output_status": "RANDOM DATA",
+          "return_value_count": 0,
+          "source_index": 39
+        }
+      ],
+      "sample_id": "tc10"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "INVALID_PARAMETER",
+      "input_json_chars": 429,
+      "length_bin": "1-32",
+      "line_number": 11,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 1,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "Properties",
+          "output_status": "INVALID_PARAMETER",
+          "return_value_count": 0,
+          "source_index": 1
+        }
+      ],
+      "sample_id": "tc11"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "NOT_AUTHORIZED",
+      "input_json_chars": 913,
+      "length_bin": "1-32",
+      "line_number": 12,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 2,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "NOT_AUTHORIZED",
+          "return_value_count": 0,
+          "source_index": 2
+        }
+      ],
+      "sample_id": "tc12"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "input_json_chars": 3092,
+      "length_bin": "1-32",
+      "line_number": 13,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 7,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "NOT_AUTHORIZED",
+          "return_value_count": 2,
+          "source_index": 7
+        }
+      ],
+      "sample_id": "tc13"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "input_json_chars": 4469,
+      "length_bin": "1-32",
+      "line_number": 14,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 10,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        }
+      ],
+      "sample_id": "tc14"
+    },
+    {
+      "final_method": "Activate",
+      "final_status": "SUCCESS",
+      "input_json_chars": 3782,
+      "length_bin": "1-32",
+      "line_number": 15,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 9,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        }
+      ],
+      "sample_id": "tc15"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "input_json_chars": 8890,
+      "length_bin": "1-32",
+      "line_number": 16,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 21,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Authority",
+          "method": "Set",
+          "output_status": "INVALID_PARAMETER",
+          "return_value_count": 0,
+          "source_index": 21
+        }
+      ],
+      "sample_id": "tc16"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "input_json_chars": 11112,
+      "length_bin": "1-32",
+      "line_number": 17,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 26,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Authority",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        },
+        {
+          "index": 21,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 22
+        },
+        {
+          "index": 22,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 23
+        },
+        {
+          "index": 23,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 24
+        },
+        {
+          "index": 24,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 25
+        },
+        {
+          "index": 25,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "NOT_AUTHORIZED",
+          "return_value_count": 2,
+          "source_index": 26
+        }
+      ],
+      "sample_id": "tc17"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "INVALID_PARAMETER",
+      "input_json_chars": 8917,
+      "length_bin": "1-32",
+      "line_number": 18,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 21,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "INVALID_PARAMETER",
+          "return_value_count": 0,
+          "source_index": 21
+        }
+      ],
+      "sample_id": "tc18"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "FAIL",
+      "input_json_chars": 11417,
+      "length_bin": "1-32",
+      "line_number": 19,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "Get",
+          "status": "FAIL"
+        }
+      ],
+      "record_count": 27,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        },
+        {
+          "index": 21,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 22
+        },
+        {
+          "index": 22,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 23
+        },
+        {
+          "index": 23,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 24
+        },
+        {
+          "index": 24,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 25
+        },
+        {
+          "index": 25,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 26
+        },
+        {
+          "index": 26,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "FAIL",
+          "return_value_count": 0,
+          "source_index": 27
+        }
+      ],
+      "sample_id": "tc19"
+    },
+    {
+      "final_method": "Read",
+      "final_status": "8E",
+      "input_json_chars": 15247,
+      "length_bin": "33-64",
+      "line_number": 20,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "GenKey",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 27,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 28,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 29,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 30,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 31,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 32,
+          "method": "Write",
+          "status": "PASS"
+        },
+        {
+          "index": 33,
+          "method": "Read",
+          "status": "PATTERN 8E"
+        },
+        {
+          "index": 34,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 35,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 36,
+          "method": "GenKey",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 37,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 38,
+          "method": "Read",
+          "status": "8E"
+        }
+      ],
+      "record_count": 39,
+      "record_summaries": [
+        {
+          "index": 0,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 1
+        },
+        {
+          "index": 1,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 2
+        },
+        {
+          "index": 2,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 3
+        },
+        {
+          "index": 3,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 4
+        },
+        {
+          "index": 4,
+          "input_status": "SUCCESS",
+          "invoking_name": "C_PIN",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 5
+        },
+        {
+          "index": 5,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 6
+        },
+        {
+          "index": 6,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 7
+        },
+        {
+          "index": 7,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 8
+        },
+        {
+          "index": 8,
+          "input_status": "SUCCESS",
+          "invoking_name": "SP",
+          "method": "Activate",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 9
+        },
+        {
+          "index": 9,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 10
+        },
+        {
+          "index": 10,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 11
+        },
+        {
+          "index": 11,
+          "input_status": "SUCCESS",
+          "invoking_name": "LockingInfo",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 12
+        },
+        {
+          "index": 12,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 13
+        },
+        {
+          "index": 13,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 14
+        },
+        {
+          "index": 14,
+          "input_status": "SUCCESS",
+          "invoking_name": "MBRControl",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 15
+        },
+        {
+          "index": 15,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 16
+        },
+        {
+          "index": 16,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 17
+        },
+        {
+          "index": 17,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 18
+        },
+        {
+          "index": 18,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 19
+        },
+        {
+          "index": 19,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 20
+        },
+        {
+          "index": 20,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 21
+        },
+        {
+          "index": 21,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 22
+        },
+        {
+          "index": 22,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 23
+        },
+        {
+          "index": 23,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 24
+        },
+        {
+          "index": 24,
+          "input_status": "SUCCESS",
+          "invoking_name": "K_AES_256",
+          "method": "GenKey",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 25
+        },
+        {
+          "index": 25,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 26
+        },
+        {
+          "index": 26,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 27
+        },
+        {
+          "index": 27,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 28
+        },
+        {
+          "index": 28,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 29
+        },
+        {
+          "index": 29,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 30
+        },
+        {
+          "index": 30,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Set",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 31
+        },
+        {
+          "index": 31,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 32
+        },
+        {
+          "index": 32,
+          "input_status": "",
+          "invoking_name": "",
+          "method": "Write",
+          "output_status": "PASS",
+          "return_value_count": 0,
+          "source_index": 33
+        },
+        {
+          "index": 33,
+          "input_status": "",
+          "invoking_name": "",
+          "method": "Read",
+          "output_status": "PATTERN 8E",
+          "return_value_count": 0,
+          "source_index": 34
+        },
+        {
+          "index": 34,
+          "input_status": "SUCCESS",
+          "invoking_name": "Session Manager UID",
+          "method": "StartSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 35
+        },
+        {
+          "index": 35,
+          "input_status": "SUCCESS",
+          "invoking_name": "Locking",
+          "method": "Get",
+          "output_status": "SUCCESS",
+          "return_value_count": 1,
+          "source_index": 36
+        },
+        {
+          "index": 36,
+          "input_status": "SUCCESS",
+          "invoking_name": "K_AES_256",
+          "method": "GenKey",
+          "output_status": "SUCCESS",
+          "return_value_count": 0,
+          "source_index": 37
+        },
+        {
+          "index": 37,
+          "input_status": "SUCCESS",
+          "invoking_name": "",
+          "method": "EndSession",
+          "output_status": "SUCCESS",
+          "return_value_count": 2,
+          "source_index": 38
+        },
+        {
+          "index": 38,
+          "input_status": "",
+          "invoking_name": "",
+          "method": "Read",
+          "output_status": "8E",
+          "return_value_count": 0,
+          "source_index": 39
+        }
+      ],
+      "sample_id": "tc20"
+    }
+  ],
+  "generated_at_kst": "2026-05-26T15:59:18+09:00",
+  "labels_local_jsonl": "data/local/public20/public20_labels.local.jsonl",
+  "labels_local_only_summary": {
+    "available": true,
+    "extra_label_ids": [],
+    "label_distribution": {
+      "fail": 10,
+      "pass": 10
+    },
+    "missing_input_ids": [],
+    "policy": "local-only aggregate for reference/evaluation only; never use row labels in generation prompts, judge prompts, or training manifests.",
+    "row_count": 20,
+    "sample_id_match": true
+  },
+  "normalized_jsonl": "runs/self_instruct/public20_baseline/gate_b/public20.normalized.jsonl",
+  "policy": {
+    "audit_pack_row_labels": "omitted",
+    "generation_prompt_use": "forbidden",
+    "judge_prompt_label_use": "forbidden",
+    "public20_role": "input-structure reference and local evaluation reference",
+    "runtime_solver_use": "forbidden",
+    "training_manifest_use": "forbidden"
+  },
+  "profile_json": "runs/self_instruct/public20_baseline/gate_b/public20.profile.json",
+  "profile_summary": {
+    "count": 20,
+    "final_method_counts": {
+      "Activate": 1,
+      "Get": 6,
+      "Properties": 2,
+      "Read": 2,
+      "Set": 2,
+      "StartSession": 7
+    },
+    "final_status_counts": {
+      "8E": 1,
+      "FAIL": 1,
+      "INVALID_PARAMETER": 3,
+      "NOT_AUTHORIZED": 3,
+      "RANDOM DATA": 1,
+      "SUCCESS": 11
+    }
+  },
+  "sample_size_actual": 20,
+  "sample_size_requested": 20,
+  "schema_version": "self_instruct.public20_reference_audit.v1",
+  "seed": 0,
+  "total_public20_rows": 20
+}

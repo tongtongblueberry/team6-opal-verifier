@@ -3,7 +3,7 @@
 
 # Agent Handoff
 
-- 최종 갱신: 2026-05-26 15:43 KST
+- 최종 갱신: 2026-05-26 16:00 KST
 - 목적: 새 agent가 단발 작업만 수행하지 않고, 현재 논의 맥락과 금지사항을 유지한 채 작업하게 한다.
 - 적용 범위: repo 작업, 문서 정리, 데이터 생성/검증, 학습 실행, 서버 SSH 재시도, git push를 맡는 모든 worker agent.
 
@@ -67,6 +67,8 @@
    - 현재 public20 기준 facts: rows `20`, record_count min/mean/max `1/16.4/39`, label 분포 `fail=10`, `pass=10`.
    - 최소 dimension vector: `record_count`, method sequence length, final method/status, input char/token count, return value count.
    - public 20 label은 training row로 복사하지 않고 aggregate 비교와 fold metric 계산에만 쓴다.
+   - active 도구는 `tools/analysis/compare_public20_dimensions.py`다.
+   - public20 label은 row-level 입력이 아니라 local aggregate JSON으로만 report에 넣는다.
 
 3. Gate C: manifest/model input path equivalence check
    - manifest validation을 통과한 동일 파일이 training loader와 model first-forward에서 같은 schema, sample id/hash, label mapping, dimension summary로 처리되는지 확인한다.
@@ -88,6 +90,7 @@
 - [../PROGRESS.md](../PROGRESS.md): 현재 진행 상황 요약.
 - [archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md](archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md): v4/v4.1 폐기 근거.
 - [../tools/analysis/self_instruct_invariants.py](../tools/analysis/self_instruct_invariants.py): final-response invariant checker. 데이터 품질 gate 전용이다.
+- [../tools/analysis/compare_public20_dimensions.py](../tools/analysis/compare_public20_dimensions.py): Gate B public20/generated profile 비교 도구.
 - [../tests/test_self_instruct_final_response_invariant.py](../tests/test_self_instruct_final_response_invariant.py): v4/v4.1 실패 모드 회귀 테스트.
 
 ## Agent 생성 시 붙일 짧은 Context Block
@@ -127,6 +130,7 @@
 
 - 새 Self-Instruct pipeline 구현 전에 Gate A-D를 실행 가능한 도구와 문서로 고정한다.
 - public20 input-only와 local label reference는 확보됐다. 다음 agent는 public20을 학습 source로 쓰지 말고 dimension/schema/distribution reference와 held-out eval reference로만 써야 한다.
-- 생성 candidate가 만들어지면 일부 sample을 직접 state-transition audit한 뒤에만 public20 dimension 비교로 넘어간다.
+- public20 reference Gate A audit pack은 `runs/self_instruct/public20_baseline/gate_a/public20_reference_audit_pack.md`에 있다. sample별 label은 노출하지 않았고 local label은 aggregate report에만 있다.
+- 생성 candidate가 만들어지면 일부 sample을 직접 state-transition audit한 뒤에 `compare_public20_dimensions.py`로 public20 dimension 비교 report를 만든다.
 - 서버 SSH는 main이 직접 치지 말고 agent가 10회 이상 재시도 단위로 수행한다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.
