@@ -44,6 +44,10 @@ LLM next-token/logit decision
   - rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`
   - public20은 `public20_reference`로만 두고 generated synthetic `train`, `val`, `test`와 섞지 않는다.
   - public20-only 모델 후보 검증은 20개를 `train`/`val`로만 분리한다. public20 `test` split은 만들지 않는다.
+- public20 train/val split 도구 `tools/analysis/build_public20_train_val_split.py`를 추가했다.
+  - seed `11`, `29`, `47` split artifact는 `runs/model_validation/public20_splits/`에 있다.
+  - 각 split은 `16 train / 4 val`, val `pass=2/fail=2`, test `0`이다.
+  - split rows는 `sample_id`, `input`, `label`, `split`만 포함하며 public20-only model validation 전용이다.
 - Gate B public20/generated profile 비교 도구 `tools/analysis/compare_public20_dimensions.py`를 추가했다.
   - public20 reference와 generated profile을 비교하는 도구이며, 실제 generated 후보가 없으면 합격 데이터를 선언하지 않는다.
   - public20 label은 synthetic prompt/judge/generated manifest target에는 쓰지 않는다.
@@ -59,6 +63,10 @@ LLM next-token/logit decision
   - License: Apache-2.0.
   - 현재는 코드를 vendor하지 않고 [third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 출처와 차용 범위를 문서화한다.
   - LLM 호출 없는 `parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence 도구를 먼저 두고, 이후 LLM API generation wrapper와 LLM-only judge filtering을 붙인다.
+- Self-Instruct generation/judge dry-run wrapper를 추가했다.
+  - `tools/datagen/run_self_instruct_generation.py`는 공식 output-first classification prompt payload와 metadata만 쓴다.
+  - `tools/analysis/filter_self_instruct_judge.py`는 LLM-only judge prompt payload와 외부 judge result parser만 제공한다.
+  - 두 도구 모두 기본 실행에서 LLM/API를 호출하지 않고, synthetic trajectory를 자체 생성하지 않는다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -110,7 +118,7 @@ LLM next-token/logit decision
 - `tools/training/deploy_and_train.sh`, `tools/training/brier_trainer.py`는 active 경로에서 제거했다.
 - `src`, `tools`, `tests`의 `__pycache__` 생성 산출물은 제거했다.
 - `tools/eval/prepare_submit.sh`의 외부 workspace fallback을 제거했다.
-- active `tools/datagen/`은 Self-Instruct seed/candidate schema만 남긴다.
+- active `tools/datagen/`은 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - legacy spec/gap synthetic generator와 v4/v4.1 long trajectory generator는 active datagen에서 제거했다.
 - 삭제 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 남겼다.
@@ -121,11 +129,14 @@ LLM next-token/logit decision
 - Gate C manifest/model input equivalence는 `tools/analysis/check_manifest_model_input_equivalence.py`로 수행한다.
 - LLM output parser는 `tools/datagen/parse_self_instruct_outputs.py`로 수행한다. 이 도구는 raw LLM output을 candidate schema로 파싱/정규화하고 reject report를 만들 뿐, synthetic trajectory를 자체 생성하지 않는다.
 - Self-Instruct dedup/filter는 `tools/analysis/dedup_self_instruct_candidates.py`로 수행한다. 이 도구는 ROUGE-L 0.7 near duplicate, exact duplicate, same-input conflicting label, public20 duplicate를 reject한다.
+- Self-Instruct generation request는 `tools/datagen/run_self_instruct_generation.py`로 생성한다. 이 도구는 dry-run payload/metadata writer이며, 생성 데이터 자체나 sample.md를 만들지 않는다.
+- Self-Instruct judge filter는 `tools/analysis/filter_self_instruct_judge.py`로 수행한다. 이 도구는 judge payload를 만들고 외부 judge JSON 결과를 accepted/rejected로 분리한다.
 - public20 reference structure/profile audit pack을 `runs/self_instruct/public20_baseline/gate_a/`에 생성했다. 이 pack은 public20 검증 결과가 아니라 reference 구조 확인용이며, sample별 label을 노출하지 않고 state-transition/shape 메모용 빈 섹션만 제공한다.
 - 모델 방법론 조사는 데이터 검증 이후 또는 병렬 보조로 진행한다. RAG/full FT/selective FT 구현은 관련 논문과 검증된 라이브러리/reference code를 따르며, synthetic 데이터의 질적/정량 검증을 중단하지 않는다.
   <!-- Changed: correct public20 model validation plan to training-based candidates only. -->
   <!-- Why: public20-only model verification must actually train on public20 train split. -->
 - public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이고, val은 `pass 2 / fail 2`를 목표로 한다.
+- deterministic split 산출물은 `runs/model_validation/public20_splits/split_seed_11`, `split_seed_29`, `split_seed_47`에 생성했다.
 - 모델 학습 후보 5개는 다음으로 고정한다: 0.9B full FT `5/10/20` epoch patience `2`, 0.9B full FT + retrieved rulebook/spec context `5/10/20` epoch patience `2`, 4B LoRA/QLoRA selective FT `3/5/10` epoch patience `1-2`, 4B LoRA/QLoRA + retrieved context `3/5/10` epoch patience `1-2`, RAFT-style retrieval-augmented SFT/QLoRA public20-only `1/3/5` smoke/overfit check.
 - RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 epoch `3/5/10`으로 확장한다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제다. 따라서 retrieval만 하는 비학습 대체물이 아니라 retrieval + fine-tuning/RAFT-style 학습을 최종 방향으로 둔다.

@@ -1,0 +1,56 @@
+{
+  "hidden_test": "leaderboard",
+  "input_label_sample_id_match": true,
+  "label_counts": {
+    "all": {
+      "fail": 10,
+      "pass": 10
+    },
+    "train": {
+      "fail": 8,
+      "pass": 8
+    },
+    "val": {
+      "fail": 2,
+      "pass": 2
+    }
+  },
+  "public20_test_split_created": false,
+  "purpose": "public20_model_validation_only",
+  "row_counts": {
+    "test": 0,
+    "total": 20,
+    "train": 16,
+    "val": 4
+  },
+  "sample_ids": {
+    "test": [],
+    "train": [
+      "tc1",
+      "tc10",
+      "tc11",
+      "tc12",
+      "tc13",
+      "tc14",
+      "tc16",
+      "tc18",
+      "tc19",
+      "tc20",
+      "tc3",
+      "tc4",
+      "tc5",
+      "tc7",
+      "tc8",
+      "tc9"
+    ],
+    "val": [
+      "tc15",
+      "tc17",
+      "tc2",
+      "tc6"
+    ]
+  },
+  "schema_version": "public20_train_val_split.v1",
+  "seed": 11,
+  "warning": "public20 labels are local model-validation references only; do not use these rows for synthetic generation prompts, synthetic judge prompts, or generated synthetic manifests"
+}

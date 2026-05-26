@@ -31,7 +31,7 @@
   - 재현 근거: fail sample에서 중간 `Set FAIL` 뒤 마지막 `EndSession SUCCESS`인데 label이 `fail`이었다.
   - 원천 fail 538개 중 440개가 final `EndSession SUCCESS`로 끝나는 문제가 archive에 기록되어 있다.
   - 원인은 fail case 뒤에 `_endsession()`을 붙여 final-response label target이 중간 event로 밀린 생성 패턴이다.
-- active `tools/datagen/`에는 Self-Instruct seed/candidate schema만 남긴다.
+- active `tools/datagen/`에는 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다.
   - v4/v4.1 generator와 spec/gap synthetic generator는 active datagen에서 제거했다.
   - 정리 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 둔다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data.
@@ -119,8 +119,11 @@
 - [../tools/analysis/self_instruct_invariants.py](../tools/analysis/self_instruct_invariants.py): final-response invariant checker. 데이터 품질 gate 전용이다.
 - [../tools/analysis/compare_public20_dimensions.py](../tools/analysis/compare_public20_dimensions.py): Gate B public20/generated profile 비교 도구.
 - [../tools/analysis/check_manifest_model_input_equivalence.py](../tools/analysis/check_manifest_model_input_equivalence.py): Gate C candidate/manifest/trainer-loader 입력 동등성 검증 도구.
+- [../tools/analysis/build_public20_train_val_split.py](../tools/analysis/build_public20_train_val_split.py): public20-only 모델 후보 검증용 deterministic `train`/`val` split 생성 도구. public20 `test` split은 만들지 않는다.
+- [../tools/datagen/run_self_instruct_generation.py](../tools/datagen/run_self_instruct_generation.py): Self-Instruct output-first generation request dry-run payload/metadata writer. 자체 candidate 생성과 API 호출은 하지 않는다.
 - [../tools/datagen/parse_self_instruct_outputs.py](../tools/datagen/parse_self_instruct_outputs.py): raw LLM output을 candidate schema로 파싱/정규화하는 도구. 자체 synthetic 생성은 금지다.
 - [../tools/analysis/dedup_self_instruct_candidates.py](../tools/analysis/dedup_self_instruct_candidates.py): Self-Instruct ROUGE-L/exact/conflict/public20 duplicate filter.
+- [../tools/analysis/filter_self_instruct_judge.py](../tools/analysis/filter_self_instruct_judge.py): LLM-only judge request dry-run payload writer와 외부 judge result parser.
 - [../tests/test_self_instruct_final_response_invariant.py](../tests/test_self_instruct_final_response_invariant.py): v4/v4.1 실패 모드 회귀 테스트.
 
 ## Agent 생성 시 붙일 짧은 Context Block
@@ -132,10 +135,10 @@
 - public20은 이미 주어진 기준 입력이다. public20 자체를 검증하지 말고, synthetic 데이터와 비교할 reference structure/profile 및 public20-only 모델 `train`/`val` 검증 소스로만 사용한다.
 - public20-only 모델 검증 기본 split은 stratified 16 train / 4 val이며, val은 후보 선택/튜닝/early stopping용 내부 검증이다. test는 public20에서 만들지 않고 leaderboard hidden 평가로만 둔다.
 - v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
-- active datagen은 Self-Instruct seed/candidate schema만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
+- active datagen은 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
 - 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
 - Self-Instruct 공식 code source는 yizhongw/self-instruct이고 Apache-2.0이다. 현재는 vendor code 없이 문서 기준만 둔다.
-- LLM 호출 없는 parse_self_instruct_outputs, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence 도구를 먼저 둔다. 이후 LLM API generation wrapper와 LLM-only judge filtering을 붙인다.
+- LLM 호출 없는 parse_self_instruct_outputs, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence, dry-run generation request wrapper, dry-run judge wrapper를 먼저 둔다. 이후 외부 LLM runner raw output을 Gate A/B/C로 연결한다.
 - Gate A/B/C가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C 요약을 기록한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data. sample.md는 Gate A/B/C를 통과한 Self-Instruct synthetic data에만 생성한다.
 - synthetic 데이터 검증 완료 뒤 dataset은 train/val/test/public20_reference로 분리한다. public20-only 모델 후보 검증은 train/val만 쓰고, test는 leaderboard hidden 평가다.
@@ -168,12 +171,14 @@
 
 - 새 Self-Instruct pipeline 구현 전에 Gate A-D를 실행 가능한 도구와 문서로 고정한다.
 - public20 input-only와 local label reference는 확보됐다. 다음 agent는 public20을 synthetic 데이터 검증의 대상처럼 다루지 말고 dimension/schema/distribution reference로만 써야 한다. public20-only 모델 후보 검증에서는 `train`/`val`만 사용한다.
+- public20-only 모델 검증 split은 `tools/analysis/build_public20_train_val_split.py`로 만들며, 현재 seed `11`, `29`, `47` 산출물이 `runs/model_validation/public20_splits/`에 있다. 각 split은 `16 train / 4 val`, val `pass=2/fail=2`, public20 test `0`이다.
 - public20 reference structure/profile audit pack은 `runs/self_instruct/public20_baseline/gate_a/public20_reference_audit_pack.md`에 있다. 이것은 public20 검증 결과가 아니라 reference 구조 확인용 pack이다. sample별 label은 노출하지 않았고 local label은 aggregate report에만 있다.
 - 생성 candidate가 만들어지면 일부 sample을 직접 state-transition audit한 뒤에 `compare_public20_dimensions.py`로 public20 dimension 비교 report를 만든다.
 - generated manifest 후보가 만들어지면 `check_manifest_model_input_equivalence.py`로 raw/normalized candidate, manifest, trainer loader가 같은 전체 trajectory 단위를 보는지 확인한다.
 - 현재 Gate A/B/C를 통과한 generated candidate는 없다. 다음 단계는 real LLM output-first generation과 judge filtering을 논문 protocol에 맞게 구현하는 것이다.
 - 단, LLM 호출 없는 공식-output parser, ROUGE-L/exact/conflict dedup/filter,
-  Gate C manifest/model input equivalence를 먼저 둔 뒤 real LLM generation wrapper로 넘어간다.
+  Gate C manifest/model input equivalence, dry-run generation request wrapper,
+  dry-run judge wrapper를 먼저 둔 뒤 외부 LLM runner와 연결한다.
 - public20-only 모델 검증은 병렬 보조로 진행하되, 위 5개 실제 학습 후보를 기준으로 train/val 결과를 비교한다.
 - 서버 SSH는 main이 직접 치지 말고 agent가 10회 이상 재시도 단위로 수행한다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.

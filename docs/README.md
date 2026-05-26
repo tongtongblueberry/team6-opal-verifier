@@ -44,13 +44,17 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - public20 local reference facts는 rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
 - Gate B dimension comparison 도구는 `tools/analysis/compare_public20_dimensions.py`이며, public20 label은 local aggregate distribution으로만 사용한다.
 - Gate C manifest/model input equivalence 도구는 `tools/analysis/check_manifest_model_input_equivalence.py`이며, synthetic candidate가 manifest와 trainer loader에서 전체 trajectory 단위로 유지되는지 검증한다.
+- public20 train/val split 도구는 `tools/analysis/build_public20_train_val_split.py`이며, 산출물은 `runs/model_validation/public20_splits/`에 둔다. 이 도구는 public20 `test` split을 만들지 않는다.
+- Self-Instruct generation wrapper는 `tools/datagen/run_self_instruct_generation.py`이며, dry-run prompt payload와 metadata만 생성한다. API 호출과 ad-hoc candidate 생성은 하지 않는다.
+- LLM-only judge filter는 `tools/analysis/filter_self_instruct_judge.py`이며, judge prompt payload와 외부 judge result parsing만 담당한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data.
   논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은 active tools/runs에 두지 않는다.
 - Self-Instruct synthetic generation은 Wang et al. 2023 ACL 논문과 `yizhongw/self-instruct`
   공식 repository 기준으로만 진행한다. 현재는 [../third_party/self_instruct/README.md](../third_party/self_instruct/README.md)에
   출처와 차용 범위만 문서화하고 vendor code는 두지 않는다.
 - LLM 호출 없는 parser, ROUGE-L/exact/conflict dedup/filter,
-  Gate C manifest/model input equivalence 도구를 먼저 둔다. 이후 LLM API generation wrapper와 LLM-only judge filtering을 붙인다.
+  Gate C manifest/model input equivalence, dry-run generation request wrapper,
+  dry-run judge wrapper를 먼저 둔다. 이후 외부 LLM runner raw output을 받아 Gate A/B/C로 연결한다.
 - Self-Instruct synthetic data가 Gate A/B/C를 통과하면 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체, label, target, primary evidence, profile, public20 raw sample 1개 전체, Gate A audit summary, Gate B comparison summary, Gate C manifest/model-input summary를 기록한다.
 - public20 reference audit pack은 public20 검증 결과가 아니라 reference structure/profile 확인용 산출물로 표현한다.
 - Gate A/B/C 전에는 raw synthetic sample을 "합격 데이터"로 제시하지 않는다.

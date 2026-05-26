@@ -71,5 +71,10 @@ LLM 호출이 필요 없는 단계부터 구현한다.
    - raw candidate, normalized candidate, manifest, training loader, first-forward input이 같은 trajectory 단위인지 검증한다.
 
 4. 이후 `tools/datagen/run_self_instruct_generation.py`
-   - LLM API generation wrapper를 붙인다.
+   - dry-run prompt payload와 request metadata를 작성한다.
    - 공식 Self-Instruct prompt/metadata 계약을 보존하고, 임의 fixture mode를 넣지 않는다.
+   - 실제 API 호출은 이 repo 기본 실행에서 하지 않는다.
+
+5. 이후 `tools/analysis/filter_self_instruct_judge.py`
+   - LLM-only judge prompt payload를 작성한다.
+   - 외부 judge result JSONL을 파싱해 accept/reject report를 만든다.

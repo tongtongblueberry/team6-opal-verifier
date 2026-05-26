@@ -48,12 +48,14 @@
 - Gate C manifest/model input equivalence 도구는 `tools/analysis/check_manifest_model_input_equivalence.py`다.
 - raw Self-Instruct output parser는 `tools/datagen/parse_self_instruct_outputs.py`다. 이 도구는 synthetic trajectory를 자체 생성하지 않는다.
 - Self-Instruct dedup/filter는 `tools/analysis/dedup_self_instruct_candidates.py`다.
+- Self-Instruct generation request dry-run wrapper는 `tools/datagen/run_self_instruct_generation.py`다. 이 도구는 prompt payload/metadata만 만들고 LLM/API 호출과 자체 candidate 생성을 하지 않는다.
+- LLM-only judge dry-run/filter 도구는 `tools/analysis/filter_self_instruct_judge.py`다. 이 도구는 judge payload 생성과 외부 judge result parsing만 수행한다.
 - ad-hoc fixture/smoke generated data는 논문 기반 synthetic data가 아니므로 active surface에서 제거한다.
   다음 synthetic generation은 Self-Instruct output-first generation과 LLM-only judge filtering을 따라야 한다.
 - Self-Instruct 공식 기준은 Wang et al. 2023 ACL 논문, `https://github.com/yizhongw/self-instruct`,
   Apache-2.0 license다. 출처와 차용 범위는 `third_party/self_instruct/README.md`와
   `docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md`에 둔다.
-- 다음 구현 순서는 Gate C report 적용, LLM API generation wrapper, LLM-only judge filtering이다.
+- 다음 구현 순서는 외부 LLM runner raw output 확보, parser/dedup/judge filter 적용, Gate A/B/C 실행이다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.

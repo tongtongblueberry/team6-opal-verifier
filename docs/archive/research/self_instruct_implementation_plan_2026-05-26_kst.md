@@ -62,8 +62,13 @@ LLM 호출 없는 검증/파싱 도구를 먼저 구현한다.
 
 4. `LLM API generation wrapper`
    - 공식 Self-Instruct prompt/metadata 계약을 따른다.
+   - 이 repo의 기본 구현은 dry-run prompt payload와 request metadata만 작성한다.
    - API key나 secret은 출력/저장하지 않는다.
    - deterministic fixture/smoke mode는 금지한다.
+
+5. `LLM-only judge filter`
+   - judge prompt payload를 만들고 외부 judge result JSONL을 accept/reject로 파싱한다.
+   - judge는 offline data filter이며 runtime solver나 leaderboard package path가 아니다.
 
 ## 검증 Gate
 

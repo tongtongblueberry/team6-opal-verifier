@@ -42,14 +42,17 @@ tools/analysis/
 +-- data_audit.py
 +-- self_instruct_invariants.py
 +-- dedup_self_instruct_candidates.py
++-- filter_self_instruct_judge.py
 +-- audit_self_instruct_quality.py
 +-- compare_public20_dimensions.py
 +-- check_manifest_model_input_equivalence.py
 +-- audit_public20_reference.py
++-- build_public20_train_val_split.py
 
 tools/datagen/
 +-- self_instruct_seed_schema.py
 +-- self_instruct_candidate_schema.py
++-- run_self_instruct_generation.py
 +-- parse_self_instruct_outputs.py
 
 tools/training/
@@ -124,6 +127,15 @@ public20에서 만들지 않는다. 하루 5회 제한이 있는 leaderboard hid
 여러 split을 돌릴 수는 있지만 모두 validation이며 test라고 부르지 않는다. 최종 제출 후보가
 정해지면 선택된 recipe로 public20 20개 전체를 학습에 쓸지 별도 결정한다.
 
+<!-- Changed: record the implemented public20 train/val split artifacts. -->
+<!-- Why: public20-only model validation now has deterministic split inputs and reports, without creating a public20 test split. -->
+public20-only split 생성 도구는 `tools/analysis/build_public20_train_val_split.py`다.
+현재 seed `11`, `29`, `47` split을 `runs/model_validation/public20_splits/` 아래에
+생성했다. 각 split은 `train.jsonl`, `val.jsonl`, `split_report.json`, `split_report.md`를
+포함하며 row schema는 `sample_id`, `input`, `label`, `split`이다. 이 artifact는
+public20-only model validation 전용이며 synthetic generation, synthetic judge, generated
+synthetic manifest target으로 쓰지 않는다.
+
 <!-- Changed: replace non-learning comparison notes with the five requested public20 training candidates. -->
 <!-- Why: the user asked to train on public20 train/val because verified synthetic data is not ready. -->
 모델 검증 축은 public20 `16 train / 4 val`로 실제 학습을 수행하는 후보 5개로 고정한다.
@@ -142,9 +154,10 @@ public20에서 만들지 않는다. 하루 5회 제한이 있는 leaderboard hid
 <!-- Changed: remove ad-hoc fixture/smoke generation from the active surface. -->
 <!-- Why: synthetic data must come from the selected paper protocol and pass Gate A/B/C before it can be treated as candidate training data. -->
 임의 deterministic fixture/smoke generated data는 accepted synthetic data가 아니다.
-active datagen에는 public20 input-only seed schema와 label-bearing candidate schema만 둔다.
-새 synthetic generation 구현은 Self-Instruct output-first generation, LLM-only filtering,
-논문식 quality audit protocol을 따르는 후보만 허용한다.
+active datagen에는 public20 input-only seed schema, label-bearing candidate schema,
+dry-run generation request wrapper, raw output parser만 둔다. 새 synthetic generation
+구현은 Self-Instruct output-first generation, LLM-only filtering, 논문식 quality audit
+protocol을 따르는 후보만 허용한다.
 
 <!-- Changed: lock synthetic generation to the official Self-Instruct source and no-LLM-first implementation order. -->
 <!-- Why: the next implementation must follow verified paper/code structure and avoid another ad-hoc generator. -->
@@ -155,6 +168,15 @@ Self-Instruct 공식 출처는 Wang et al. 2023 ACL 논문과 `yizhongw/self-ins
 ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence
 도구를 먼저 두고, 그 다음에만 LLM API generation wrapper와 LLM-only judge
 filtering을 붙인다.
+
+<!-- Changed: add dry-run Self-Instruct generation and judge wrappers. -->
+<!-- Why: the next synthetic-data step needs official-protocol prompt payloads and judge result parsing without API calls or ad-hoc candidates. -->
+`tools/datagen/run_self_instruct_generation.py`는 Self-Instruct output-first
+classification prompt payload와 request metadata만 생성한다. 기본 모드는 dry-run이고
+synthetic trajectory를 자체 생성하지 않으며 `--execute`는 현재 API 호출 없이 실패한다.
+`tools/analysis/filter_self_instruct_judge.py`는 generated candidate용 LLM-only judge
+payload를 만들고 외부 judge result JSONL을 accepted/rejected candidate로 파싱한다.
+public20 label, rule id, rule engine output은 두 도구의 prompt 입력에 넣지 않는다.
 
 ## 서버 Sync 원칙
 
