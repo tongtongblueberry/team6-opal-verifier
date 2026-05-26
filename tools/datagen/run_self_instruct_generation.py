@@ -28,6 +28,13 @@ from tools.datagen.self_instruct_seed_schema import (  # noqa: E402
     load_seed_candidates,
     normalize_seeds,
 )
+# Changed: connect the optional external provider runner behind --execute.
+# Why: generation requests can now be executed only through env-gated provider code that writes raw parser input.
+from tools.datagen.self_instruct_llm_runner import (  # noqa: E402
+    SelfInstructLLMRunnerError,
+    provider_env_var,
+    run_generation_requests,
+)
 
 
 Json = Dict[str, Any]
@@ -356,14 +363,24 @@ def build_generation_requests(
     ]
 
 
-def build_metadata(seed_path: Path, spec_rules_path: Path, spec_rule_cards: Sequence[Mapping[str, Any]], requests: Sequence[Mapping[str, Any]]) -> Json:
-    return {
+def build_metadata(
+    seed_path: Path,
+    spec_rules_path: Path,
+    spec_rule_cards: Sequence[Mapping[str, Any]],
+    requests: Sequence[Mapping[str, Any]],
+    runner_report: Optional[Mapping[str, Any]] = None,
+    runner_report_path: Optional[Path] = None,
+) -> Json:
+    executed_count = 0
+    if isinstance(runner_report, Mapping) and isinstance(runner_report.get("executed_count"), int):
+        executed_count = int(runner_report["executed_count"])
+    metadata: Json = {
         "schema_version": GENERATION_METADATA_SCHEMA_VERSION,
         "seed_input": str(seed_path),
         "spec_rules_input": str(spec_rules_path),
         "spec_rule_count": len(spec_rule_cards),
         "request_count": len(requests),
-        "execute": False,
+        "execute": executed_count > 0,
         "official_source": OFFICIAL_SELF_INSTRUCT_SOURCE,
         "prompt_contract_version": PROMPT_CONTRACT_VERSION,
         "request_ids": [request.get("request_id") for request in requests],
@@ -379,6 +396,23 @@ def build_metadata(seed_path: Path, spec_rules_path: Path, spec_rule_cards: Sequ
             "raw LLM outputs must be parsed by tools/datagen/parse_self_instruct_outputs.py",
         ],
     }
+    # Changed: summarize optional execution without embedding raw provider text or secrets in metadata.
+    # Why: downstream audit needs to know whether API execution happened while raw output remains parser-owned.
+    if runner_report is not None:
+        metadata["execute_requested"] = True
+        metadata["runner"] = {
+            "schema_version": runner_report.get("schema_version"),
+            "provider": runner_report.get("provider"),
+            "provider_env_var": runner_report.get("provider_env_var"),
+            "status": runner_report.get("status"),
+            "request_count": runner_report.get("request_count"),
+            "executed_count": runner_report.get("executed_count"),
+            "skipped_count": runner_report.get("skipped_count"),
+            "failed_count": runner_report.get("failed_count"),
+            "output_path": runner_report.get("output_path"),
+            "report_path": str(runner_report_path) if runner_report_path is not None else None,
+        }
+    return metadata
 
 
 def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -393,15 +427,18 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--candidates-per-request", type=int, default=4, help="Requested candidates per external LLM call.")
     parser.add_argument("--model", default="external-llm", help="Model name recorded in the payload for an external runner.")
     parser.add_argument("--created-at-kst", default=None, help="Optional fixed KST timestamp for reproducible tests.")
-    parser.add_argument("--execute", action="store_true", help="Reserved for future external runner integration; not implemented here.")
+    # Changed: expose explicit provider execution flags while keeping dry-run as the default.
+    # Why: paid API calls must require --execute plus the matching provider API-key environment variable.
+    parser.add_argument("--execute", action="store_true", help="Execute requests with an external provider when the provider API key env var is present.")
+    parser.add_argument("--provider", choices=("openai", "gemini"), default="openai", help="Provider used only with --execute. Env vars: OPENAI_API_KEY or GEMINI_API_KEY.")
+    parser.add_argument("--raw-output-jsonl", type=Path, default=None, help="Parser-compatible raw LLM output JSONL path for successful --execute calls.")
+    parser.add_argument("--runner-report-json", type=Path, default=None, help="Runner report JSON path for --execute attempts and env-missing skips.")
+    parser.add_argument("--request-timeout-seconds", type=int, default=120, help="HTTP timeout for each provider request when --execute is active.")
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parse_args(argv)
-    if args.execute:
-        print("run_self_instruct_generation: --execute is not implemented; no API call was made", file=sys.stderr)
-        return 2
     try:
         seeds = load_input_only_seeds(args.seed_jsonl)
         spec_rule_cards = load_spec_rule_cards(args.spec_rules_md)
@@ -416,10 +453,41 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             created_at_kst=args.created_at_kst,
         )
         _write_jsonl(requests, args.requests_output)
+        runner_report: Optional[Json] = None
+        runner_report_path: Optional[Path] = None
+        if args.execute:
+            # Changed: perform env-gated external execution only after the dry-run request artifact is written.
+            # Why: every raw response must retain the exact request provenance even if execution is skipped or partial.
+            raw_output_path = args.raw_output_jsonl or args.requests_output.with_name("raw_outputs.jsonl")
+            runner_report_path = args.runner_report_json or args.metadata_json.with_name("runner_report.json")
+            runner_report = run_generation_requests(
+                requests,
+                provider=args.provider,
+                output_path=raw_output_path,
+                timeout_seconds=args.request_timeout_seconds,
+                created_at_kst=args.created_at_kst,
+            )
+            runner_report_path.parent.mkdir(parents=True, exist_ok=True)
+            runner_report_path.write_text(
+                json.dumps(runner_report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            if runner_report.get("status") == "skipped_missing_env":
+                print(
+                    f"run_self_instruct_generation: skipped provider execution; missing {provider_env_var(args.provider)}",
+                    file=sys.stderr,
+                )
         args.metadata_json.parent.mkdir(parents=True, exist_ok=True)
         args.metadata_json.write_text(
             json.dumps(
-                build_metadata(args.seed_jsonl, args.spec_rules_md, spec_rule_cards, requests),
+                build_metadata(
+                    args.seed_jsonl,
+                    args.spec_rules_md,
+                    spec_rule_cards,
+                    requests,
+                    runner_report=runner_report,
+                    runner_report_path=runner_report_path,
+                ),
                 ensure_ascii=False,
                 indent=2,
                 sort_keys=True,
@@ -427,7 +495,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             + "\n",
             encoding="utf-8",
         )
-    except (OSError, json.JSONDecodeError, SeedSchemaError, SelfInstructGenerationError) as exc:
+    except (OSError, json.JSONDecodeError, SeedSchemaError, SelfInstructGenerationError, SelfInstructLLMRunnerError) as exc:
         print(f"run_self_instruct_generation: {exc}", file=sys.stderr)
         return 2
     return 0

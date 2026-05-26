@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tools.datagen import run_self_instruct_generation as generation
 
@@ -96,25 +98,40 @@ class RunSelfInstructGenerationTests(unittest.TestCase):
             self.assertEqual(2, exit_code)
             self.assertFalse(request_path.exists())
 
-    def test_execute_flag_does_not_call_api(self) -> None:
+    # Changed: --execute now skips safely when the provider env var is absent.
+    # Why: tests and dry-run workflows must not make paid API calls without explicit env configuration.
+    def test_execute_flag_skips_without_provider_env(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
             seed_path = tmp / "seeds.jsonl"
             seed_path.write_text(json.dumps(_seed_row()) + "\n", encoding="utf-8")
 
-            exit_code = generation.main(
-                [
-                    "--seed-jsonl",
-                    str(seed_path),
-                    "--requests-output",
-                    str(tmp / "requests.jsonl"),
-                    "--metadata-json",
-                    str(tmp / "metadata.json"),
-                    "--execute",
-                ]
-            )
+            with patch.dict(os.environ, {}, clear=True):
+                exit_code = generation.main(
+                    [
+                        "--seed-jsonl",
+                        str(seed_path),
+                        "--requests-output",
+                        str(tmp / "requests.jsonl"),
+                        "--metadata-json",
+                        str(tmp / "metadata.json"),
+                        "--raw-output-jsonl",
+                        str(tmp / "raw_outputs.jsonl"),
+                        "--runner-report-json",
+                        str(tmp / "runner_report.json"),
+                        "--execute",
+                    ]
+                )
 
-            self.assertEqual(2, exit_code)
+            self.assertEqual(0, exit_code)
+            metadata = json.loads((tmp / "metadata.json").read_text(encoding="utf-8"))
+            runner_report = json.loads((tmp / "runner_report.json").read_text(encoding="utf-8"))
+            self.assertFalse(metadata["execute"])
+            self.assertTrue(metadata["execute_requested"])
+            self.assertEqual("skipped_missing_env", metadata["runner"]["status"])
+            self.assertEqual("skipped_missing_env", runner_report["status"])
+            self.assertEqual("OPENAI_API_KEY", runner_report["provider_env_var"])
+            self.assertFalse((tmp / "raw_outputs.jsonl").exists())
 
 
 if __name__ == "__main__":
