@@ -1,182 +1,91 @@
 # Team 6 Opal Verifier
 
-SSD TCG/Opal command-response trajectory pass/fail classification.
-SNU Introduction to Deep Learning (M2177.0043) | Due: 2026-06-08
+SNU Introduction to Deep Learning (M2177.0043) Opal command-response trajectory pass/fail classification.
 
-## Leaderboard
+## 현재 원칙
 
-| Score | Method | Commit/Branch | Date |
-|-------|--------|---------------|------|
-| **73.00** | **Rule engine bug fixes (auth + RO write blocking)** | `solver-fix-auth-ro` / `dev` | **2026-05-20** |
-| 71.50 | Rule engine (UNEXPECTED_ERROR_STATUS) | `2df1e71` / `best-71.50` | 2026-05-18 |
-| 69.50 | Rule engine (field semantics) | `c613397` | 2026-05-18 |
-| 68.00 | Rule engine (spec index) | `fd43bd5` | 2026-05-17 |
-| 60.50 | Rule engine (initial) | `872f31d` | 2026-05-17 |
+- 제출 및 학습 architecture는 LLM-only다.
+- rule engine, rule fallback, rule-id 기반 runtime, public label supervised 학습을 사용하지 않는다.
+- public 20은 supervised train source가 아니라 shape/reference 감사용으로만 사용한다.
+- 서버 작업 root는 `/workspace/sinjeongmin_opal_verifier`다. `/workspace/team6`는 현재 작업 root로 사용하지 않는다.
+- 서버 비밀번호나 token은 repo, 문서, script, shell command argument에 저장하지 않는다.
 
-## Architecture: Rule Engine + LoRA Hybrid
+## 현재 제출 구조
 
-```
-Input trajectory (JSON command-response sequence)
-       |
-[1] Rule Engine (StatefulOpalVerifier)
-       |  - Stateful session/auth/SP/locking tracking
-       |  - 50+ spec-derived rules
-       |  - UNEXPECTED_ERROR_STATUS: all unexplained errors -> fail
-       |
-  prediction + rule_id
-       |
-  Specific rule matched?
-       YES --> Use rule prediction directly (high confidence)
-       NO  --> rule_id == UNEXPECTED_ERROR_STATUS
-              |
-[2] LoRA Override (Qwen3.5-4B + LoRA adapter v2)
-       |  - Rich format: method, status, payload, session state, TCG rule summary
-       |  - Logit comparison: p(pass) vs p(fail)
-       |
-  LoRA says "pass" --> Override to pass (rescue false positive)
-  LoRA says "fail" --> Keep fail (agree with rule engine)
-```
-
-**Key insight**: The aggressive approach (all unexplained errors = fail) scores higher on hidden test data than the conservative approach (unexplained errors = pass). The LoRA adapter selectively rescues false positives.
-
-## Project Structure
-
-```
-src/                              # Submission code (deployed to evaluation server)
+```text
+src/
++-- solver.py       # LLM artifact 기반 제출 entrypoint
 +-- __init__.py
-+-- solver.py                     # Rule engine + Solver class (73.00 base)
-+-- lora_solver.py                # LoRA adapter inference (v2 only, logit comparison)
 
-tools/
-+-- training/                     # Training pipeline
-|   +-- sweep_lora.py             # HP sweep (LR -> rank -> alpha -> dropout -> len -> model)
-|   +-- finetune_lora_v2.py       # Rich format training + label masking
-|   +-- train_uncertainty_resolver.py  # Uncertainty resolver (tier-based LoRA + rule context)
-|   +-- build_training_data.py    # Training data builder from rule engine oracle
-|   +-- brier_trainer.py          # ConfTuner Brier score loss for calibration
-|   +-- self_distill.py           # Self-distillation for calibration
-|   +-- generate_uncertainty_data.py   # Uncertainty training data generation
-|   +-- format_v4.py              # V4 format: filtered trajectory + TCG rule summary
-|   +-- quick_sweep.py            # Quick HP sweep: 5 epochs x 6 configs
-|   +-- deploy_and_train.sh       # Deploy code to server and start training
-|   +-- run_full_pipeline.sh      # Full pipeline automation
-|   +-- run_9b_pipeline.sh        # 9B model training pipeline
-|   +-- cycle2_train.py           # [archive candidate] Cycle 2 training script
-|   +-- cycle3_train.py           # [archive candidate] Cycle 3 training script
-+-- eval/                         # Evaluation
-|   +-- eval_lora.py              # LoRA model evaluation on public/synthetic data
-|   +-- metamorphic_eval.py       # Metamorphic/synthetic test generation
-|   +-- mutation_eval.py          # Mutation testing for rule adequacy
-|   +-- conformal_calibration.py  # Conformal prediction calibration
-|   +-- diagnose_public.py        # Public 20 case diagnosis
-|   +-- prepare_submission.sh     # Submission preparation script
-+-- datagen/                      # Data generation
-|   +-- generate_spec_data.py     # Spec-based training data (1,435 cases)
-|   +-- generate_gap_data.py      # Gap data for missing rule categories (209 Column ACL cases)
-+-- analysis/                     # Diagnostics
-    +-- cycle0_diagnose.py        # Baseline diagnostic measurements
-    +-- rule_coverage.py          # Rule/spec coverage analysis
-    +-- metamorphic_coverage.py   # Metamorphic coverage metrics
-    +-- intermediate_eval.py      # Intermediate checkpoint evaluation
-    +-- test_fail_dp_cases.py     # DEFAULT_PASS fail case analysis
-
-configs/
-+-- wandb_sweep.yaml              # W&B sweep configuration
-
-docs/
-+-- papers.md                     # Paper archive (42+ papers across all cycles)
-+-- server_setup.md               # Server structure and deployment guide
-+-- overfitting_analysis.md       # 12 papers + 12 improvement methods for LoRA overfitting
-+-- spec_rules.md                 # Spec-derived rules documentation
-+-- sweep_plan.md                 # HP sweep plan (architecture, loss, metrics)
-+-- archive/                      # Historical documentation from earlier cycles
-
-setup.sh                          # Evaluation setup script (installs peft, runs smoke test)
-pyproject.toml                    # Package metadata (no runtime dependencies)
-PROGRESS.md                       # Complete experiment log and timeline
+artifacts/
++-- merged_model/ 또는 lora_adapter*/
 ```
 
-## How to Train
+`src/solver.py`는 package-local merged model 또는 LoRA adapter를 로드한다. 모델 artifact가 없으면 rule fallback으로 돌아가지 않고 fail-closed 한다.
 
-### Prerequisites
+## 현재 주요 도구
 
-- Server access: `ssh student@147.46.78.61 -p 2227`
-- Pre-cached models at `/dl2026/skeleton/model_cache/`
-- Training data at `/workspace/team6/training_data/`
+```text
+tools/analysis/
++-- build_supervised_manifest.py
++-- validate_manifest.py
++-- data_audit.py
 
-### Deploy Code to Server
+tools/datagen/
++-- generate_long_shape_source.py
++-- generate_long_trajectories.py
++-- generate_spec_data.py
++-- generate_gap_data.py
+
+tools/training/
++-- train_manifest_lora.py
++-- train_manifest_full.py
++-- run_manifest_lora_sweep.py
+
+tools/eval/
++-- prepare_submit.sh
++-- check_submit_package.py
++-- runtime_smoke_submit_package.py
++-- eval_manifest_adapter.py
++-- select_manifest_sweep_candidate.py
+```
+
+과거 rule pipeline, rule-prompt solver, public-label eval script, `/workspace/team6` 기반 script는 `tools/archive/legacy_rule_pipeline/` 아래에만 보존한다. 현재 학습/제출 실행 경로로 사용하지 않는다.
+
+## 현재 운영 문서
+
+- 서버 운영: [docs/server_operations_current.md](docs/server_operations_current.md)
+- 현재 handoff: [docs/archive/current_task.md](docs/archive/current_task.md)
+- 최신 cycle 기록: [docs/archive/](docs/archive/)
+
+## 로컬 검증
 
 ```bash
-# Deploy src/ and tools/ to server
-sshpass -p '$PASSWORD' scp -P 2227 -r \
-  src/ tools/ setup.sh pyproject.toml \
-  student@147.46.78.61:/workspace/team6/team6-opal-verifier/
+python3 -m unittest discover -s tests -v
+python3 -m py_compile src/solver.py tools/eval/check_submit_package.py
+git diff --check
 ```
 
-### Run Training
+현재 로컬 회귀 테스트는 package readiness, no-rule marker gate, manifest trajectory 구조, v4.1 shape generation, data audit root guard, full/selective fine-tuning CLI, LoRA sweep CLI, runtime smoke 계약을 포함한다.
+
+## 서버 Sync 원칙
+
+서버 연결은 최소 10회 재시도 단위로 점검한다. 연결이 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`에서만 작업하고, `origin/sinjeongmin` 또는 검증된 bundle로 fast-forward만 수행한다.
 
 ```bash
-# Option 1: Full pipeline (deploy + train + evaluate)
-ssh student@147.46.78.61 -p 2227 \
-  "cd /workspace/team6/team6-opal-verifier && \
-   nohup bash tools/training/run_full_pipeline.sh > /workspace/team6/pipeline.log 2>&1 &"
-
-# Option 2: HP sweep
-ssh student@147.46.78.61 -p 2227 \
-  "cd /workspace/team6/team6-opal-verifier && \
-   nohup python3 tools/training/sweep_lora.py > /workspace/team6/sweep.log 2>&1 &"
-
-# Option 3: Quick sweep (5 epochs x 6 configs)
-ssh student@147.46.78.61 -p 2227 \
-  "cd /workspace/team6/team6-opal-verifier && \
-   nohup python3 tools/training/quick_sweep.py > /workspace/team6/quick_sweep.log 2>&1 &"
-
-# Monitor training
-ssh student@147.46.78.61 -p 2227 "tail -30 /workspace/team6/pipeline.log"
+git ls-remote origin refs/heads/sinjeongmin
+git bundle verify /tmp/opal_cycle3_<short_head>_after_fca0652.bundle
 ```
 
-## How to Evaluate
+자세한 명령은 [docs/server_operations_current.md](docs/server_operations_current.md)를 따른다.
 
-```bash
-# Evaluate LoRA model on public 20 cases
-ssh student@147.46.78.61 -p 2227 \
-  "cd /workspace/team6/team6-opal-verifier && \
-   python3 tools/eval/eval_lora.py --dataset-root /dl2026/dataset"
+## Leaderboard 제출 기준
 
-# Diagnose public cases (rule engine only)
-ssh student@147.46.78.61 -p 2227 \
-  "cd /workspace/team6/team6-opal-verifier && \
-   python3 tools/eval/diagnose_public.py --dataset-root /dl2026/dataset"
-```
+현재 leaderboard 제출은 no-go 상태다. 제출하려면 다음 evidence가 필요하다.
 
-## How to Submit
-
-```bash
-# Prepare submission directory
-ssh student@147.46.78.61 -p 2227 \
-  "cd /workspace/team6/team6-opal-verifier && \
-   bash tools/eval/prepare_submission.sh"
-
-# Submit (submit command available on server)
-ssh student@147.46.78.61 -p 2227 \
-  "submit --dir /workspace/team6/submit-latest/"
-```
-
-Submission includes `src/` (solver + lora_solver) + `setup.sh` + `pyproject.toml`. Model weights (LoRA adapter) are loaded from the evaluation server's model cache; the adapter itself is small (~32MB) and can be included in the submission directory under `artifacts/`.
-
-## Constraints (project.pdf p.10)
-
-- **Evaluation**: NO network access, 3 hours, L40S 48GB
-- **Setup**: Network available, 20 minutes
-- **Models**: Pre-cached only (Qwen3.5-{0.8B,2B,4B,9B,27B-FP8}, gemma-4-*)
-- **Submission size**: 12GB max
-- **Daily submission quota**: Limited (often exceeded)
-
-## References
-
-- Hu, E. J. et al. (2022). *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR.
-- Lewis, P. et al. (2020). *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. NeurIPS.
-- TOGLL (ASE 2024): Fine-tuned small models beat large zero-shot 3.8x.
-- Zhang et al. (ICLR 2024): Model scaling > data scaling for fine-tuning.
-- Agrawal et al. (NeurIPS 2024): Many-Shot In-Context Learning.
-- See `docs/papers.md` for the full 42+ paper archive.
+- 새 학습 artifact 또는 평가 대상 artifact 완료.
+- calibration/hidden 평가 및 threshold 결정 기록.
+- package 크기 `<12GB`.
+- `tools/eval/check_submit_package.py` 통과.
+- `tools/eval/runtime_smoke_submit_package.py --offline --first-forward` 통과.
+- 기존 leaderboard 결과와 비교해 왜 지금 제출해야 하는지에 대한 Korean archive 기록.

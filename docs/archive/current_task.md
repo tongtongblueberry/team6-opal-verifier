@@ -1,12 +1,13 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 13:08 KST
+- 최종 갱신: 2026-05-26 13:16 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최근 주요 commit:
+  - `b2f6d3d make handoff sync checks authoritative`
   - `72d3e6a archive ssh retry status after resume`
   - `28bcacd refresh handoff after prepare submit test`
   - `3ba0f46 add prepare submit integration test`
@@ -23,10 +24,10 @@
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
   - authoritative check: `git ls-remote origin refs/heads/sinjeongmin`
-  - 이 handoff 직전 확인값: `72d3e6a archive ssh retry status after resume`
+  - 이 handoff 직전 확인값: `b2f6d3d make handoff sync checks authoritative`
 - 서버 sync용 최신 bundle:
   - authoritative 생성 명령: `git bundle create /tmp/opal_cycle3_$(git rev-parse --short HEAD)_after_fca0652.bundle fca06523f66fdd8f4950da6c51d87e4efaa74b6d..HEAD`
-  - 이 handoff 직전 확인값: `/tmp/opal_cycle3_72d3e6a_after_fca0652.bundle`
+  - 이 handoff 직전 확인값: `/tmp/opal_cycle3_b2f6d3d_after_fca0652.bundle`
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
 - 로컬 테스트:
   - `python3 -m unittest discover -s tests -v`: 61 tests OK
@@ -119,6 +120,9 @@
 
 - `prepare_submit.sh`는 더 이상 `src/lora_solver.py`를 복사하지 않으며, 패키징 중 `check_submit_package.py`를 필수 실행한다.
 - `tests/test_prepare_submit_script.py`는 fake LoRA adapter로 `prepare_submit.sh` 전체 패키징 flow와 `[6i] Python package readiness gate` 실행을 검증한다.
+- `README.md`는 현재 LLM-only 구조와 `/workspace/sinjeongmin_opal_verifier` 운영 기준으로 정리했다.
+- `docs/server_operations_current.md`는 현재 서버 접속, sync, 평가, 제출 판단 절차의 기준 문서다.
+- `docs/server_setup.md`, `docs/sweep_plan.md`는 legacy 문서로 표시했다.
 - `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.
 - `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
 - active `src`는 `solver.py`, `__init__.py`만 남아 있다.
@@ -139,6 +143,7 @@
 - 2026-05-26 12:53:05~12:56:20 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:58:54~13:02:10 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 13:04:53~13:08:08 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 13:11:56~13:15:11 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
@@ -149,7 +154,7 @@
 ## 다음 실행 순서
 
 1. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
-2. 서버 연결이 회복되면 local commit `28bcacd`를 서버 repo에 fast-forward 방식으로 sync한다.
+2. 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다.
 3. v4.1 strict reference validate를 실행한다.
 4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
 5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.

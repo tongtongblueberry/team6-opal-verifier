@@ -1,3 +1,14 @@
+# Deprecated Server Setup Guide
+
+이 문서는 과거 `/workspace/team6` 및 `sshpass` 기반 운영 기록을 보존하는 legacy 문서다. 현재 cycle에서는 사용하지 않는다.
+
+- 현재 운영 문서: [server_operations_current.md](server_operations_current.md)
+- 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
+- 현재 repo: `/workspace/sinjeongmin_opal_verifier/repo`
+- 금지: `/workspace/team6`를 새 작업 root로 사용, `sshpass`/명령행 비밀번호/비밀번호 파일 저장, legacy `prepare_submission.sh` 실행
+
+아래 내용은 과거 기록이며 실행 절차로 사용하면 안 된다.
+
 # Server Setup & Operations Guide
 
 ## Server Access

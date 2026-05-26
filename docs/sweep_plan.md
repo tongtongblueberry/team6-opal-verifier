@@ -1,3 +1,9 @@
+# Deprecated Sweep Plan
+
+이 문서는 과거 sweep 계획이며 현재 cycle의 실행 지침이 아니다. 특히 `/workspace/team6`, `sshpass`, legacy sweep script 관련 명령은 사용하지 않는다.
+
+현재 실행 기준은 [server_operations_current.md](server_operations_current.md)와 [archive/current_task.md](archive/current_task.md)를 따른다.
+
 # LoRA Hyperparameter Sweep Plan
 
 최종 갱신: 2026-05-19
