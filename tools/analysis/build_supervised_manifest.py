@@ -19,6 +19,21 @@ from typing import Any, DefaultDict, Dict, Iterator, List, Mapping, Optional, Se
 
 
 FORMAT_VERSION = "supervised_manifest.v1"
+# Changed: keep the prompt schema identity independent of row contents.
+# Why: downstream validation and threshold artifacts need one stable renderer contract hash.
+PROMPT_SCHEMA_VERSION = "manifest_chat_input_label.v1"
+PROMPT_RENDERER_CONTRACT = {
+    "version": PROMPT_SCHEMA_VERSION,
+    "builder": "tools.analysis.build_supervised_manifest",
+    "renderer": "tools.training.train_manifest_lora.build_messages",
+    "message_contract": [
+        {"role": "user", "content_field": "input", "normalization": "verbatim_manifest_value"},
+        {"role": "assistant", "content_field": "label", "allowed_values": ["fail", "pass"]},
+    ],
+    "generation_prompt": False,
+    "prompt_schema_hash_field": "prompt_schema_hash",
+    "prompt_schema_hash_excluded_from_prompt": True,
+}
 JSON_SUFFIXES = {".json", ".jsonl"}
 KST = timezone(timedelta(hours=9), name="KST")
 
@@ -162,6 +177,22 @@ REFERENCE_AUXILIARY_KEYS = (
     "duplicate_groups",
     "rejection_examples",
 )
+# Changed: define score/report-only keys that are not supervised training inputs.
+# Why: manifest rows must not be synthesized from IFD/metrics artifacts without example content.
+TRAINING_AUXILIARY_KEYS = {key.lower() for key in REFERENCE_AUXILIARY_KEYS} | {
+    "length",
+    "length_bin",
+    "num_records",
+}
+TRAINING_METADATA_KEYS = (
+    {key.lower() for key in ID_KEYS}
+    | {key.lower() for key in SOURCE_KEYS}
+    | {key.lower() for key in LABEL_KEYS}
+    | {key.lower() for key in TEMPLATE_KEYS}
+    | {key.lower() for key in MUTATION_KEYS}
+    | {key.lower() for key in GROUP_KEYS}
+    | {"content_hash", "path", "row", "split"}
+)
 REFERENCE_AUXILIARY_PATH_TERMS = (
     "score",
     "scores",
@@ -201,7 +232,14 @@ class ManifestRecord:
     template_id: str
     mutation_family: str
     length_bin: str
+    input_token_count: int
     content_hash: str
+    input_hash_no_label: str
+    parse_status: str
+    metadata_only: bool
+    prompt_schema_version: str
+    prompt_schema_hash: str
+    family_component: str
     group_id: str
     path: str
     row: int
@@ -375,6 +413,12 @@ def iter_json_records(payload: Any) -> Iterator[Mapping[str, Any]]:
         yield {"value": payload}
         return
 
+    # Changed: preserve {"records": [...], "label": ...} as one trajectory example.
+    # Why: the records list is the training input unit, not a container to flatten into steps.
+    if is_labeled_records_trajectory(payload):
+        yield payload
+        return
+
     lowered = {str(key).lower(): key for key in payload}
     for container_key in CONTAINER_KEYS:
         original_key = lowered.get(container_key)
@@ -409,6 +453,52 @@ def looks_record_like(record: Mapping[str, Any]) -> bool:
         | set(GROUP_KEYS)
     )
     return bool(keys & known)
+
+
+# Changed: add top-level trajectory helpers for raw manifest units.
+# Why: only the parent records+label object should control loading and input extraction.
+def top_level_value_for_key(record: Mapping[str, Any], wanted_key: str) -> Tuple[bool, Any]:
+    lowered = {str(key).lower(): key for key in record}
+    original_key = lowered.get(wanted_key.lower())
+    if original_key is None:
+        return False, None
+    return True, record[original_key]
+
+
+def is_labeled_records_trajectory(record: Mapping[str, Any]) -> bool:
+    has_records, records_value = top_level_value_for_key(record, "records")
+    has_label, label_value = top_level_value_for_key(record, "label")
+    return (
+        has_records
+        and has_label
+        and isinstance(records_value, (list, dict))
+        and normalize_label(label_value) is not None
+    )
+
+
+def records_trajectory_input_text(record: Mapping[str, Any]) -> Optional[str]:
+    if not is_labeled_records_trajectory(record):
+        return None
+    _, records_value = top_level_value_for_key(record, "records")
+    return stable_json({"records": records_value})
+
+
+# Changed: identify score/report rows that have no example payload.
+# Why: label plus ifd_score/metrics metadata alone must not become fallback JSON training input.
+def auxiliary_training_row_reason(record: Mapping[str, Any]) -> Optional[str]:
+    keys = {str(key).lower() for key in record}
+    auxiliary_hits = sorted(keys & TRAINING_AUXILIARY_KEYS)
+    if not auxiliary_hits:
+        return None
+    if is_labeled_records_trajectory(record):
+        return None
+    if keys & {key.lower() for key in INPUT_KEYS}:
+        return None
+
+    unexpected_payload_keys = sorted(keys - TRAINING_AUXILIARY_KEYS - TRAINING_METADATA_KEYS)
+    if unexpected_payload_keys:
+        return None
+    return "auxiliary_record_keys:" + ",".join(auxiliary_hits[:5])
 
 
 def stable_json(value: Any) -> str:
@@ -582,6 +672,12 @@ def strip_label_like_keys(value: Any) -> Any:
 
 
 def extract_input_text(record: Mapping[str, Any], label_source: Optional[str]) -> Optional[str]:
+    # Changed: use the full top-level records JSON for labeled trajectory examples.
+    # Why: individual step fields must not replace the complete trajectory unit.
+    trajectory_text = records_trajectory_input_text(record)
+    if trajectory_text is not None:
+        return trajectory_text
+
     parts: List[str] = []
     for path, value in find_key_matches(record, INPUT_KEYS):
         if label_source is not None and path_to_string(path) == label_source:
@@ -926,6 +1022,26 @@ def content_hash(input_text: str, label: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+# Changed: expose input-only semantic hashes for conflict and split audits.
+# Why: content_hash includes the label and cannot detect pass/fail conflict for identical inputs.
+def input_hash_no_label(input_text: str) -> str:
+    normalized = normalized_input_for_hash(input_text)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+# Changed: compute a single manifest prompt schema hash from the renderer contract.
+# Why: row input size/content changes must not create many prompt schema identities.
+def prompt_schema_hash() -> str:
+    return hashlib.sha256(stable_json(PROMPT_RENDERER_CONTRACT).encode("utf-8")).hexdigest()
+
+
+# Changed: derive a stable semantic component from source and template.
+# Why: mutation_family is often base, so downstream coverage audits need a more useful component key.
+def family_component_for_record(source: str, template_id: str) -> str:
+    basis = "\x1f".join((source, template_id))
+    return stable_id("family", basis, size=16)
+
+
 def blocklist_matches(path: str, source: str) -> Tuple[str, ...]:
     haystack = f"{path}\n{source}".lower()
     return tuple(term for term in BLOCKLIST_TERMS if term in haystack)
@@ -1078,6 +1194,17 @@ def build_manifest_records(
             )
             continue
 
+        # Changed: drop score/report-only rows before fallback input materialization.
+        # Why: auxiliary IFD/metrics metadata must not become supervised training text.
+        auxiliary_reason = auxiliary_training_row_reason(raw.data)
+        if auxiliary_reason is not None:
+            excluded_counts["auxiliary_record"] += 1
+            append_rejection(
+                rejection_examples,
+                Rejection("auxiliary_record", raw.path, raw.row, sample_hint, auxiliary_reason),
+            )
+            continue
+
         label, label_source = extract_label(raw.data)
         if label is None or label_source is None:
             excluded_counts["unknown_label"] += 1
@@ -1100,7 +1227,11 @@ def build_manifest_records(
         template_id = template_id_for_record(raw.data, input_text)
         mutation_family = mutation_family_for_record(raw.data)
         group_id = group_id_for_record(raw.data, source, template_id, mutation_family)
+        input_tokens = token_count(input_text)
         digest = content_hash(input_text, label)
+        input_digest = input_hash_no_label(input_text)
+        prompt_digest = prompt_schema_hash()
+        family_component = family_component_for_record(source, template_id)
         if block_matches:
             for term in block_matches:
                 blocklisted_included_counts[term] += 1
@@ -1115,8 +1246,15 @@ def build_manifest_records(
                 label_source=label_source,
                 template_id=template_id,
                 mutation_family=mutation_family,
-                length_bin=length_bin(token_count(input_text)),
+                length_bin=length_bin(input_tokens),
+                input_token_count=input_tokens,
                 content_hash=digest,
+                input_hash_no_label=input_digest,
+                parse_status="full_trajectory",
+                metadata_only=False,
+                prompt_schema_version=PROMPT_SCHEMA_VERSION,
+                prompt_schema_hash=prompt_digest,
+                family_component=family_component,
                 group_id=group_id,
                 path=raw.path,
                 row=raw.row,
@@ -1124,6 +1262,22 @@ def build_manifest_records(
                 blocklist_matches=block_matches,
             )
         )
+
+    candidates, label_conflict_groups = remove_input_label_conflicts(candidates)
+    label_conflict_count = sum(group["count"] for group in label_conflict_groups)
+    if label_conflict_count:
+        excluded_counts["label_conflict"] += label_conflict_count
+        for group in label_conflict_groups[:50]:
+            append_rejection(
+                rejection_examples,
+                Rejection(
+                    "label_conflict",
+                    group["paths"][0],
+                    group["rows"][0],
+                    group["sample_ids"][0],
+                    f"input_hash_no_label={group['input_hash_no_label']} labels={','.join(group['labels'])} count={group['count']}",
+                ),
+            )
 
     deduped, duplicate_groups = deduplicate_records(candidates)
     duplicate_count = sum(group["duplicate_count"] for group in duplicate_groups)
@@ -1180,6 +1334,36 @@ def deduplicate_records(records: Sequence[ManifestRecord]) -> Tuple[List[Manifes
             }
         )
     return deduped, duplicate_groups
+
+
+# Changed: quarantine all rows whose identical input has conflicting labels.
+# Why: label-including content_hash cannot catch pass/fail conflicts for the same trajectory.
+def remove_input_label_conflicts(records: Sequence[ManifestRecord]) -> Tuple[List[ManifestRecord], List[Dict[str, Any]]]:
+    groups: DefaultDict[str, List[ManifestRecord]] = defaultdict(list)
+    for record in records:
+        groups[record.input_hash_no_label].append(record)
+
+    conflict_hashes = {
+        digest
+        for digest, members in groups.items()
+        if len({member.label for member in members}) > 1
+    }
+    kept = [record for record in records if record.input_hash_no_label not in conflict_hashes]
+
+    conflict_groups: List[Dict[str, Any]] = []
+    for digest in sorted(conflict_hashes):
+        members = groups[digest]
+        conflict_groups.append(
+            {
+                "input_hash_no_label": digest,
+                "count": len(members),
+                "labels": sorted({member.label for member in members}),
+                "sample_ids": [member.sample_id for member in members[:20]],
+                "paths": sorted({member.path for member in members}),
+                "rows": [member.row for member in members[:20]],
+            }
+        )
+    return kept, conflict_groups
 
 
 def split_count(total: int, fraction: float) -> int:
@@ -1491,8 +1675,15 @@ def manifest_row(record: ManifestRecord, split: str) -> Dict[str, Any]:
         "template_id": record.template_id,
         "mutation_family": record.mutation_family,
         "length_bin": record.length_bin,
+        "input_token_count": record.input_token_count,
         "format_version": FORMAT_VERSION,
         "content_hash": record.content_hash,
+        "input_hash_no_label": record.input_hash_no_label,
+        "parse_status": record.parse_status,
+        "metadata_only": record.metadata_only,
+        "prompt_schema_version": record.prompt_schema_version,
+        "prompt_schema_hash": record.prompt_schema_hash,
+        "family_component": record.family_component,
         "group_id": record.group_id,
         "split": split,
         "path": record.path,
