@@ -59,13 +59,18 @@ class RunSelfInstructGenerationTests(unittest.TestCase):
             self.assertEqual(1, len(rows))
             self.assertFalse(rows[0]["execute"])
             self.assertFalse(metadata["execute"])
-            self.assertEqual("opal_final_response_output_first.v1", rows[0]["prompt_contract_version"])
+            self.assertEqual("opal_final_response_spec_grounded_output_first.v1", rows[0]["prompt_contract_version"])
             self.assertEqual(["tc1"], rows[0]["source_seed_sample_ids"])
+            self.assertIn("RULE 01", rows[0]["source_spec_rule_refs"])
+            self.assertEqual("docs/legacy_spec_rules.md", rows[0]["payload"]["spec_rule_context"][0]["source_path"])
             prompt_text = rows[0]["payload"]["messages"][1]["content"]
             self.assertIn("choose target_label as pass or fail", prompt_text)
             self.assertIn("target.final_response_index", prompt_text)
+            self.assertIn("spec_grounding", prompt_text)
+            self.assertIn("source_span", prompt_text)
             self.assertEqual(2, json.loads(prompt_text)["candidate_count"])
             self.assertNotIn("public_label", json.dumps(rows[0]["payload"]["seed_profile_context"]))
+            self.assertTrue(metadata["spec_rules_input"].endswith("docs/legacy_spec_rules.md"))
 
     def test_rejects_seed_rows_with_labels(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

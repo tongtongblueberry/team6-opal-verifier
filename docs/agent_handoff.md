@@ -53,7 +53,13 @@
   임의 deterministic fixture/smoke 산출물은 논문 기반 생성 데이터나 검증된 코드 기반 synthetic data가 아니므로 active surface에 두지 않는다.
 - 새 데이터 생성은 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다.
   - output-first classification generation을 사용한다.
+  <!-- Changed: require spec-rule source spans in Self-Instruct generation requests. -->
+  <!-- Why: ungrounded generator text is draft-only and cannot be accepted synthetic data. -->
+  - generation request는 `docs/legacy_spec_rules.md`에서 읽은 rule card/source-span을 payload에 넣어야 한다.
+  - raw candidate는 `spec_grounding` source span 없이는 parser/judge accepted synthetic 후보가 아니다.
   - LLM-only judge filtering을 사용한다.
+  - judge payload는 final-response targeting, required spec grounding, source-span support,
+    state-transition consistency, manifest-loader compatibility를 JSON boolean으로 요구한다.
   - 논문식 quality audit, evaluation, data-size/data-quality ablation을 구현 대상으로 둔다.
   - 공식 코드 기준은 `https://github.com/yizhongw/self-instruct`이고 license는 Apache-2.0이다.
   - 공식 출처와 차용 범위는 `third_party/self_instruct/README.md`와
@@ -164,6 +170,7 @@
 - v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
 - active datagen은 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
 - 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
+- generation request는 docs/legacy_spec_rules.md rule card/source-span 기반이어야 하며, spec_grounding 없는 Gemini/Codex text는 synthetic 후보가 아니라 draft/reject 대상이다.
 - Self-Instruct 공식 code source는 yizhongw/self-instruct이고 Apache-2.0이다. 현재는 vendor code 없이 문서 기준만 둔다.
 - LLM 호출 없는 parse_self_instruct_outputs, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence, dry-run generation request wrapper, dry-run judge wrapper를 먼저 둔다. 이후 외부 LLM runner raw output을 Gate A/B/C로 연결한다.
 - Gate A/B/C/D가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C/D 요약을 기록한다.
@@ -216,6 +223,8 @@
 - 단, LLM 호출 없는 공식-output parser, ROUGE-L/exact/conflict dedup/filter,
   Gate C manifest/model input equivalence, dry-run generation request wrapper,
   dry-run judge wrapper를 먼저 둔 뒤 외부 LLM runner와 연결한다.
+- dry-run generation request wrapper는 `docs/legacy_spec_rules.md` rule card/source-span을 payload에 포함해야 하며,
+  judge wrapper는 required spec grounding/source-span support/state-transition consistency/manifest-loader compatibility를 확인해야 한다.
 - public20-only 모델 검증은 병렬 보조로 진행하되, 위 5개 실제 학습 후보를 기준으로 train/val 결과를 비교한다.
 - Full FT 후보는 epoch별 final/checkpoint를 `tools/eval/eval_manifest_full_model.py --split val`로 평가해 val macro-F1, fail recall, pass recall, confusion matrix를 기록한다.
 <!-- Changed: align server handoff with server_access authority and retry/secret rules. Why: server workers need one authoritative source and explicit retry/secret constraints. -->

@@ -18,6 +18,20 @@ def _record(method: str, status: str, return_values: list[object] | None = None)
     }
 
 
+def _spec_grounding() -> list[dict[str, object]]:
+    return [
+        {
+            "rule_ref": "RULE 01",
+            "source_path": "docs/legacy_spec_rules.md",
+            "source_span": "docs/legacy_spec_rules.md:10-15",
+            "spec_section": "5.1.5.1",
+            "condition": "A method is processed completely and without error by the TPer",
+            "expected_status": "SUCCESS (0x00)",
+            "state_transition_notes": "The final response is checked against the cited rule.",
+        }
+    ]
+
+
 def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> dict[str, object]:
     final_index = len(records) - 1
     return {
@@ -34,6 +48,7 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "record_index": final_index,
             "reason": "The final response determines the label.",
         },
+        "spec_grounding": _spec_grounding(),
         "source": "self_instruct_candidate",
     }
 
@@ -58,6 +73,7 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
         self.assertEqual(1, normalized["target"]["final_response_index"])
         self.assertEqual(candidate["records"][1]["output"], normalized["target"]["final_response"])
         self.assertEqual(1, normalized["primary_evidence"]["record_index"])
+        self.assertEqual("RULE 01", normalized["spec_grounding"][0]["rule_ref"])
 
     def test_normalizes_fail_candidate_from_trajectory_container(self) -> None:
         records = [
@@ -76,6 +92,7 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
                 "final_response": final_response,
             },
             "primary_evidence": {"record_index": 1, "reason": "The final Set response fails."},
+            "spec_grounding": _spec_grounding(),
         }
 
         normalized = schema.normalize_candidate(candidate)
@@ -103,6 +120,13 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
         candidate.pop("primary_evidence")
 
         with self.assertRaisesRegex(schema.CandidateSchemaError, "primary_evidence_missing"):
+            schema.normalize_candidate(candidate)
+
+    def test_rejects_missing_spec_grounding(self) -> None:
+        candidate = _candidate("missing-grounding", "pass", [_record("Get", "SUCCESS")])
+        candidate.pop("spec_grounding")
+
+        with self.assertRaisesRegex(schema.CandidateSchemaError, "spec_grounding_missing"):
             schema.normalize_candidate(candidate)
 
     def test_cli_writes_normalized_jsonl_and_profile_json(self) -> None:

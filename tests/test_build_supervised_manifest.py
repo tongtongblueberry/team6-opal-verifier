@@ -132,6 +132,40 @@ class BuildSupervisedManifestTests(unittest.TestCase):
         self.assertEqual(builder.token_count(records[0].input_text), row["input_token_count"])
         self.assertEqual(builder.family_component_for_record(records[0].source, records[0].template_id), row["family_component"])
 
+    def test_spec_grounding_metadata_stays_out_of_manifest_input(self) -> None:
+        # Changed: assert spec-grounding metadata does not become model input text.
+        # Why: generation must be spec-grounded while Gate C keeps the trainer input records-only.
+        raw_records = [
+            builder.RawRecord(
+                path="grounded_candidate.jsonl",
+                row=0,
+                data={
+                    "sample_id": "grounded",
+                    "source": "self_instruct_candidate",
+                    "records": [{"input": {"method": {"name": "Get"}}, "output": {"status_codes": "SUCCESS"}}],
+                    "label": "pass",
+                    "spec_grounding": [
+                        {
+                            "rule_ref": "RULE 01",
+                            "source_path": "docs/legacy_spec_rules.md",
+                            "source_span": "docs/legacy_spec_rules.md:10-15",
+                            "condition": "A method is processed completely and without error by the TPer",
+                            "expected_status": "SUCCESS (0x00)",
+                        }
+                    ],
+                },
+            )
+        ]
+
+        records, excluded_counts, rejections, _, _ = builder.build_manifest_records(raw_records, include_blocklisted=False)
+
+        self.assertEqual(1, len(records))
+        self.assertEqual(0, sum(excluded_counts.values()))
+        self.assertEqual([], rejections)
+        self.assertIn('"records":', records[0].input_text)
+        self.assertNotIn("spec_grounding", records[0].input_text)
+        self.assertNotIn("legacy_spec_rules", records[0].input_text)
+
 
 if __name__ == "__main__":
     unittest.main()

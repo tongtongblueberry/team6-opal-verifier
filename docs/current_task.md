@@ -75,7 +75,12 @@
 - raw Self-Instruct output parser는 `tools/datagen/parse_self_instruct_outputs.py`다. 이 도구는 synthetic trajectory를 자체 생성하지 않는다.
 - Self-Instruct dedup/filter는 `tools/analysis/dedup_self_instruct_candidates.py`다.
 - Self-Instruct generation request dry-run wrapper는 `tools/datagen/run_self_instruct_generation.py`다. 이 도구는 prompt payload/metadata만 만들고 LLM/API 호출과 자체 candidate 생성을 하지 않는다.
+  <!-- Changed: record spec-grounded Self-Instruct request contract. -->
+  <!-- Why: ungrounded Gemini/Codex text is not valid synthetic candidate evidence. -->
+  이 wrapper는 `docs/legacy_spec_rules.md` rule card/source-span을 request payload에 넣어야 한다.
 - LLM-only judge dry-run/filter 도구는 `tools/analysis/filter_self_instruct_judge.py`다. 이 도구는 judge payload 생성과 외부 judge result parsing만 수행한다.
+  judge payload는 required spec grounding, source-span support, state-transition consistency,
+  manifest-loader compatibility를 확인해야 한다.
 - ad-hoc fixture/smoke generated data는 논문 기반 synthetic data가 아니므로 active surface에서 제거한다.
   다음 synthetic generation은 Self-Instruct output-first generation과 LLM-only judge filtering을 따라야 한다.
 - Self-Instruct 공식 기준은 Wang et al. 2023 ACL 논문, `https://github.com/yizhongw/self-instruct`,
@@ -210,6 +215,7 @@
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - `tools/archive/legacy_rule_pipeline/` 실행 코드는 active `tools/` namespace 혼동을 줄이기 위해 삭제했고, 삭제 범위와 폐기 사유는 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 둔다.
 - raw synthetic sample은 Gate A/B/C 통과 전에는 "합격 데이터"로 제시하지 않는다. 통과 뒤에는 `docs/samples/self_instruct_sample.md`에 generated 전체 trajectory, label, profile, public20 raw sample 1개 전체, Gate A/B/C 요약을 기록한다.
+- `spec_grounding` source span이 없는 raw output은 sample 공개, manifest 생성, training-ready split 선언 대상이 아니다.
 - Gate B dimension comparison은 public20 label을 local aggregate distribution과 public20-only `val` metric으로만 사용하고, row-level label을 synthetic generation/judge/generated manifest 입력에 넣지 않는다.
 - 임의 fixture/smoke generator와 관련 runs 산출물은 삭제 대상이다.
   학습, 검증, leaderboard 제출 근거로 사용하지 않는다.

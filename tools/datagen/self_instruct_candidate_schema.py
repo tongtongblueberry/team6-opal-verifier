@@ -116,6 +116,44 @@ def _normalize_primary_evidence(candidate: Mapping[str, Any], final_index: int) 
     return normalized
 
 
+# Changed: require source-span grounding metadata on generated candidates.
+# Why: ungrounded LLM text must not advance from raw output into judge, Gate A, or manifest staging.
+def _normalize_spec_grounding(candidate: Mapping[str, Any]) -> List[Json]:
+    grounding = candidate.get("spec_grounding")
+    if not isinstance(grounding, Sequence) or isinstance(grounding, (bytes, bytearray, str)) or len(grounding) == 0:
+        raise CandidateSchemaError("spec_grounding_missing")
+
+    normalized: List[Json] = []
+    for index, item in enumerate(grounding):
+        if not isinstance(item, Mapping):
+            raise CandidateSchemaError(f"spec_grounding_{index}_not_object")
+
+        rule_ref = _required_string(item, ("rule_ref", "rule_citation", "spec_rule_ref"), f"spec_grounding_{index}_rule_ref")
+        source_path = _required_string(item, ("source_path",), f"spec_grounding_{index}_source_path")
+        source_span = _required_string(item, ("source_span",), f"spec_grounding_{index}_source_span")
+        if "docs/legacy_spec_rules.md" not in source_path and "docs/legacy_spec_rules.md" not in source_span:
+            raise CandidateSchemaError(f"spec_grounding_{index}_source_not_legacy_spec_rules")
+        if ":" not in source_span or "-" not in source_span:
+            raise CandidateSchemaError(f"spec_grounding_{index}_source_span_not_line_range")
+
+        row: Json = {
+            "rule_ref": rule_ref,
+            "source_path": source_path,
+            "source_span": source_span,
+        }
+        for source_key, output_key in (
+            ("spec_section", "spec_section"),
+            ("condition", "condition"),
+            ("expected_status", "expected_status"),
+            ("state_transition_notes", "state_transition_notes"),
+        ):
+            value = item.get(source_key)
+            if isinstance(value, str) and value.strip():
+                row[output_key] = value.strip()
+        normalized.append(row)
+    return normalized
+
+
 # Changed: canonicalize label-bearing candidate rows and run the final-response invariant gate.
 # Why: generated labels must target records[-1].output before any judge, manifest, or training step.
 def normalize_candidate(candidate: Mapping[str, Any]) -> Json:
@@ -145,6 +183,7 @@ def normalize_candidate(candidate: Mapping[str, Any]) -> Json:
         "label_target": "final_response",
         "target": _normalize_target(candidate, final_index, final_response),
         "primary_evidence": _normalize_primary_evidence(candidate, final_index),
+        "spec_grounding": _normalize_spec_grounding(candidate),
         "source": candidate.get("source") if isinstance(candidate.get("source"), str) else "self_instruct_candidate",
     }
 
@@ -161,6 +200,13 @@ def profile_candidate(candidate: Mapping[str, Any]) -> Json:
     target = candidate.get("target")
     if isinstance(target, Mapping):
         profile["target_final_response_index"] = _as_index(target.get("final_response_index"))
+    grounding = candidate.get("spec_grounding")
+    if isinstance(grounding, Sequence) and not isinstance(grounding, (bytes, bytearray, str)):
+        profile["spec_rule_refs"] = [
+            item.get("rule_ref")
+            for item in grounding
+            if isinstance(item, Mapping) and isinstance(item.get("rule_ref"), str)
+        ]
     return profile
 
 

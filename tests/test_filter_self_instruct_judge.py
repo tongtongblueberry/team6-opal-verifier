@@ -18,6 +18,18 @@ def _record(method: str, status: str) -> dict[str, object]:
     }
 
 
+def _spec_grounding() -> list[dict[str, object]]:
+    return [
+        {
+            "rule_ref": "RULE 01",
+            "source_path": "docs/legacy_spec_rules.md",
+            "source_span": "docs/legacy_spec_rules.md:10-15",
+            "condition": "A method is processed completely and without error by the TPer",
+            "expected_status": "SUCCESS (0x00)",
+        }
+    ]
+
+
 def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> dict[str, object]:
     final_index = len(records) - 1
     return {
@@ -34,6 +46,7 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "record_index": final_index,
             "reason": "The final response determines the verdict.",
         },
+        "spec_grounding": _spec_grounding(),
     }
 
 
@@ -69,6 +82,9 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
             self.assertEqual("si-judge-1", row["sample_id"])
             prompt = row["payload"]["messages"][1]["content"]
             self.assertIn("is_final_response_targeted", prompt)
+            self.assertIn("has_required_spec_grounding", prompt)
+            self.assertIn("is_source_span_supported", prompt)
+            self.assertIn("spec_grounding", prompt)
             self.assertIn("has_public_or_rule_leakage", prompt)
             self.assertIn("generated_label", prompt)
 
@@ -84,6 +100,10 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
                         "sample_id": "si-judge-ok",
                         "decision": "accept",
                         "is_final_response_targeted": True,
+                        "has_required_spec_grounding": True,
+                        "is_source_span_supported": True,
+                        "is_state_transition_consistent": True,
+                        "is_manifest_loader_compatible": True,
                         "is_label_plausible": True,
                         "has_intermediate_label_leak": False,
                         "has_public_or_rule_leakage": False,
@@ -96,6 +116,10 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
                 "sample_id": "si-judge-bad",
                 "decision": "accept",
                 "is_final_response_targeted": True,
+                "has_required_spec_grounding": True,
+                "is_source_span_supported": True,
+                "is_state_transition_consistent": True,
+                "is_manifest_loader_compatible": True,
                 "is_label_plausible": True,
                 "has_intermediate_label_leak": True,
                 "has_public_or_rule_leakage": False,

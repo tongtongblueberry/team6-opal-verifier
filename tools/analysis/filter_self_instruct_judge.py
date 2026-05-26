@@ -35,8 +35,14 @@ JUDGE_REQUEST_SCHEMA_VERSION = "self_instruct.judge_request.v1"
 JUDGE_REPORT_SCHEMA_VERSION = "self_instruct.judge_filter_report.v1"
 JUDGE_CONTRACT_VERSION = "opal_final_response_judge.v1"
 RAW_JUDGE_TEXT_KEYS = ("judge_output", "raw_output", "llm_output", "response", "text", "content")
+# Changed: require source-span and loader-compatibility booleans in judge output.
+# Why: judge accept must reject unsupported generated text before Gate A/B/C.
 REQUIRED_BOOL_FIELDS = (
     "is_final_response_targeted",
+    "has_required_spec_grounding",
+    "is_source_span_supported",
+    "is_state_transition_consistent",
+    "is_manifest_loader_compatible",
     "is_label_plausible",
     "has_intermediate_label_leak",
     "has_public_or_rule_leakage",
@@ -116,6 +122,7 @@ def _candidate_for_judge(candidate: Mapping[str, Any]) -> Json:
         "label_target": candidate.get("label_target"),
         "target": candidate.get("target"),
         "primary_evidence": candidate.get("primary_evidence"),
+        "spec_grounding": candidate.get("spec_grounding"),
     }
 
 
@@ -132,14 +139,22 @@ def _judge_user_prompt(candidate: Mapping[str, Any]) -> str:
         "candidate": _candidate_for_judge(candidate),
         "judge_questions": {
             "is_final_response_targeted": "Is the label evidence tied to records[-1].output rather than an intermediate response?",
+            "has_required_spec_grounding": "Does spec_grounding contain at least one docs/legacy_spec_rules.md source_span with rule_ref, condition, and expected_status?",
+            "is_source_span_supported": "Does the cited source_span support the final-response pass/fail rationale without relying on unstated Opal facts?",
+            "is_state_transition_consistent": "Are session/auth/lifecycle/object state transitions in records consistent with the cited condition and final response?",
+            "is_manifest_loader_compatible": "Can the candidate become a manifest row whose model input is exactly stable JSON {'records': records}, with grounding kept as metadata only?",
             "is_label_plausible": "Is the generated pass/fail label plausible from the final response and trajectory state?",
             "has_intermediate_label_leak": "Does the rationale rely on an intermediate success/failure as the main label evidence?",
-            "has_public_or_rule_leakage": "Does the candidate include public labels, rule ids, rule-engine text, or archived verifier outputs?",
+            "has_public_or_rule_leakage": "Does the candidate include public labels, runtime rule-engine text, rule-derived labels, or archived verifier outputs?",
             "decision": "accept or reject",
         },
         "accept_condition": [
             'decision == "accept"',
             "is_final_response_targeted == true",
+            "has_required_spec_grounding == true",
+            "is_source_span_supported == true",
+            "is_state_transition_consistent == true",
+            "is_manifest_loader_compatible == true",
             "is_label_plausible == true",
             "has_intermediate_label_leak == false",
             "has_public_or_rule_leakage == false",
@@ -148,6 +163,10 @@ def _judge_user_prompt(candidate: Mapping[str, Any]) -> str:
             "sample_id": candidate.get("sample_id"),
             "decision": "accept|reject",
             "is_final_response_targeted": "boolean",
+            "has_required_spec_grounding": "boolean",
+            "is_source_span_supported": "boolean",
+            "is_state_transition_consistent": "boolean",
+            "is_manifest_loader_compatible": "boolean",
             "is_label_plausible": "boolean",
             "has_intermediate_label_leak": "boolean",
             "has_public_or_rule_leakage": "boolean",
@@ -218,6 +237,10 @@ def normalize_judge_decision(row: Mapping[str, Any]) -> Json:
         "sample_id": sample_id,
         "decision": decision,
         "is_final_response_targeted": _as_bool(payload.get("is_final_response_targeted"), "is_final_response_targeted"),
+        "has_required_spec_grounding": _as_bool(payload.get("has_required_spec_grounding"), "has_required_spec_grounding"),
+        "is_source_span_supported": _as_bool(payload.get("is_source_span_supported"), "is_source_span_supported"),
+        "is_state_transition_consistent": _as_bool(payload.get("is_state_transition_consistent"), "is_state_transition_consistent"),
+        "is_manifest_loader_compatible": _as_bool(payload.get("is_manifest_loader_compatible"), "is_manifest_loader_compatible"),
         "is_label_plausible": _as_bool(payload.get("is_label_plausible"), "is_label_plausible"),
         "has_intermediate_label_leak": _as_bool(payload.get("has_intermediate_label_leak"), "has_intermediate_label_leak"),
         "has_public_or_rule_leakage": _as_bool(payload.get("has_public_or_rule_leakage"), "has_public_or_rule_leakage"),
@@ -232,6 +255,10 @@ def judge_decision_accepts(decision: Mapping[str, Any]) -> bool:
     return (
         decision.get("decision") == "accept"
         and decision.get("is_final_response_targeted") is True
+        and decision.get("has_required_spec_grounding") is True
+        and decision.get("is_source_span_supported") is True
+        and decision.get("is_state_transition_consistent") is True
+        and decision.get("is_manifest_loader_compatible") is True
         and decision.get("is_label_plausible") is True
         and decision.get("has_intermediate_label_leak") is False
         and decision.get("has_public_or_rule_leakage") is False
@@ -243,6 +270,14 @@ def _reject_reason(decision: Mapping[str, Any]) -> str:
         return "judge_decision_reject"
     if decision.get("is_final_response_targeted") is not True:
         return "not_final_response_targeted"
+    if decision.get("has_required_spec_grounding") is not True:
+        return "missing_spec_grounding"
+    if decision.get("is_source_span_supported") is not True:
+        return "source_span_not_supportive"
+    if decision.get("is_state_transition_consistent") is not True:
+        return "state_transition_inconsistent"
+    if decision.get("is_manifest_loader_compatible") is not True:
+        return "manifest_loader_incompatible"
     if decision.get("is_label_plausible") is not True:
         return "label_not_plausible"
     if decision.get("has_intermediate_label_leak") is not False:

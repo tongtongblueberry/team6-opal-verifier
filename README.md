@@ -190,11 +190,15 @@ filtering을 붙인다.
 <!-- Changed: add dry-run Self-Instruct generation and judge wrappers. -->
 <!-- Why: the next synthetic-data step needs official-protocol prompt payloads and judge result parsing without API calls or ad-hoc candidates. -->
 `tools/datagen/run_self_instruct_generation.py`는 Self-Instruct output-first
-classification prompt payload와 request metadata만 생성한다. 기본 모드는 dry-run이고
+classification prompt payload와 request metadata만 생성한다. 이제 dry-run payload는
+`docs/legacy_spec_rules.md`에서 읽은 `rule_ref`/`source_span` rule card를 포함해야 하며,
+raw candidate는 `spec_grounding` 없이는 accepted synthetic 후보가 아니다. 기본 모드는 dry-run이고
 synthetic trajectory를 자체 생성하지 않으며 `--execute`는 현재 API 호출 없이 실패한다.
 `tools/analysis/filter_self_instruct_judge.py`는 generated candidate용 LLM-only judge
 payload를 만들고 외부 judge result JSONL을 accepted/rejected candidate로 파싱한다.
-public20 label, rule id, rule engine output은 두 도구의 prompt 입력에 넣지 않는다.
+judge payload는 final-response targeting, required spec grounding, source-span support,
+state-transition consistency, manifest-loader compatibility를 요구한다. public20 label,
+runtime rule engine output, archived verifier output은 두 도구의 prompt 입력에 넣지 않는다.
 
 ## 서버 Sync 원칙
 

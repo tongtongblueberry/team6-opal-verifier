@@ -18,6 +18,18 @@ def _record(method: str, status: str, return_values: list[object] | None = None)
     }
 
 
+def _spec_grounding() -> list[dict[str, object]]:
+    return [
+        {
+            "rule_ref": "RULE 01",
+            "source_path": "docs/legacy_spec_rules.md",
+            "source_span": "docs/legacy_spec_rules.md:10-15",
+            "condition": "A method is processed completely and without error by the TPer",
+            "expected_status": "SUCCESS (0x00)",
+        }
+    ]
+
+
 def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> dict[str, object]:
     final_index = len(records) - 1
     return {
@@ -34,6 +46,7 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "record_index": final_index,
             "reason": "The final response determines the label.",
         },
+        "spec_grounding": _spec_grounding(),
         "source": "self_instruct_candidate",
     }
 

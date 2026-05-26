@@ -55,8 +55,10 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - Gate C manifest/model input equivalence 도구는 `tools/analysis/check_manifest_model_input_equivalence.py`이며, synthetic candidate가 manifest와 trainer loader에서 전체 trajectory 단위로 유지되는지 검증한다.
 - public20 train/val split 도구는 `tools/analysis/build_public20_train_val_split.py`이며, 산출물은 `runs/model_validation/public20_splits/`에 둔다. 이 도구는 public20 `test` split을 만들지 않는다.
 - full/selective FT standalone checkpoint 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다. 이 도구는 LoRA adapter 전용 evaluator가 아니라 full model path를 직접 로드하는 public20/generated `val` 평가 도구다.
-- Self-Instruct generation wrapper는 `tools/datagen/run_self_instruct_generation.py`이며, dry-run prompt payload와 metadata만 생성한다. API 호출과 ad-hoc candidate 생성은 하지 않는다.
-- LLM-only judge filter는 `tools/analysis/filter_self_instruct_judge.py`이며, judge prompt payload와 외부 judge result parsing만 담당한다.
+<!-- Changed: align docs index with spec-grounded generation request contract. -->
+<!-- Why: generated text without legacy_spec_rules source spans must remain draft/reject material. -->
+- Self-Instruct generation wrapper는 `tools/datagen/run_self_instruct_generation.py`이며, dry-run prompt payload와 metadata만 생성한다. 이 payload는 `docs/legacy_spec_rules.md` rule card/source-span을 포함해야 하며 API 호출과 ad-hoc candidate 생성은 하지 않는다.
+- LLM-only judge filter는 `tools/analysis/filter_self_instruct_judge.py`이며, judge prompt payload와 외부 judge result parsing만 담당한다. judge payload는 required spec grounding, source-span support, state-transition consistency, manifest-loader compatibility를 확인한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data.
   논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은 active tools/runs에 두지 않는다.
 - Self-Instruct synthetic generation은 Wang et al. 2023 ACL 논문과 `yizhongw/self-instruct`
@@ -65,7 +67,7 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - LLM 호출 없는 parser, ROUGE-L/exact/conflict dedup/filter,
   Gate C manifest/model input equivalence, dry-run generation request wrapper,
   dry-run judge wrapper를 먼저 둔다. 이후 외부 LLM runner raw output을 받아 Gate A/B/C로 연결한다.
-- Self-Instruct synthetic data가 Gate A/B/C를 통과하면 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체, label, target, primary evidence, profile, public20 raw sample 1개 전체, Gate A audit summary, Gate B comparison summary, Gate C manifest/model-input summary를 기록한다.
+- Self-Instruct synthetic data가 Gate A/B/C를 통과하면 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체, label, target, primary evidence, spec grounding source span, profile, public20 raw sample 1개 전체, Gate A audit summary, Gate B comparison summary, Gate C manifest/model-input summary를 기록한다.
 - public20 reference audit pack은 public20 검증 결과가 아니라 reference structure/profile 확인용 산출물로 표현한다.
 - Gate A/B/C 전에는 raw synthetic sample을 "합격 데이터"로 제시하지 않는다.
 - secret, token, password가 들어간 파일은 archive하지 않고 삭제 대상으로 본다.

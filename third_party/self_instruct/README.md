@@ -33,7 +33,9 @@ Self-Instruct 공식 pipeline은 다음 단계로 구성된다.
 
 우리 과제는 항상 `pass`/`fail` classification이므로 classification identification은
 고정 `true`로 취급한다. 구현 대상은 output-first classification candidate generation,
-filtering, quality audit, ablation이다.
+filtering, quality audit, ablation이다. 단, Opal pass/fail label은 폐쇄 명세 판단이므로
+generation request는 `docs/legacy_spec_rules.md`에서 읽은 rule card/source-span을 함께
+제공해야 하며, source-span 없는 output은 draft/reject로만 취급한다.
 
 ## 차용 범위
 
@@ -41,6 +43,8 @@ filtering, quality audit, ablation이다.
 
 - 공식 prompt 구조와 metadata 저장 방식.
 - Classification output-first generation 절차.
+- Domain source card를 prompt context로 넣고 candidate가 `spec_grounding.source_span`을
+  되돌려주게 하는 offline provenance contract.
 - ROUGE-L 기반 near-duplicate filtering 원칙.
 - Duplicate/conflicting instance 제거 원칙.
 - Generated sample quality audit protocol.

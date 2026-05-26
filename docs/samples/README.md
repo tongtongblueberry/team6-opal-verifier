@@ -14,6 +14,7 @@ Self-Instruct synthetic data가 Gate A/B/C를 모두 통과하면
 - label
 - target
 - primary evidence
+- spec grounding source span
 - profile
 - public20 raw sample 1개 전체
 - Gate A audit summary
@@ -32,6 +33,11 @@ leaderboard hidden 평가로 둔다.
 
 현재 상태: Gate A/B/C를 모두 통과한 Self-Instruct synthetic dataset이 아직 없으므로
 `self_instruct_sample.md`는 작성하지 않는다.
+
+<!-- Changed: make sample publication depend on spec-grounded candidate provenance. -->
+<!-- Why: source-span 없는 generated text는 accepted synthetic sample로 공개하면 안 된다. -->
+`spec_grounding` source span이 없는 raw output은 `self_instruct_sample.md` 공개 대상이
+아니며, Gate A/B/C 통과 전 no-go 상태로 둔다.
 
 ad-hoc fixture/smoke generated data is not accepted synthetic data.
 논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은

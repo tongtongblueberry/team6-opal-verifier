@@ -89,8 +89,13 @@ LLM next-token/logit decision
   - 현재는 코드를 vendor하지 않고 [third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 출처와 차용 범위를 문서화한다.
   - LLM 호출 없는 `parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence 도구를 먼저 두고, 이후 LLM API generation wrapper와 LLM-only judge filtering을 붙인다.
 - Self-Instruct generation/judge dry-run wrapper를 추가했다.
-  - `tools/datagen/run_self_instruct_generation.py`는 공식 output-first classification prompt payload와 metadata만 쓴다.
-  - `tools/analysis/filter_self_instruct_judge.py`는 LLM-only judge prompt payload와 외부 judge result parser만 제공한다.
+  <!-- Changed: record spec-grounded prompt/request redesign. -->
+  <!-- Why: ungrounded Gemini/Codex text is not valid synthetic candidate evidence. -->
+  - `tools/datagen/run_self_instruct_generation.py`는 공식 output-first classification prompt payload와 metadata만 쓰며,
+    `docs/legacy_spec_rules.md`의 rule card/source-span을 payload에 포함한다.
+  - raw candidate는 `spec_grounding` source span 없이는 parser/judge 경로에서 accepted synthetic 후보가 아니다.
+  - `tools/analysis/filter_self_instruct_judge.py`는 LLM-only judge prompt payload와 외부 judge result parser만 제공하고,
+    required spec grounding, source-span support, state-transition consistency, manifest-loader compatibility를 judge boolean으로 요구한다.
   - 두 도구 모두 기본 실행에서 LLM/API를 호출하지 않고, synthetic trajectory를 자체 생성하지 않는다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
