@@ -41,13 +41,16 @@ tools/analysis/
 +-- validate_manifest.py
 +-- data_audit.py
 +-- self_instruct_invariants.py
++-- dedup_self_instruct_candidates.py
 +-- audit_self_instruct_quality.py
 +-- compare_public20_dimensions.py
++-- check_manifest_model_input_equivalence.py
 +-- audit_public20_reference.py
 
 tools/datagen/
 +-- self_instruct_seed_schema.py
 +-- self_instruct_candidate_schema.py
++-- parse_self_instruct_outputs.py
 
 tools/training/
 +-- train_manifest_lora.py
@@ -146,9 +149,10 @@ active datagen에는 public20 input-only seed schema와 label-bearing candidate 
 Self-Instruct 공식 출처는 Wang et al. 2023 ACL 논문과 `yizhongw/self-instruct`
 공식 repository, Apache-2.0 license다. 현재는 코드를 vendor하지 않고
 [third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 출처와
-차용 범위만 문서화한다. 다음 구현 순서는 LLM 호출이 없는 단계부터다:
-`parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter,
-Gate C manifest/model input equivalence, 그 다음 LLM API generation wrapper.
+차용 범위만 문서화한다. LLM 호출 없는 `parse_self_instruct_outputs`,
+ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence
+도구를 먼저 두고, 그 다음에만 LLM API generation wrapper와 LLM-only judge
+filtering을 붙인다.
 
 ## 서버 Sync 원칙
 

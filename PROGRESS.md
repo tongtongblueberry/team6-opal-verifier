@@ -48,6 +48,9 @@ LLM next-token/logit decision
   - public20 reference와 generated profile을 비교하는 도구이며, 실제 generated 후보가 없으면 합격 데이터를 선언하지 않는다.
   - public20 label은 synthetic prompt/judge/generated manifest target에는 쓰지 않는다.
     public20-only 모델 검증 artifact에서는 train target과 `val` metric에만 쓴다.
+- Gate C manifest/model input equivalence 도구 `tools/analysis/check_manifest_model_input_equivalence.py`를 추가했다.
+  - normalized candidate, supervised manifest, trainer loader가 같은 전체 `records` trajectory와 label/hash를 보는지 확인한다.
+  - solver/runtime, model/tokenizer, public20 label, LLM/API는 import하거나 호출하지 않는다.
 - 임의 deterministic fixture/smoke synthetic data는 논문 기반 생성 데이터가 아니므로 active surface에서 제거한다.
   accepted synthetic data는 Self-Instruct output-first generation, LLM-only filtering, Gate A/B/C를 통과한 후보만 의미한다.
 - Self-Instruct 공식 출처 기준을 고정했다.
@@ -55,7 +58,7 @@ LLM next-token/logit decision
   - 공식 코드: `https://github.com/yizhongw/self-instruct`.
   - License: Apache-2.0.
   - 현재는 코드를 vendor하지 않고 [third_party/self_instruct/README.md](third_party/self_instruct/README.md)에 출처와 차용 범위를 문서화한다.
-  - 구현 순서는 LLM 호출 없는 `parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence를 먼저 하고, 이후 LLM API generation wrapper를 붙인다.
+  - LLM 호출 없는 `parse_self_instruct_outputs`, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence 도구를 먼저 두고, 이후 LLM API generation wrapper와 LLM-only judge filtering을 붙인다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -115,6 +118,9 @@ LLM next-token/logit decision
 - `docs/agent_handoff.md`는 README/PROGRESS/current docs와 함께 계속 갱신해야 하는 active 문서로 고정했다.
 - Gate A/B/C 통과 뒤에만 `docs/samples/self_instruct_sample.md`를 만들고, generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 포함한다.
 - Gate B dimension comparison은 `tools/analysis/compare_public20_dimensions.py`로 수행한다.
+- Gate C manifest/model input equivalence는 `tools/analysis/check_manifest_model_input_equivalence.py`로 수행한다.
+- LLM output parser는 `tools/datagen/parse_self_instruct_outputs.py`로 수행한다. 이 도구는 raw LLM output을 candidate schema로 파싱/정규화하고 reject report를 만들 뿐, synthetic trajectory를 자체 생성하지 않는다.
+- Self-Instruct dedup/filter는 `tools/analysis/dedup_self_instruct_candidates.py`로 수행한다. 이 도구는 ROUGE-L 0.7 near duplicate, exact duplicate, same-input conflicting label, public20 duplicate를 reject한다.
 - public20 reference structure/profile audit pack을 `runs/self_instruct/public20_baseline/gate_a/`에 생성했다. 이 pack은 public20 검증 결과가 아니라 reference 구조 확인용이며, sample별 label을 노출하지 않고 state-transition/shape 메모용 빈 섹션만 제공한다.
 - 모델 방법론 조사는 데이터 검증 이후 또는 병렬 보조로 진행한다. RAG/full FT/selective FT 구현은 관련 논문과 검증된 라이브러리/reference code를 따르며, synthetic 데이터의 질적/정량 검증을 중단하지 않는다.
 - public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이고, val은 `pass 2 / fail 2`를 목표로 한다.

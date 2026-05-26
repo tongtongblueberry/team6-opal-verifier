@@ -45,14 +45,15 @@
 - public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이며 val은 `pass 2 / fail 2`를 목표로 한다. 여러 split을 돌려도 모두 validation이다.
 - 최종 제출 후보가 정해진 뒤에만 선택 recipe로 public20 20개 전체를 학습에 쓸지 별도 판단한다.
 - Gate B public20/generated profile 비교 도구는 `tools/analysis/compare_public20_dimensions.py`다.
+- Gate C manifest/model input equivalence 도구는 `tools/analysis/check_manifest_model_input_equivalence.py`다.
+- raw Self-Instruct output parser는 `tools/datagen/parse_self_instruct_outputs.py`다. 이 도구는 synthetic trajectory를 자체 생성하지 않는다.
+- Self-Instruct dedup/filter는 `tools/analysis/dedup_self_instruct_candidates.py`다.
 - ad-hoc fixture/smoke generated data는 논문 기반 synthetic data가 아니므로 active surface에서 제거한다.
   다음 synthetic generation은 Self-Instruct output-first generation과 LLM-only judge filtering을 따라야 한다.
 - Self-Instruct 공식 기준은 Wang et al. 2023 ACL 논문, `https://github.com/yizhongw/self-instruct`,
   Apache-2.0 license다. 출처와 차용 범위는 `third_party/self_instruct/README.md`와
   `docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md`에 둔다.
-- 다음 구현 순서는 LLM 호출 없는 `parse_self_instruct_outputs`,
-  ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence, 이후
-  LLM API generation wrapper다.
+- 다음 구현 순서는 Gate C report 적용, LLM API generation wrapper, LLM-only judge filtering이다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.
