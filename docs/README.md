@@ -31,6 +31,14 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 <!-- Changed: clarify active/archive/delete criteria for docs and tools. -->
 <!-- Why: failed data generators must remain audit-only and must not re-enter default execution. -->
 
+<!-- Changed: mirror the latest agent_handoff.md operating criteria. -->
+<!-- Why: docs index readers need the same no-rule, server, data, public20, model-baseline, and branch/push rules. -->
+- runtime rule engine 금지, LLM-only architecture.
+- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+- synthetic 데이터만 생성 데이터 검증 대상. Gate A/B/C/D 통과 후 sample 공개.
+- public20은 reference 및 모델 train/val 기준. public20 test split 금지. hidden leaderboard가 test.
+- prompt-only/no-training baseline은 active plan에서 제거된 오해. public20 모델 검증은 실제 학습 후보만 사용.
+- branch/push 기준: origin `sinjeongmin`에 반영.
 - 날짜가 붙은 실행 기록과 폐기 판단은 `archive/cycles/<YYYY-MM-DD>/` 아래에 둔다.
 - v4/v4.1 데이터 폐기 판단은 [archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md](archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md)에 둔다.
 - active 문서와 active tools에는 다음 실행 기준, 현재 default 실행 경로, 통과해야 할 gate만 남긴다.
@@ -45,6 +53,7 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - Gate B dimension comparison 도구는 `tools/analysis/compare_public20_dimensions.py`이며, public20 label은 local aggregate distribution으로만 사용한다.
 - Gate C manifest/model input equivalence 도구는 `tools/analysis/check_manifest_model_input_equivalence.py`이며, synthetic candidate가 manifest와 trainer loader에서 전체 trajectory 단위로 유지되는지 검증한다.
 - public20 train/val split 도구는 `tools/analysis/build_public20_train_val_split.py`이며, 산출물은 `runs/model_validation/public20_splits/`에 둔다. 이 도구는 public20 `test` split을 만들지 않는다.
+- full/selective FT standalone checkpoint 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다. 이 도구는 LoRA adapter 전용 evaluator가 아니라 full model path를 직접 로드하는 public20/generated `val` 평가 도구다.
 - Self-Instruct generation wrapper는 `tools/datagen/run_self_instruct_generation.py`이며, dry-run prompt payload와 metadata만 생성한다. API 호출과 ad-hoc candidate 생성은 하지 않는다.
 - LLM-only judge filter는 `tools/analysis/filter_self_instruct_judge.py`이며, judge prompt payload와 외부 judge result parsing만 담당한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data.

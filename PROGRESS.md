@@ -1,12 +1,19 @@
 # Progress Log
 
 - 최종 갱신: 2026-05-26 17:27 KST
-- 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime은 사용하지 않는다.
+<!-- Changed: mirror the current agent_handoff.md criteria in the progress header. -->
+<!-- Why: progress readers need the active architecture, data, server, and branch/push rules before following older entries. -->
+- 현재 원칙: runtime rule engine 금지, LLM-only architecture. rule engine, rule fallback, rule-id runtime은 사용하지 않는다.
+- synthetic 데이터만 생성 데이터 검증 대상. Gate A/B/C/D 통과 후 sample 공개.
+- public20은 reference 및 모델 train/val 기준. public20 test split 금지. hidden leaderboard가 test.
 - public20은 synthetic 데이터 검증 대상이 아니다. public20 label은 synthetic generation/judge/generated manifest target으로 쓰지 않는다. public20-only 모델 후보 검증에서는 `train`/`val`만 쓰고, test는 leaderboard hidden 평가다.
+- prompt-only/no-training baseline은 active plan에서 제거된 오해. public20 모델 검증은 실제 학습 후보만 사용.
 - `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다. public20 validation 결과를 test 결과로 기록하지 않는다.
 - main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않고 worker agent 결과를 종합해 최종 판단한다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
 - 현재 GitHub branch: `origin/sinjeongmin`
+- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+- branch/push 기준: origin `sinjeongmin`에 반영.
 - 현재 운영 문서: [docs/server_operations_current.md](docs/server_operations_current.md)
 - 현재 handoff: [docs/current_task.md](docs/current_task.md)
 
@@ -139,6 +146,13 @@ LLM next-token/logit decision
 - deterministic split 산출물은 `runs/model_validation/public20_splits/split_seed_11`, `split_seed_29`, `split_seed_47`에 생성했다.
 - 모델 학습 후보 5개는 다음으로 고정한다: 0.9B full FT `5/10/20` epoch patience `2`, 0.9B full FT + retrieved rulebook/spec context `5/10/20` epoch patience `2`, 4B LoRA/QLoRA selective FT `3/5/10` epoch patience `1-2`, 4B LoRA/QLoRA + retrieved context `3/5/10` epoch patience `1-2`, RAFT-style retrieval-augmented SFT/QLoRA public20-only `1/3/5` smoke/overfit check.
 - RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 epoch `3/5/10`으로 확장한다.
+  <!-- Changed: record the standalone full-model evaluator for public20 val metrics. -->
+  <!-- Why: full FT checkpoints cannot be evaluated with the LoRA adapter-only script. -->
+- Full/selective FT standalone checkpoint 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다.
+  이 도구는 `train_manifest_full.build_messages` prompt contract를 사용하고 full model path를 직접 로드해
+  `val` split의 next-token `pass`/`fail` logprob을 비교한다. metric은 accuracy, macro-F1,
+  fail recall, pass recall, confusion matrix, per-sample prediction/logprob이다. epoch별
+  report에서 val macro-F1이 정체되고 fail recall이 떨어지면 no-go 또는 patience 중단으로 판단한다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제다. 따라서 retrieval만 하는 비학습 대체물이 아니라 retrieval + fine-tuning/RAFT-style 학습을 최종 방향으로 둔다.
 - val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard 제출은 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 단위로 판단한다.
 - Self-Instruct 공식 구현 계획은 [docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md)에 아카이빙했다.

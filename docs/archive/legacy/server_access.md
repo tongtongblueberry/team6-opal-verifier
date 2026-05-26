@@ -6,5 +6,6 @@
 - Port: `2227`
 - User: `student`
 - SSH command: `ssh student@147.46.78.61 -p 2227`
+- SSH password: `bg@3*a&5r+uoN2FRoAU^`
 
 Password is intentionally not stored here. Keep it in a password manager or OS keychain.

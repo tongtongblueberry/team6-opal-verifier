@@ -10,6 +10,8 @@
 ## 절대 원칙
 
 - 제출/학습 architecture에는 rule engine을 포함하지 않는다.
+<!-- Changed: restate runtime architecture prohibition for handoff agents. Why: prevent rule-engine fallback from entering inference/runtime work. -->
+- runtime rule engine은 금지하며, architecture는 LLM-only로 유지한다.
 - runtime fallback, rule-id prompt, rule-derived label, rulebase verifier 결합은 금지한다.
 - `src/solver.py`와 제출 package는 LLM-only entrypoint 기준으로 유지한다.
 - 데이터 품질 gate용 invariant/state-transition audit는 runtime rule engine이 아니다. `src/solver.py`나 package inference path에서 import하면 안 된다.
@@ -24,7 +26,7 @@
 ## 현재 결정사항
 
 - 프로젝트 목표는 LLM-only Opal verifier다. Opal command-response trajectory에서 마지막 response가 명세와 현재 상태에 맞는지 `pass`/`fail`로 판정한다.
-- 현재 병목은 모델보다 데이터다. 검증 대상은 우리가 새로 생성한 synthetic 데이터다.
+- 현재 병목은 모델보다 데이터다. 검증 대상은 우리가 새로 생성한 synthetic data만이다.
   public20은 이미 주어진 기준 입력이므로 "public20 자체를 검증"하지 않는다.
   새 synthetic 데이터는 양적 dimension뿐 아니라 질적으로 pass/fail이 맞는지 검증해야 한다.
 - v4/v4.1 생성 데이터는 학습 금지 및 폐기 상태다.
@@ -52,6 +54,8 @@
   - rows `20`, labels `20`, record_count min/mean/max `1/16.4/39`, label 분포 `fail=10`, `pass=10`
   - label 파일은 synthetic generation prompt, judge prompt, generated synthetic manifest 입력에 넣지 않는다.
   - public20-only 모델 검증 artifact에서는 public20 label을 train target과 `val` metric으로만 쓸 수 있다.
+  <!-- Changed: clarify public20/test split authority. Why: prevent local public20 test creation that would conflict with hidden leaderboard evaluation. -->
+  - public20은 `train`/`val` 기준이며 public20 `test` split은 금지한다. hidden leaderboard가 `test`다.
 - synthetic 데이터 검증 완료 후 저장 partition은 반드시 `train`, `val`, `test`,
   `public20_reference`로 분리한다.
   - `train`, `val`, `test`는 Gate A/B/C를 통과한 generated Self-Instruct 데이터에서만 만든다.
@@ -62,7 +66,8 @@
 - label-bearing generated row는 `tools/datagen/self_instruct_candidate_schema.py`의
   candidate schema로만 다루며, final-response invariant는 candidate에만 적용한다.
 - leaderboard 제출은 Gate A-D와 package/runtime/secret/no-rule gate가 모두 통과한 뒤에만 검토한다.
-- Self-Instruct synthetic data가 Gate A/B/C를 통과한 뒤에만 `docs/samples/self_instruct_sample.md`에 raw trajectory 전체를 "합격 데이터" sample로 공개한다. 그 전에는 sample을 검수 대상 또는 실패/대기 데이터로만 표기한다.
+<!-- Changed: make sample publication depend on Gate A/B/C/D for synthetic data. Why: samples must not be treated as accepted before the complete gate sequence. -->
+- Self-Instruct synthetic data만 생성 데이터 검증 대상이며 Gate A/B/C/D를 통과한 뒤에만 `docs/samples/self_instruct_sample.md`에 raw trajectory 전체를 "합격 데이터" sample로 공개한다. 그 전에는 sample을 검수 대상 또는 실패/대기 데이터로만 표기한다.
   - sample 문서는 generated raw trajectory 전체와 public20 raw sample 1개 전체를 모두 생략 없이 포함해야 한다.
 - 12GB 제출 한계를 고려해 LoRA 3MB만 고집하지 않는다.
   - 0.8B/0.9B급 full fine-tuning은 후보로 유지한다.
@@ -74,7 +79,12 @@
   이때 `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다.
 - 모델 학습 후보 5개는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA다.
 - public20-only 검증은 public20 train 16개로 실제 학습을 진행하는 검증이다.
+<!-- Changed: remove prompt-only/no-training baseline from active plan. Why: it was an outdated misunderstanding, not a current validation candidate. -->
+- active plan에서 prompt-only/no-training baseline은 제거된 오해다. public20 모델 검증은 실제 학습 후보만 사용한다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요하므로 retrieval + fine-tuning/RAFT-style 학습을 최종 유력 방향으로 둔다.
+- Full/selective FT standalone checkpoint의 `val` 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다.
+  이 도구는 LoRA adapter evaluator가 아니며, `train_manifest_full.build_messages` prompt contract와 full model path 직접 로드를 사용한다.
+  metric은 accuracy, macro-F1, fail recall, pass recall, confusion matrix, per-sample prediction/logprob이다.
 - val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard는 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 사용한다.
 
 ## 데이터 Gate 순서
@@ -108,7 +118,9 @@
 
 - [docs/current_task.md](current_task.md): 현재 cycle 상태, 서버 상태, 다음 실행 순서.
 - [docs/current_self_instruct_data_plan.md](current_self_instruct_data_plan.md): Self-Instruct 데이터 생성/검증 active spec.
-- [docs/server_operations_current.md](server_operations_current.md): 서버 접속, sync, 제출 판단 절차.
+<!-- Changed: set server_setup.md as the authoritative server access document. Why: server workers must read the authority source before any server work. -->
+- [../server_setup.md](../server_setup.md): 서버 접근 권위 문서. 서버 작업 agent는 반드시 이 문서를 먼저 읽는다.
+- [docs/server_operations_current.md](server_operations_current.md): 서버 접속, sync, 제출 판단 절차의 active 운영 문서. 서버 접근 권위 문서는 `server_setup.md`다.
 - [docs/README.md](README.md): active/archive/delete 문서 정리 기준.
 - [docs/samples/README.md](samples/README.md): raw sample 공개 정책.
 - [../third_party/self_instruct/README.md](../third_party/self_instruct/README.md): Self-Instruct 공식 출처, license, 차용 범위, 금지사항.
@@ -120,6 +132,7 @@
 - [../tools/analysis/compare_public20_dimensions.py](../tools/analysis/compare_public20_dimensions.py): Gate B public20/generated profile 비교 도구.
 - [../tools/analysis/check_manifest_model_input_equivalence.py](../tools/analysis/check_manifest_model_input_equivalence.py): Gate C candidate/manifest/trainer-loader 입력 동등성 검증 도구.
 - [../tools/analysis/build_public20_train_val_split.py](../tools/analysis/build_public20_train_val_split.py): public20-only 모델 후보 검증용 deterministic `train`/`val` split 생성 도구. public20 `test` split은 만들지 않는다.
+- [../tools/eval/eval_manifest_full_model.py](../tools/eval/eval_manifest_full_model.py): full/selective FT standalone model path를 직접 로드해 public20/generated `val` manifest를 평가하는 도구. LoRA adapter 전용 evaluator가 아니다.
 - [../tools/datagen/run_self_instruct_generation.py](../tools/datagen/run_self_instruct_generation.py): Self-Instruct output-first generation request dry-run payload/metadata writer. 자체 candidate 생성과 API 호출은 하지 않는다.
 - [../tools/datagen/parse_self_instruct_outputs.py](../tools/datagen/parse_self_instruct_outputs.py): raw LLM output을 candidate schema로 파싱/정규화하는 도구. 자체 synthetic 생성은 금지다.
 - [../tools/analysis/dedup_self_instruct_candidates.py](../tools/analysis/dedup_self_instruct_candidates.py): Self-Instruct ROUGE-L/exact/conflict/public20 duplicate filter.
@@ -131,26 +144,29 @@
 ```text
 공통 맥락:
 - 목표는 LLM-only Opal verifier이며 architecture에 rule engine은 절대 넣지 않는다.
+- runtime rule engine은 금지하며 architecture는 LLM-only다.
 - 현재 병목은 데이터다. 검증 대상은 우리가 생성한 synthetic 데이터이며, 평균 dimension뿐 아니라 pass/fail이 final response 기준으로 질적으로 맞는지 sampling state-transition audit로 확인해야 한다.
 - public20은 이미 주어진 기준 입력이다. public20 자체를 검증하지 말고, synthetic 데이터와 비교할 reference structure/profile 및 public20-only 모델 `train`/`val` 검증 소스로만 사용한다.
-- public20-only 모델 검증 기본 split은 stratified 16 train / 4 val이며, val은 후보 선택/튜닝/early stopping용 내부 검증이다. test는 public20에서 만들지 않고 leaderboard hidden 평가로만 둔다.
+- public20-only 모델 검증 기본 split은 stratified 16 train / 4 val이며, val은 후보 선택/튜닝/early stopping용 내부 검증이다. public20 `test` split은 금지하고 hidden leaderboard가 test다.
 - v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
 - active datagen은 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
 - 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
 - Self-Instruct 공식 code source는 yizhongw/self-instruct이고 Apache-2.0이다. 현재는 vendor code 없이 문서 기준만 둔다.
 - LLM 호출 없는 parse_self_instruct_outputs, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence, dry-run generation request wrapper, dry-run judge wrapper를 먼저 둔다. 이후 외부 LLM runner raw output을 Gate A/B/C로 연결한다.
-- Gate A/B/C가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C 요약을 기록한다.
+- Gate A/B/C/D가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C/D 요약을 기록한다.
 - ad-hoc fixture/smoke generated data is not accepted synthetic data. sample.md는 Gate A/B/C를 통과한 Self-Instruct synthetic data에만 생성한다.
 - synthetic 데이터 검증 완료 뒤 dataset은 train/val/test/public20_reference로 분리한다. public20-only 모델 후보 검증은 train/val만 쓰고, test는 leaderboard hidden 평가다.
 - active docs update set은 README.md, PROGRESS.md, docs/README.md, docs/current_task.md, docs/current_self_instruct_data_plan.md, docs/agent_handoff.md, docs/samples/README.md 이다.
 - Gate 순서: A synthetic 질적 state-transition audit, B public20 reference dimension/schema/pass-fail 분포 비교, C manifest/model input path equivalence, D leaderboard 제출 판단.
-- 모델 후보 조사는 데이터 검증 이후 또는 병렬 보조로만 진행한다. RAG/FT 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
+- 모델 후보 조사는 데이터 검증 이후 또는 병렬 보조로만 진행한다. public20 모델 검증은 실제 학습 후보만 사용하며 prompt-only/no-training baseline은 active plan에서 제거된 오해다. RAG/FT 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
 - 모델 학습 후보 5개는 0.9B full FT `5/10/20` epoch patience `2`, 0.9B full FT + retrieved rulebook/spec context `5/10/20` epoch patience `2`, 4B LoRA/QLoRA selective FT `3/5/10` epoch patience `1-2`, 4B LoRA/QLoRA + retrieved context `3/5/10` epoch patience `1-2`, RAFT-style retrieval-augmented SFT/QLoRA public20-only `1/3/5` smoke/overfit check다.
 - RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 `3/5/10` epoch으로 확장한다.
 - invariant checker/state-transition audit는 데이터 품질 gate이지 runtime rule engine이 아니다.
 - 작업 root는 /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst 이고 서버 기준 root는 /workspace/sinjeongmin_opal_verifier 이다.
 - push 대상은 origin/sinjeongmin 이다.
 - 기록은 한국어, 시간은 KST, secret/password 출력/저장 금지.
+- 서버 접근 권위 문서는 `server_setup.md`이며, 서버 작업 agent는 서버 작업 전에 반드시 먼저 읽는다.
+- 서버 접속은 필요 시 최소 10회 재시도 원칙으로 수행하고, 비밀번호/시크릿을 문서나 로그에 복사/출력하지 않는다.
 - 다른 사람 변경을 되돌리지 말고 destructive git command를 쓰지 않는다.
 ```
 
@@ -180,5 +196,10 @@
   Gate C manifest/model input equivalence, dry-run generation request wrapper,
   dry-run judge wrapper를 먼저 둔 뒤 외부 LLM runner와 연결한다.
 - public20-only 모델 검증은 병렬 보조로 진행하되, 위 5개 실제 학습 후보를 기준으로 train/val 결과를 비교한다.
-- 서버 SSH는 main이 직접 치지 말고 agent가 10회 이상 재시도 단위로 수행한다.
+- Full FT 후보는 epoch별 final/checkpoint를 `tools/eval/eval_manifest_full_model.py --split val`로 평가해 val macro-F1, fail recall, pass recall, confusion matrix를 기록한다.
+<!-- Changed: align server handoff with server_setup.md authority and retry/secret rules. Why: server workers need one authoritative source and explicit retry/secret constraints. -->
+- 서버 SSH는 main이 직접 치지 말고 agent가 필요 시 최소 10회 재시도 원칙으로 수행한다.
+- 서버 접근 권위 문서는 `server_setup.md`다. 서버 작업 agent는 서버 작업 전에 반드시 `server_setup.md`를 먼저 읽는다.
+  현재 active 서버 운영 문서는 `docs/server_operations_current.md`이고, legacy setup 기록은 `docs/archive/legacy/legacy_server_setup.md`에 있다.
+  서버 작업 worker는 비밀번호/시크릿을 문서나 로그에 복사/출력하지 않는다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.

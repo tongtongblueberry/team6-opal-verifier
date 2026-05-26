@@ -35,7 +35,15 @@
 
 ## 현재 Cycle 결론
 
+<!-- Changed: mirror the latest agent_handoff.md operating criteria. -->
+<!-- Why: resumed workers must see the active architecture, data, public20, model, server, and branch/push rules in current_task.md. -->
 - 가장 큰 문제는 데이터 구조와 shape mismatch다.
+- runtime rule engine 금지, LLM-only architecture.
+- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+- synthetic 데이터만 생성 데이터 검증 대상. Gate A/B/C/D 통과 후 sample 공개.
+- public20은 reference 및 모델 train/val 기준. public20 test split 금지. hidden leaderboard가 test.
+- prompt-only/no-training baseline은 active plan에서 제거된 오해. public20 모델 검증은 실제 학습 후보만 사용.
+- branch/push 기준: origin `sinjeongmin`에 반영.
 - manifest builder가 개별 step 단위로 flatten되던 문제는 수정되어 `records` trajectory 전체가 하나의 supervised input으로 들어간다.
 - `/workspace/team6`는 우리 작업 root가 아니므로 새 작업은 `/workspace/sinjeongmin_opal_verifier` 아래에서만 진행한다.
 - synthetic 데이터 검증 대상은 public20이 아니라 우리가 생성한 generated data다.
@@ -55,7 +63,7 @@
 - Self-Instruct 공식 기준은 Wang et al. 2023 ACL 논문, `https://github.com/yizhongw/self-instruct`,
   Apache-2.0 license다. 출처와 차용 범위는 `third_party/self_instruct/README.md`와
   `docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md`에 둔다.
-- 다음 구현 순서는 외부 LLM runner raw output 확보, parser/dedup/judge filter 적용, Gate A/B/C 실행이다.
+- 다음 구현 순서는 외부 LLM runner raw output 확보, parser/dedup/judge filter 적용, Gate A/B/C/D 실행이다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.
@@ -147,8 +155,14 @@
 - `tests/test_prepare_submit_script.py`는 fake LoRA adapter로 `prepare_submit.sh` 전체 패키징 flow와 `[6i] Python package readiness gate` 실행을 검증한다.
 - `README.md`는 현재 LLM-only 구조와 `/workspace/sinjeongmin_opal_verifier` 운영 기준으로 정리했다.
 - `PROGRESS.md`는 현재 LLM-only 구조 기준으로 정리했고, rule engine + LoRA override 설명은 과거 접근으로 명시했다.
+<!-- Changed: set server_setup.md as the authority and preserve secret handling. -->
+<!-- Why: server work must start from the authority doc and avoid copying secrets into docs/logs. -->
 - `docs/server_operations_current.md`는 현재 서버 접속, sync, 평가, 제출 판단 절차의 기준 문서다.
-- `docs/server_setup.md`, `docs/sweep_plan.md` 등 legacy 문서는 `docs/archive/legacy/`로 이동했다.
+- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+- 서버 접근이 필요한 후속 작업은 먼저 `server_setup.md`를 찾고 읽는다. 현재 repo에서는
+  `docs/server_setup.md`, `docs/sweep_plan.md` 등 legacy 문서가 `docs/archive/legacy/`로 이동했으므로,
+  active 기준인 `docs/server_operations_current.md`와 legacy setup 기록을 함께 확인한다.
+  서버 작업 기록에는 비밀번호/시크릿을 출력하지 않는다.
 - `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.
 - `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
 - active `src`는 `solver.py`, `__init__.py`만 남아 있다.
@@ -176,6 +190,8 @@
   <!-- Why: user requested actual public20 train/val learning while verified synthetic data is not ready. -->
 - 모델 학습 후보 5개는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA다.
 - public20-only 검증은 public20 train 16개로 실제 학습을 진행하는 검증이다.
+- full/selective FT standalone checkpoint의 `val` 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다.
+  이 도구는 LoRA adapter 전용 evaluator가 아니며 full model path를 직접 로드하고 `train_manifest_full.build_messages` prompt contract를 사용한다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory state reasoning이 모두 필요하므로 retrieval + fine-tuning/RAFT-style 학습을 최종 유력 방향으로 본다.
 
 ## 서버 상태
@@ -201,11 +217,11 @@
 ## 다음 실행 순서
 
 1. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
-2. 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다.
+2. 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다. branch/push 기준: origin `sinjeongmin`에 반영.
 3. v4/v4.1 및 spec/gap synthetic raw/manifest가 새 학습 입력이나 제출 판단에 포함되지 않는지 확인한다.
 4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
 5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
-6. public20-only train/val runner를 만들고 0.9B full FT `5/10/20` epoch patience `2`와 4B LoRA/QLoRA `3/5/10` epoch patience `1-2`를 실제 학습으로 비교한다.
+6. public20-only train/val runner를 만들고 0.9B full FT `5/10/20` epoch patience `2`와 4B LoRA/QLoRA `3/5/10` epoch patience `1-2`를 실제 학습으로 비교한다. full/selective FT 후보는 epoch별 model path를 `eval_manifest_full_model.py --split val`로 평가한다.
 7. retrieval context를 붙인 0.9B/4B 후보와 RAFT-style public20-only `1/3/5` smoke/overfit check를 이어서 비교한다.
 
 ## 보안
