@@ -3,14 +3,14 @@
 # Why: 서버에서 학습된 adapter를 즉시 제출 디렉토리로 패키징해야 함.
 #
 # 사용법:
-#   bash tools/eval/prepare_submit.sh /workspace/team6/adapters/exp_a/checkpoints/checkpoint-189
-#   bash tools/eval/prepare_submit.sh /workspace/team6/adapters/exp_a/checkpoints/checkpoint-189 --submit
-#   bash tools/eval/prepare_submit.sh /workspace/team6/adapters/exp_a/checkpoints/checkpoint-189 --name my-run
+#   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189
+#   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189 --submit
+#   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189 --name my-run
 #
 # 필수 조건:
 #   - 서버에서 실행 (평가 환경 아님)
 #   - adapter_config.json이 있는 유효한 adapter 경로
-#   - git repo가 /workspace/team6/team6-opal-verifier에 존재
+#   - git repo 안에서 실행하거나 OPAL_REPO를 지정
 set -euo pipefail
 
 # ============================================================
@@ -42,8 +42,8 @@ if [ -z "$ADAPTER_PATH" ]; then
     echo "사용법: $0 <adapter_path> [--submit] [--name <job_name>]"
     echo ""
     echo "예시:"
-    echo "  $0 /workspace/team6/adapters/exp_a/checkpoints/checkpoint-189"
-    echo "  $0 /workspace/team6/adapters/best_adapter --submit --name lora-v3-best"
+    echo "  $0 /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189"
+    echo "  $0 /workspace/sinjeongmin_opal_verifier/adapters/best_adapter --submit --name lora-v3-best"
     exit 1
 fi
 
@@ -63,11 +63,22 @@ fi
 # ============================================================
 # 경로 설정
 # ============================================================
-REPO="/workspace/team6/team6-opal-verifier"
+# Changed: runtime/repo paths are environment-driven.
+# Why: submission packaging must not depend on the old shared workspace path.
+OPAL_RUNTIME_ROOT="${OPAL_RUNTIME_ROOT:-/workspace/sinjeongmin_opal_verifier}"
+if [ -n "${OPAL_REPO:-}" ]; then
+    REPO="$OPAL_REPO"
+else
+    REPO=$(git rev-parse --show-toplevel 2>/dev/null || true)
+    if [ -z "$REPO" ]; then
+        echo "ERROR: current git repo root not found. Set OPAL_REPO."
+        exit 1
+    fi
+fi
 
 # Changed: adapter 경로에서 실험명 추출하여 제출 디렉토리 이름 생성.
 # Why: 여러 adapter를 동시에 제출 준비할 수 있도록 구분.
-# 예: /workspace/team6/adapters/exp_a/checkpoints/checkpoint-189 → submit-exp-a
+# 예: /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189 -> submit-exp-a
 ADAPTER_BASENAME=$(basename "$ADAPTER_PATH")
 ADAPTER_PARENT=$(basename "$(dirname "$ADAPTER_PATH")")
 ADAPTER_GRANDPARENT=$(basename "$(dirname "$(dirname "$ADAPTER_PATH")")")
@@ -81,7 +92,7 @@ fi
 
 # 디렉토리명에 안전하지 않은 문자 제거
 EXP_NAME=$(echo "$EXP_NAME" | sed 's/[^a-zA-Z0-9_-]/-/g')
-SUBMIT_DIR="/workspace/team6/submit-${EXP_NAME}"
+SUBMIT_DIR="$OPAL_RUNTIME_ROOT/submissions/submit-${EXP_NAME}"
 
 SEP="============================================================"
 echo "$SEP"

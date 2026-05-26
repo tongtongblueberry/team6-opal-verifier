@@ -1,17 +1,26 @@
 #!/bin/bash
-# Safe submission builder. NEVER touches /workspace/project/.
+# Safe LLM-only submission builder. NEVER touches /workspace/project/.
 # Run on server: bash tools/eval/prepare_submission.sh [--with-lora] [--submit] [job-name]
 #
 # Examples:
-#   bash tools/eval/prepare_submission.sh                    # rule engine only, test only
 #   bash tools/eval/prepare_submission.sh --with-lora        # with LoRA, test only
-#   bash tools/eval/prepare_submission.sh --submit my-run    # rule engine only, submit
 #   bash tools/eval/prepare_submission.sh --with-lora --submit gap-retrain-v1
 set -e
 
-REPO="/workspace/team6/team6-opal-verifier"
-COMMIT=$(cd $REPO && git rev-parse --short HEAD)
-SUBMIT_DIR="/workspace/team6/submission-$COMMIT"
+# Changed: runtime/repo paths are environment-driven.
+# Why: submission packaging must not depend on the old shared workspace path.
+OPAL_RUNTIME_ROOT="${OPAL_RUNTIME_ROOT:-/workspace/sinjeongmin_opal_verifier}"
+if [ -n "${OPAL_REPO:-}" ]; then
+    REPO="$OPAL_REPO"
+else
+    REPO=$(git rev-parse --show-toplevel 2>/dev/null || true)
+    if [ -z "$REPO" ]; then
+        echo "ERROR: current git repo root not found. Set OPAL_REPO."
+        exit 1
+    fi
+fi
+COMMIT=$(cd "$REPO" && git rev-parse --short HEAD)
+SUBMIT_DIR="$OPAL_RUNTIME_ROOT/submissions/submission-$COMMIT"
 WITH_LORA=false
 DO_SUBMIT=false
 JOB_NAME=""
@@ -25,15 +34,24 @@ for arg in "$@"; do
     esac
 done
 
+# Changed: submission packaging fails closed without an LLM artifact.
+# Why: this project is LLM-only, so packaging must not create a non-LLM fallback submission.
+if ! $WITH_LORA; then
+    echo "ERROR: --with-lora is required until merged-model packaging is implemented."
+    echo "LLM-only submission packaging must include a trained LLM artifact."
+    exit 1
+fi
+
 SEP="============================================================"
 echo "$SEP"
 echo "SUBMISSION BUILDER (commit: $COMMIT)"
 echo "  LoRA: $WITH_LORA | Submit: $DO_SUBMIT | Name: ${JOB_NAME:-auto}"
 echo "$SEP"
 
-# Step 1: Pull latest code
+# Step 1: Record current code state
 cd "$REPO"
-git fetch origin && git checkout dev && git pull origin dev 2>/dev/null
+# Changed: package the explicitly selected repo/branch without checkout or pull.
+# Why: branch ownership must stay stable during long-running training cycles.
 echo "HEAD: $(git log --oneline -1)"
 
 # Step 2: Build submission directory
@@ -56,8 +74,10 @@ cp /workspace/project/uv.lock "$SUBMIT_DIR/" 2>/dev/null || true
 if $WITH_LORA; then
     # Priority: v3 > v2
     ADAPTER=""
+    # Changed: runtime adapter candidate uses OPAL_RUNTIME_ROOT.
+    # Why: LoRA packaging must not depend on the old shared workspace path.
     for candidate in \
-        "/workspace/team6/adapters/uncertainty_resolver/final" \
+        "$OPAL_RUNTIME_ROOT/adapters/uncertainty_resolver/final" \
         "$REPO/artifacts/lora_adapter_v3" \
         "$REPO/artifacts/lora_adapter_v2"; do
         if [ -d "$candidate" ] && [ -f "$candidate/adapter_config.json" ]; then
@@ -77,28 +97,9 @@ if $WITH_LORA; then
         cp "$ADAPTER"/* "$SUBMIT_DIR/$TARGET/"
         echo "LoRA adapter: $ADAPTER → $TARGET ($(du -sh $SUBMIT_DIR/$TARGET | awk '{print $1}'))"
     else
-        echo "WARNING: --with-lora but no adapter found!"
-        WITH_LORA=false
+        echo "ERROR: --with-lora was requested but no adapter was found."
+        exit 1
     fi
-fi
-
-if ! $WITH_LORA; then
-    # Disable LoRA in solver
-    python3 -c "
-with open('$SUBMIT_DIR/src/solver.py') as f:
-    code = f.read()
-old = '''        try:
-            from src.lora_solver import LoRASolver
-            self.lora_solver = LoRASolver()
-            if not self.lora_solver.available:
-                self.lora_solver = None
-        except Exception:
-            self.lora_solver = None'''
-code = code.replace(old, '        self.lora_solver = None  # LoRA disabled')
-with open('$SUBMIT_DIR/src/solver.py', 'w') as f:
-    f.write(code)
-"
-    echo "LoRA: DISABLED (rule engine only)"
 fi
 
 # Step 4: Local evaluation (public 20)
@@ -120,7 +121,7 @@ if $DO_SUBMIT; then
     echo ""
     echo "$SEP"
     echo "SUBMITTING..."
-    JOB_NAME=${JOB_NAME:-"$COMMIT-$([ $WITH_LORA = true ] && echo lora || echo rule)"}
+    JOB_NAME=${JOB_NAME:-"$COMMIT-lora"}
     submit --dir "$SUBMIT_DIR" --job-name "$JOB_NAME" 2>&1
 fi
 
