@@ -12,7 +12,8 @@
 - main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않고 worker agent 결과를 종합해 최종 판단한다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
 - 현재 GitHub branch: `origin/sinjeongmin`
-- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+<!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
+- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](docs/archive/legacy/server_access.md); 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
 - branch/push 기준: origin `sinjeongmin`에 반영.
 - 현재 운영 문서: [docs/server_operations_current.md](docs/server_operations_current.md)
 - 현재 handoff: [docs/current_task.md](docs/current_task.md)

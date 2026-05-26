@@ -118,9 +118,9 @@
 
 - [docs/current_task.md](current_task.md): 현재 cycle 상태, 서버 상태, 다음 실행 순서.
 - [docs/current_self_instruct_data_plan.md](current_self_instruct_data_plan.md): Self-Instruct 데이터 생성/검증 active spec.
-<!-- Changed: set server_setup.md as the authoritative server access document. Why: server workers must read the authority source before any server work. -->
-- [../server_setup.md](../server_setup.md): 서버 접근 권위 문서. 서버 작업 agent는 반드시 이 문서를 먼저 읽는다.
-- [docs/server_operations_current.md](server_operations_current.md): 서버 접속, sync, 제출 판단 절차의 active 운영 문서. 서버 접근 권위 문서는 `server_setup.md`다.
+<!-- Changed: restore server_access as the authoritative server access document. Why: server workers must read the authority source before any server work. -->
+- [docs/archive/legacy/server_access.md](archive/legacy/server_access.md): 서버 접근 권위 문서. 서버 작업 agent는 반드시 이 문서를 먼저 읽는다.
+- [docs/server_operations_current.md](server_operations_current.md): 서버 접속, sync, 제출 판단 절차의 active 운영 문서. 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)다.
 - [docs/README.md](README.md): active/archive/delete 문서 정리 기준.
 - [docs/samples/README.md](samples/README.md): raw sample 공개 정책.
 - [../third_party/self_instruct/README.md](../third_party/self_instruct/README.md): Self-Instruct 공식 출처, license, 차용 범위, 금지사항.
@@ -165,7 +165,8 @@
 - 작업 root는 /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst 이고 서버 기준 root는 /workspace/sinjeongmin_opal_verifier 이다.
 - push 대상은 origin/sinjeongmin 이다.
 - 기록은 한국어, 시간은 KST, secret/password 출력/저장 금지.
-- 서버 접근 권위 문서는 `server_setup.md`이며, 서버 작업 agent는 서버 작업 전에 반드시 먼저 읽는다.
+<!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
+- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)이며, 서버 작업 agent는 서버 작업 전에 반드시 먼저 읽는다.
 - 서버 접속은 필요 시 최소 10회 재시도 원칙으로 수행하고, 비밀번호/시크릿을 문서나 로그에 복사/출력하지 않는다.
 - 다른 사람 변경을 되돌리지 말고 destructive git command를 쓰지 않는다.
 ```
@@ -197,9 +198,9 @@
   dry-run judge wrapper를 먼저 둔 뒤 외부 LLM runner와 연결한다.
 - public20-only 모델 검증은 병렬 보조로 진행하되, 위 5개 실제 학습 후보를 기준으로 train/val 결과를 비교한다.
 - Full FT 후보는 epoch별 final/checkpoint를 `tools/eval/eval_manifest_full_model.py --split val`로 평가해 val macro-F1, fail recall, pass recall, confusion matrix를 기록한다.
-<!-- Changed: align server handoff with server_setup.md authority and retry/secret rules. Why: server workers need one authoritative source and explicit retry/secret constraints. -->
+<!-- Changed: align server handoff with server_access authority and retry/secret rules. Why: server workers need one authoritative source and explicit retry/secret constraints. -->
 - 서버 SSH는 main이 직접 치지 말고 agent가 필요 시 최소 10회 재시도 원칙으로 수행한다.
-- 서버 접근 권위 문서는 `server_setup.md`다. 서버 작업 agent는 서버 작업 전에 반드시 `server_setup.md`를 먼저 읽는다.
-  현재 active 서버 운영 문서는 `docs/server_operations_current.md`이고, legacy setup 기록은 `docs/archive/legacy/legacy_server_setup.md`에 있다.
+- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)다. 서버 작업 agent는 서버 작업 전에 반드시 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)를 먼저 읽는다.
+  현재 active 서버 운영 문서는 `docs/server_operations_current.md`이고, legacy setup 기록은 `docs/archive/legacy/`에 있다.
   서버 작업 worker는 비밀번호/시크릿을 문서나 로그에 복사/출력하지 않는다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.

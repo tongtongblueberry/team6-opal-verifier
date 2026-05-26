@@ -39,7 +39,8 @@
 <!-- Why: resumed workers must see the active architecture, data, public20, model, server, and branch/push rules in current_task.md. -->
 - 가장 큰 문제는 데이터 구조와 shape mismatch다.
 - runtime rule engine 금지, LLM-only architecture.
-- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+<!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
+- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md); 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
 - synthetic 데이터만 생성 데이터 검증 대상. Gate A/B/C/D 통과 후 sample 공개.
 - public20은 reference 및 모델 train/val 기준. public20 test split 금지. hidden leaderboard가 test.
 - prompt-only/no-training baseline은 active plan에서 제거된 오해. public20 모델 검증은 실제 학습 후보만 사용.
@@ -155,12 +156,12 @@
 - `tests/test_prepare_submit_script.py`는 fake LoRA adapter로 `prepare_submit.sh` 전체 패키징 flow와 `[6i] Python package readiness gate` 실행을 검증한다.
 - `README.md`는 현재 LLM-only 구조와 `/workspace/sinjeongmin_opal_verifier` 운영 기준으로 정리했다.
 - `PROGRESS.md`는 현재 LLM-only 구조 기준으로 정리했고, rule engine + LoRA override 설명은 과거 접근으로 명시했다.
-<!-- Changed: set server_setup.md as the authority and preserve secret handling. -->
+<!-- Changed: restore server_access as the authority and preserve secret handling. -->
 <!-- Why: server work must start from the authority doc and avoid copying secrets into docs/logs. -->
 - `docs/server_operations_current.md`는 현재 서버 접속, sync, 평가, 제출 판단 절차의 기준 문서다.
-- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
-- 서버 접근이 필요한 후속 작업은 먼저 `server_setup.md`를 찾고 읽는다. 현재 repo에서는
-  `docs/server_setup.md`, `docs/sweep_plan.md` 등 legacy 문서가 `docs/archive/legacy/`로 이동했으므로,
+- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md); 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+- 서버 접근이 필요한 후속 작업은 먼저 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)를 찾고 읽는다. 현재 repo에서는
+  `docs/sweep_plan.md` 등 legacy 문서가 `docs/archive/legacy/`로 이동했으므로,
   active 기준인 `docs/server_operations_current.md`와 legacy setup 기록을 함께 확인한다.
   서버 작업 기록에는 비밀번호/시크릿을 출력하지 않는다.
 - `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.

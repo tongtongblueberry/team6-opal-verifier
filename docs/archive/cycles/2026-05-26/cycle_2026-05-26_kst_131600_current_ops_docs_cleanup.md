@@ -8,7 +8,8 @@
 
 - `README.md`를 LLM-only 현재 구조 중심으로 교체했다.
 - `docs/server_operations_current.md`를 추가해 현재 서버 접속, sync, 평가, 제출 판단 절차를 한글로 기록했다.
-- `docs/server_setup.md`와 `docs/sweep_plan.md`에는 legacy 경고를 추가했다.
+<!-- Changed: remove obsolete setup-doc filename from archived cycle note. Why: server_access is now the server access authority. -->
+- 과거 서버 setup 문서와 `docs/sweep_plan.md`에는 legacy 경고를 추가했다.
 - 2026-05-26 13:11:56~13:15:11 KST에 SSH 10회 재시도했으나 모두 `Operation timed out`이었다.
 - leaderboard 제출은 여전히 no-go다.
 
@@ -18,7 +19,7 @@
 → [Exact Interpretation] 루트 문서를 따르는 운영자가 현재 LLM-only 원칙을 위반하거나 남의/legacy workspace를 건드릴 수 있었다.
 → [Detailed Explanation/Example] README를 현재 제출 entrypoint `src/solver.py`, package-local LLM artifact, no-rule fallback, `/workspace/sinjeongmin_opal_verifier` root 기준으로 교체했다.
 
-[Original Text/Data] `docs/server_setup.md`, `docs/sweep_plan.md`에는 과거 `sshpass`와 `/workspace/team6` 명령이 남아 있었다.
+[Original Text/Data] 과거 서버 setup 문서, `docs/sweep_plan.md`에는 과거 `sshpass`와 `/workspace/team6` 명령이 남아 있었다.
 → [Exact Interpretation] 과거 기록으로는 보존할 수 있지만 현재 실행 절차로 쓰면 안 된다.
 → [Detailed Explanation/Example] 두 문서 상단에 legacy 경고를 추가하고, 현재 실행 기준을 `docs/server_operations_current.md`와 `docs/archive/current_task.md`로 지정했다.
 

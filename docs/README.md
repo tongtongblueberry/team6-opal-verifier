@@ -34,7 +34,8 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 <!-- Changed: mirror the latest agent_handoff.md operating criteria. -->
 <!-- Why: docs index readers need the same no-rule, server, data, public20, model-baseline, and branch/push rules. -->
 - runtime rule engine 금지, LLM-only architecture.
-- 서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+<!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
+- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md); 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
 - synthetic 데이터만 생성 데이터 검증 대상. Gate A/B/C/D 통과 후 sample 공개.
 - public20은 reference 및 모델 train/val 기준. public20 test split 금지. hidden leaderboard가 test.
 - prompt-only/no-training baseline은 active plan에서 제거된 오해. public20 모델 검증은 실제 학습 후보만 사용.

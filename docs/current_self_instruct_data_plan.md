@@ -30,7 +30,8 @@ ad-hoc generator는 active `tools/datagen/`에 둘 수 없다.
 <!-- Changed: mirror the latest active architecture and public20/model criteria. -->
 <!-- Why: the Self-Instruct plan must not allow runtime rules, public20 test splits, or prompt-only/no-training baselines. -->
 
-서버 접근 권위 문서는 `server_setup.md`; 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
+<!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
+서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md); 서버 작업 agent는 먼저 읽고, 필요 시 최소 10회 재시도. 비밀번호/시크릿을 문서/로그에 복사하지 않음.
 branch/push 기준: origin `sinjeongmin`에 반영.
 
 비범위는 다음과 같다.

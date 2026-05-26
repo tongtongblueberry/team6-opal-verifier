@@ -8,7 +8,8 @@
 
 - `PROGRESS.md`의 현재 architecture 설명을 LLM-only 기준으로 교체했다.
 - 과거 `Rule Engine -> UNEXPECTED_ERROR_STATUS -> LoRA override` 구조는 현재 기준으로 틀린 과거 접근이라고 명시했다.
-- `docs/server_setup.md`, `docs/sweep_plan.md`는 active docs root에서 `docs/archive/legacy/`로 이동했다.
+<!-- Changed: remove obsolete setup-doc filename from archived cycle note. Why: server_access is now the server access authority. -->
+- 과거 서버 setup 문서, `docs/sweep_plan.md`는 active docs root에서 `docs/archive/legacy/`로 이동했다.
 - `docs/archive/`는 `cycles`, `handoff`, `legacy`, `research`, `submissions`로 세분화했다.
 - `docs/current_task.md`를 active handoff 문서로 올리고, archive 내부 handoff는 과거 기록으로 분리했다.
 - `configs/train_manifest.cycle7.json`, `configs/wandb_sweep.yaml`은 active 참조가 없고 `wandb_sweep.yaml`은 존재하지 않는 `tools/run_optional_sweep.py`를 가리켜 삭제했다.
