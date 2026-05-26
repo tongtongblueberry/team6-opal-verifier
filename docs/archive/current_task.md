@@ -1,12 +1,14 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 12:52 KST
+- 최종 갱신: 2026-05-26 12:58 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최신 로컬 commit:
+  - `1c41129 harden data audit input roots`
+  - `61d375e refresh current cycle handoff after guard cleanup`
   - `5056017 tighten submit and audit guards`
   - `98612ba archive rule prompt experiments and disable public seed`
   - `073f733 correct current handoff head`
@@ -17,8 +19,8 @@
   - `c552158 archive legacy pipeline entrypoints`
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
+  - 마지막 확인된 remote: `61d375e refresh current cycle handoff after guard cleanup`
   - 다음 push 대상: local branch HEAD → `origin/sinjeongmin`
-  - 마지막 확인된 remote: `073f733 correct current handoff head`
 - 서버 sync용 최신 bundle:
   - 최신 push 후 `/tmp/opal_cycle3_<head>_after_fca0652.bundle`를 재생성해야 한다.
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
@@ -113,7 +115,8 @@
 - `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.
 - `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
 - active `src`는 `solver.py`, `__init__.py`만 남아 있다.
-- `tools/analysis/data_audit.py` 기본 입력 후보에서 `/workspace/team6/training_data`를 제거했고, 우리 root `/workspace/sinjeongmin_opal_verifier`만 기본 후보로 둔다.
+- `tools/analysis/data_audit.py` 기본 입력 후보는 `/workspace/sinjeongmin_opal_verifier/training_data`, 로컬 `training_data`만 허용한다.
+- `/workspace/team6` 아래로 해석되는 `data_audit.py` input/reference path는 명시 입력 또는 symlink여도 실패한다.
 - `tools/training/run_full_pipeline.sh`, `tools/training/run_9b_pipeline.sh`, `tools/training/archive/cycle2_train.py`, `tools/training/archive/cycle3_train.py`는 `tools/archive/legacy_rule_pipeline/training/`으로 이동했다.
 - `tools/datagen/filter_data.py`, `tools/eval/eval_checkpoints.py`, `tools/training/train_probe.py`는 legacy helper solver import 때문에 archive로 이동했다.
 - active manifest path는 유지하고, archive 내부 legacy 파일은 제출/학습 실행에 사용하지 않는다.
@@ -126,6 +129,7 @@
 - 2026-05-26 12:22:51~12:25:51 KST에 SSH 10회 연속 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:27:36~12:30:37 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:43:30~12:46:45 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 12:53:05~12:56:20 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
