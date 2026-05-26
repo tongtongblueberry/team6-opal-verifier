@@ -1,11 +1,15 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 11:55 KST
+- 최종 갱신: 2026-05-26 12:18 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
+- 최신 로컬 commit:
+  - `f1cb501 exclude legacy helper solvers from packages`
+  - `c552158 archive legacy pipeline entrypoints`
+  - `e8ba9b9 add v4.1 bin aware shape repair`
 - leaderboard 제출 판단: 현재 no-go. 새 artifact의 학습 완료, calibration/hidden 평가, package `<12GB`, offline first-forward smoke가 아직 없다.
 
 ## 현재 Cycle 결론
@@ -15,6 +19,8 @@
 - `/workspace/team6`는 우리 작업 root가 아니므로 새 작업은 `/workspace/sinjeongmin_opal_verifier` 아래에서만 진행한다.
 - public20은 supervised 학습 소스가 아니라 shape reference로만 쓴다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
+- 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
+- legacy helper solver인 `src/lora_solver.py`, `src/llm_solver.py`, `src/probe_solver.py` 등은 package에 넣지 않는다.
 
 ## 데이터 현황
 
@@ -80,13 +86,26 @@
 - 4B는 우선 `last-n-layers` selective fine-tuning 또는 LoRA/DoRA/QLoRA 계열을 비교한다.
 - v3 `max_seq_len=2048` dry-run은 tokenized ratio `0.594`라 비교 학습에는 부적합하다.
 - 다음 full/selective 비교는 `max_seq_len=4096`을 우선한다.
+- 실행 우선순위:
+  1. 기존 4B LoRA r64 baseline 상태 확인 및 평가
+  2. 4B `last-n-layers=4`, `max_seq_len=4096` short-run
+  3. 0.8B/0.9B급 full FT
+  4. 4B LoRA 4096 재학습
+  5. DoRA/QLoRA 구현 검토
+
+## Package/Git 현황
+
+- `prepare_submit.sh`와 `prepare_submission.sh`는 더 이상 `src/lora_solver.py`를 복사하지 않는다.
+- `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
+- `tools/training/run_full_pipeline.sh`, `tools/training/run_9b_pipeline.sh`, `tools/training/archive/cycle2_train.py`, `tools/training/archive/cycle3_train.py`는 `tools/archive/legacy_rule_pipeline/training/`으로 이동했다.
+- 아직 `tools/training`, `tools/eval`, `tools/analysis`, `tools/datagen`에는 legacy `/workspace/team6` 파일이 일부 남아 있다. active manifest path는 유지하고, 나머지는 단계적으로 archive한다.
 
 ## 서버 상태
 
 - SSH alias: `team6`
 - 반복 재시도 명령:
   - `ssh -o BatchMode=yes -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 team6 '...'`
-- 2026-05-26 11:51 KST 기준 SSH는 `Operation timed out`.
+- 2026-05-26 12:07 KST 기준 SSH는 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
@@ -96,12 +115,13 @@
 
 ## 다음 실행 순서
 
-1. v4.1 변경분을 archive와 함께 commit한다.
-2. 서버 SSH를 계속 재시도한다.
-3. 서버 연결이 회복되면 v4.1 strict reference validate를 실행한다.
+1. 서버 SSH를 계속 재시도한다.
+2. 서버 연결이 회복되면 local commits를 서버 repo에 fast-forward 방식으로 sync한다.
+3. v4.1 strict reference validate를 실행한다.
 4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
 5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
-6. GPU가 비면 0.9B full fine-tuning 또는 4B selective fine-tuning short-run을 시작한다.
+6. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.
+7. 이후 0.8B/0.9B급 full FT를 비교한다.
 
 ## 보안
 
