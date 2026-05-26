@@ -102,6 +102,11 @@ LLM next-token/logit decision
   - `tools/analysis/filter_self_instruct_judge.py`는 LLM-only judge prompt payload와 외부 judge result parser만 제공하고,
     required spec grounding, source-span support, state-transition consistency, manifest-loader compatibility를 judge boolean으로 요구한다.
   - 두 도구 모두 기본 실행에서 LLM/API를 호출하지 않고, synthetic trajectory를 자체 생성하지 않는다.
+  <!-- Changed: record provider-gated LLM runner skip state. -->
+  <!-- Why: runner implementation alone is not generated-data evidence without provider env and raw output. -->
+  - `tools/datagen/self_instruct_llm_runner.py`를 추가했지만 현재 `OPENAI_API_KEY`/`GEMINI_API_KEY` env가 없어서
+    실제 generation은 `skipped_missing_env`로 skip 상태다. raw output JSONL이 없으므로
+    `sample.md` 생성과 Gate A/B/C pass 선언은 no-go다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`

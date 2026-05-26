@@ -43,6 +43,8 @@ artifacts/
 
 ## 현재 주요 도구
 
+<!-- Changed: add the provider-gated Self-Instruct LLM runner to the active tool index. -->
+<!-- Why: the execution lane now exists, even though missing provider env means no generated raw output yet. -->
 ```text
 tools/analysis/
 +-- build_supervised_manifest.py
@@ -61,6 +63,7 @@ tools/datagen/
 +-- self_instruct_seed_schema.py
 +-- self_instruct_candidate_schema.py
 +-- run_self_instruct_generation.py
++-- self_instruct_llm_runner.py
 +-- parse_self_instruct_outputs.py
 
 tools/training/
@@ -205,6 +208,12 @@ classification prompt payload와 request metadata만 생성한다. 이제 dry-ru
 `docs/legacy_spec_rules.md`에서 읽은 `rule_ref`/`source_span` rule card를 포함해야 하며,
 raw candidate는 `spec_grounding` 없이는 accepted synthetic 후보가 아니다. 기본 모드는 dry-run이고
 synthetic trajectory를 자체 생성하지 않으며 `--execute`는 현재 API 호출 없이 실패한다.
+<!-- Changed: document provider-gated LLM runner state and no-go consequence. -->
+<!-- Why: runner code exists, but missing provider env means no generated raw output was produced. -->
+`tools/datagen/self_instruct_llm_runner.py`는 `--execute`에서만 provider API를 호출하는 optional
+runner다. 현재 `OPENAI_API_KEY`/`GEMINI_API_KEY` env가 없으므로 실제 generation은
+`skipped_missing_env`로 skip 상태이며, raw output JSONL이 없어서 `docs/samples/self_instruct_sample.md`
+생성과 Gate A/B/C pass 선언은 no-go다.
 `tools/analysis/filter_self_instruct_judge.py`는 generated candidate용 LLM-only judge
 payload를 만들고 외부 judge result JSONL을 accepted/rejected candidate로 파싱한다.
 judge payload는 final-response targeting, required spec grounding, source-span support,

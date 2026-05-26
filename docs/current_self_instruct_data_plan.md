@@ -851,6 +851,11 @@ leaderboard 제출은 다음이 모두 참일 때만 go다.
     spec-grounded generation dry-run request payload/metadata writer를 구현했다. 이 도구는
     `docs/legacy_spec_rules.md` rule card/source-span을 prompt payload에 넣으며 LLM/API 호출과
     자체 candidate 생성을 하지 않는다.
+    <!-- Changed: document the provider-gated LLM runner and current skip outcome. -->
+    <!-- Why: runner availability must not be confused with generated synthetic evidence. -->
+    `tools/datagen/self_instruct_llm_runner.py` 실행 lane은 추가됐지만 현재 `OPENAI_API_KEY`/`GEMINI_API_KEY`
+    env가 없어 실제 generation은 `skipped_missing_env`로 skip 상태다. raw output JSONL이 없으므로
+    `sample.md` 생성과 Gate A/B/C pass 선언은 no-go다.
 14. `tools/analysis/filter_self_instruct_judge.py`로 LLM-only judge dry-run request payload writer와 외부 judge result parser를 구현했다. judge payload는 final-response targeting,
     required spec grounding, source-span support, state-transition consistency,
     manifest-loader compatibility를 JSON boolean으로 요구한다.

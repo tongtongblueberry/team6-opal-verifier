@@ -82,6 +82,11 @@
   <!-- Changed: record spec-grounded Self-Instruct request contract. -->
   <!-- Why: ungrounded Gemini/Codex text is not valid synthetic candidate evidence. -->
   이 wrapper는 `docs/legacy_spec_rules.md` rule card/source-span을 request payload에 넣어야 한다.
+- 외부 LLM runner는 `tools/datagen/self_instruct_llm_runner.py`다.
+  <!-- Changed: record provider-gated LLM runner skip state. -->
+  <!-- Why: missing provider env means no raw generated output exists for parser, sample, or gates. -->
+  현재 `OPENAI_API_KEY`/`GEMINI_API_KEY` env가 없어서 실제 generation은 `skipped_missing_env`로 skip 상태다.
+  raw output JSONL이 없으므로 `sample.md` 생성과 Gate A/B/C pass 선언은 no-go다.
 - LLM-only judge dry-run/filter 도구는 `tools/analysis/filter_self_instruct_judge.py`다. 이 도구는 judge payload 생성과 외부 judge result parsing만 수행한다.
   judge payload는 required spec grounding, source-span support, state-transition consistency,
   manifest-loader compatibility를 확인해야 한다.
