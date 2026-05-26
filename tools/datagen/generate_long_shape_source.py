@@ -39,6 +39,7 @@ PUBLIC_LIKE_PAYLOAD_FIELDS = (
     ("ActiveKey", "00 00 00 09 00 00 00 01"),
     ("HostChallenge", "AB CD EF 01 23 45 67 89"),
 )
+DENSE_CHAR_PAYLOAD_PREFIX = "shape-density"
 
 # 변경: public content를 쓰지 않는 1-record synthetic family의 로컬 object pool을 둔다.
 # 이유: target_lengths=1만으로는 기존 long case가 짧아지지 않아 min record_count=1을 만들 수 없기 때문이다.
@@ -122,8 +123,25 @@ def repeated_enrichment_value(value: str, repeat: int) -> str:
     return "|".join(value for _ in range(repeat))
 
 
+def dense_char_enrichment_value(field_round: int, repeat: int) -> str:
+    # 변경: whitespace token 수를 늘리지 않고 char 길이만 올리는 fallback payload를 추가한다.
+    # 이유: v4에서 513-1024 token bin이 과다해진 원인을 막으면서 char median ratio를 유지하기 위해서다.
+    unit = f"{DENSE_CHAR_PAYLOAD_PREFIX}-{field_round:02d}-0123456789abcdef"
+    return "|".join(unit for _ in range(max(1, repeat * 4)))
+
+
 def needs_enrichment(steps: list[Json], min_tokens: int, min_chars: int) -> bool:
     return token_count_for_steps(steps) < min_tokens or char_count_for_steps(steps) < min_chars
+
+
+def needs_token_enrichment(steps: list[Json], min_tokens: int) -> bool:
+    # 변경: token-bin matching 대상과 char-density 보강 대상을 분리한다.
+    # 이유: char 보강 대상까지 257-token 이상으로 밀어 v4 length JSD가 악화된 문제를 막기 위해서다.
+    return token_count_for_steps(steps) < min_tokens
+
+
+def needs_char_enrichment(steps: list[Json], min_chars: int) -> bool:
+    return min_chars > 0 and char_count_for_steps(steps) < min_chars
 
 
 # 변경: enrichment 목표에 char length와 payload 반복 강도를 추가한다.
@@ -134,6 +152,7 @@ def enrich_get_success_payloads(
     min_chars: int = 0,
     field_cycles: int = 2,
     value_repeat: int = 1,
+    max_tokens: int = 0,
 ) -> Json:
     # 변경: label-relevant final step이 아니라 benign Get SUCCESS filler payload만 풍부하게 만든다.
     # 이유: record_count는 유지하면서 public20 token-bin reference에 가까운 입력 밀도를 만들기 위해서다.
@@ -146,12 +165,60 @@ def enrich_get_success_payloads(
     field_round = 0
     max_field_rounds = len(PUBLIC_LIKE_PAYLOAD_FIELDS) * field_cycles
     while needs_enrichment(steps, min_tokens=min_tokens, min_chars=min_chars) and field_round < max_field_rounds:
+        changed = False
         for step_index in indexes:
             key, value = PUBLIC_LIKE_PAYLOAD_FIELDS[field_round % len(PUBLIC_LIKE_PAYLOAD_FIELDS)]
             payload = ensure_first_return_value(steps[step_index])
-            payload[f"{key}_{field_round}"] = repeated_enrichment_value(value, value_repeat)
+            field_name = f"{key}_{field_round}"
+            payload[field_name] = repeated_enrichment_value(value, value_repeat)
+            if max_tokens > 0 and token_count_for_steps(steps) > max_tokens:
+                if char_count_for_steps(steps) >= min_chars:
+                    del payload[field_name]
+                    continue
+                payload[field_name] = dense_char_enrichment_value(field_round, value_repeat)
+                if token_count_for_steps(steps) > max_tokens:
+                    del payload[field_name]
+                    continue
+            changed = True
             if not needs_enrichment(steps, min_tokens=min_tokens, min_chars=min_chars):
                 break
+        if not changed:
+            break
+        field_round += 1
+    return next_case
+
+
+def dense_char_fill_payloads(
+    case: Json,
+    min_chars: int,
+    field_cycles: int = 2,
+    value_repeat: int = 1,
+    max_tokens: int = 0,
+) -> Json:
+    # 변경: token-bin을 바꾸지 않는 char-density 전용 enrichment 단계를 추가한다.
+    # 이유: v4.1은 257-512 bin 안팎의 token 분포를 유지하면서 char median ratio를 올려야 하기 때문이다.
+    next_case = json.loads(json.dumps(case, ensure_ascii=False))
+    steps = next_case["steps"]
+    indexes = get_success_step_indexes(steps)
+    if not indexes or not needs_char_enrichment(steps, min_chars=min_chars):
+        return next_case
+
+    field_round = 0
+    max_field_rounds = len(PUBLIC_LIKE_PAYLOAD_FIELDS) * field_cycles
+    while needs_char_enrichment(steps, min_chars=min_chars) and field_round < max_field_rounds:
+        changed = False
+        for step_index in indexes:
+            payload = ensure_first_return_value(steps[step_index])
+            field_name = f"DenseChar_{field_round}"
+            payload[field_name] = dense_char_enrichment_value(field_round, value_repeat)
+            if max_tokens > 0 and token_count_for_steps(steps) > max_tokens:
+                del payload[field_name]
+                continue
+            changed = True
+            if not needs_char_enrichment(steps, min_chars=min_chars):
+                break
+        if not changed:
+            break
         field_round += 1
     return next_case
 
@@ -163,6 +230,8 @@ def enrich_subset(
     min_chars: int = 0,
     field_cycles: int = 2,
     value_repeat: int = 1,
+    max_tokens: int = 0,
+    selection_mode: str = "token-or-char",
 ) -> list[Json]:
     if not 0.0 <= fraction <= 1.0:
         raise ValueError("--enrich-fraction must be between 0 and 1")
@@ -174,10 +243,20 @@ def enrich_subset(
         raise ValueError("--enrichment-field-cycles must be positive")
     if value_repeat <= 0:
         raise ValueError("--enrichment-value-repeat must be positive")
+    if max_tokens < 0:
+        raise ValueError("--max-enriched-tokens must be non-negative")
+    if max_tokens > 0 and min_tokens > max_tokens:
+        raise ValueError("--min-enriched-tokens must be less than or equal to --max-enriched-tokens")
+    if selection_mode not in {"token-or-char", "token-only"}:
+        raise ValueError("--enrich-selection must be token-or-char or token-only")
+    if selection_mode == "token-only":
+        candidate_predicate = lambda steps: needs_token_enrichment(steps, min_tokens=min_tokens)
+    else:
+        candidate_predicate = lambda steps: needs_enrichment(steps, min_tokens=min_tokens, min_chars=min_chars)
     candidates = [
         index
         for index, case in enumerate(cases)
-        if needs_enrichment(case["steps"], min_tokens=min_tokens, min_chars=min_chars)
+        if candidate_predicate(case["steps"])
     ]
     selected = set(candidates[: int(len(candidates) * fraction)])
     return [
@@ -187,6 +266,47 @@ def enrich_subset(
             min_chars=min_chars,
             field_cycles=field_cycles,
             value_repeat=value_repeat,
+            max_tokens=max_tokens,
+        )
+        if index in selected
+        else case
+        for index, case in enumerate(cases)
+    ]
+
+
+def dense_char_fill_subset(
+    cases: list[Json],
+    fraction: float,
+    min_chars: int,
+    field_cycles: int = 2,
+    value_repeat: int = 1,
+    max_tokens: int = 0,
+) -> list[Json]:
+    if not 0.0 <= fraction <= 1.0:
+        raise ValueError("--dense-char-fill-fraction must be between 0 and 1")
+    if min_chars < 0:
+        raise ValueError("--dense-char-fill-min-chars must be non-negative")
+    if field_cycles <= 0:
+        raise ValueError("--enrichment-field-cycles must be positive")
+    if value_repeat <= 0:
+        raise ValueError("--enrichment-value-repeat must be positive")
+    if max_tokens < 0:
+        raise ValueError("--max-enriched-tokens must be non-negative")
+    if min_chars == 0 or fraction == 0.0:
+        return cases
+    candidates = [
+        index
+        for index, case in enumerate(cases)
+        if needs_char_enrichment(case["steps"], min_chars=min_chars)
+    ]
+    selected = set(candidates[: int(len(candidates) * fraction)])
+    return [
+        dense_char_fill_payloads(
+            case,
+            min_chars=min_chars,
+            field_cycles=field_cycles,
+            value_repeat=value_repeat,
+            max_tokens=max_tokens,
         )
         if index in selected
         else case
@@ -282,6 +402,12 @@ def build_summary(
     min_enriched_chars: int = 0,
     enrichment_field_cycles: int = 2,
     enrichment_value_repeat: int = 1,
+    max_enriched_tokens: int = 0,
+    enrich_selection: str = "token-or-char",
+    dense_char_fill_fraction: float = 0.0,
+    dense_char_fill_min_chars: int = 0,
+    dense_char_fill_field_cycles: int = 0,
+    dense_char_fill_value_repeat: int = 0,
     source_name: str = DEFAULT_SOURCE_NAME,
 ) -> dict[str, Any]:
     record_counts = [len(case["steps"]) for case in cases]
@@ -302,6 +428,12 @@ def build_summary(
         "single_record_total": single_record_per_label * 2,
         "min_enriched_tokens": min_enriched_tokens,
         "min_enriched_chars": min_enriched_chars,
+        "max_enriched_tokens": max_enriched_tokens,
+        "enrich_selection": enrich_selection,
+        "dense_char_fill_fraction": dense_char_fill_fraction,
+        "dense_char_fill_min_chars": dense_char_fill_min_chars,
+        "dense_char_fill_field_cycles": dense_char_fill_field_cycles,
+        "dense_char_fill_value_repeat": dense_char_fill_value_repeat,
         "enrichment_field_cycles": enrichment_field_cycles,
         "enrichment_value_repeat": enrichment_value_repeat,
     }
@@ -315,6 +447,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enrich-fraction", type=float, default=DEFAULT_ENRICH_FRACTION)
     parser.add_argument("--min-enriched-tokens", type=int, default=257)
     parser.add_argument("--min-enriched-chars", type=int, default=0)
+    parser.add_argument("--max-enriched-tokens", type=int, default=0)
+    parser.add_argument("--enrich-selection", choices=("token-or-char", "token-only"), default="token-or-char")
+    parser.add_argument("--dense-char-fill-fraction", type=float, default=0.0)
+    parser.add_argument("--dense-char-fill-min-chars", type=int, default=0)
+    parser.add_argument("--dense-char-fill-field-cycles", type=int, default=0)
+    parser.add_argument("--dense-char-fill-value-repeat", type=int, default=0)
     parser.add_argument("--enrichment-field-cycles", type=int, default=2)
     parser.add_argument("--enrichment-value-repeat", type=int, default=1)
     parser.add_argument("--single-record-per-label", type=int, default=0)
@@ -337,6 +475,18 @@ def main() -> int:
         min_chars=args.min_enriched_chars,
         field_cycles=args.enrichment_field_cycles,
         value_repeat=args.enrichment_value_repeat,
+        max_tokens=args.max_enriched_tokens,
+        selection_mode=args.enrich_selection,
+    )
+    dense_field_cycles = args.dense_char_fill_field_cycles or args.enrichment_field_cycles
+    dense_value_repeat = args.dense_char_fill_value_repeat or args.enrichment_value_repeat
+    cases = dense_char_fill_subset(
+        cases,
+        fraction=args.dense_char_fill_fraction,
+        min_chars=args.dense_char_fill_min_chars,
+        field_cycles=dense_field_cycles,
+        value_repeat=dense_value_repeat,
+        max_tokens=args.max_enriched_tokens,
     )
     write_jsonl(cases, output_path=output_path, source_name=args.source_name)
 
@@ -348,6 +498,12 @@ def main() -> int:
         single_record_per_label=args.single_record_per_label,
         min_enriched_tokens=args.min_enriched_tokens,
         min_enriched_chars=args.min_enriched_chars,
+        max_enriched_tokens=args.max_enriched_tokens,
+        enrich_selection=args.enrich_selection,
+        dense_char_fill_fraction=args.dense_char_fill_fraction,
+        dense_char_fill_min_chars=args.dense_char_fill_min_chars,
+        dense_char_fill_field_cycles=dense_field_cycles,
+        dense_char_fill_value_repeat=dense_value_repeat,
         enrichment_field_cycles=args.enrichment_field_cycles,
         enrichment_value_repeat=args.enrichment_value_repeat,
         source_name=args.source_name,
