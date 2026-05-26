@@ -415,6 +415,24 @@ if [ -n "$SAFETENSORS" ]; then
 fi
 echo ""
 
+# --- 6i: Python package readiness gate ---
+echo "  [6i] Python package readiness gate..."
+# Changed: run the shared readiness checker inside packaging, not only as a manual follow-up.
+# Why: packaged helper contamination, HF offline parity, and incomplete artifacts must fail before submission.
+CHECKER="$REPO/tools/eval/check_submit_package.py"
+if [ -f "$CHECKER" ]; then
+    if python3 "$CHECKER" "$SUBMIT_DIR"; then
+        echo "    OK: check_submit_package.py 통과"
+    else
+        echo "    FAIL: check_submit_package.py 실패"
+        ERRORS=$((ERRORS + 1))
+    fi
+else
+    echo "    FAIL: check_submit_package.py 없음: $CHECKER"
+    ERRORS=$((ERRORS + 1))
+fi
+echo ""
+
 # ============================================================
 # Step 7: 최종 결과
 # ============================================================

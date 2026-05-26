@@ -17,9 +17,11 @@ from pathlib import Path
 from typing import Any, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 
-# Added to keep the data/validation contract explicit and local to this script.
+# Changed: keep default audits inside the owned workspace, never the old shared team6 root.
+# Why: data validation must not silently read another team's or legacy workspace files.
 DEFAULT_INPUT_CANDIDATES = (
-    Path("/workspace/team6/training_data"),
+    Path("/workspace/sinjeongmin_opal_verifier/training_data"),
+    Path("/workspace/sinjeongmin_opal_verifier/data"),
     Path("training_data"),
     Path("data"),
 )
