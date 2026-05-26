@@ -42,6 +42,37 @@ class SelfInstructSeedSchemaTests(unittest.TestCase):
         self.assertEqual("Get", normalized["profile"]["final_method"])
         self.assertEqual("SUCCESS", normalized["profile"]["final_status"])
 
+    def test_normalizes_public_model_raw_json_input_without_instruction(self) -> None:
+        input_text = json.dumps(
+            {
+                "records": [
+                    _record("StartSession", "SUCCESS"),
+                    {
+                        "input": {"command": "Read", "args": {"LBA": "80 ~ 87"}},
+                        "output": {"command": "Read", "args": {"result": "Random Data"}},
+                    },
+                ]
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        seed = {
+            "sample_id": "tc-raw",
+            "input": input_text,
+            "source": "shape20_reference",
+        }
+
+        normalized = schema.normalize_seed(seed)
+
+        self.assertEqual("tc-raw", normalized["sample_id"])
+        self.assertEqual("shape20_reference", normalized["source"])
+        self.assertEqual("public_model_raw_json_text", normalized["input_format"])
+        self.assertNotIn("instruction", normalized)
+        self.assertEqual(input_text, normalized["input_text"])
+        self.assertEqual(["StartSession", "Read"], normalized["profile"]["method_sequence"])
+        self.assertEqual(["SUCCESS", "RANDOM DATA"], normalized["profile"]["status_sequence"])
+        self.assertEqual(len(input_text), normalized["profile"]["input_json_chars"])
+
     def test_normalizes_seed_from_trajectory_container(self) -> None:
         seed = {
             "seed_id": "seed-container",
@@ -86,6 +117,16 @@ class SelfInstructSeedSchemaTests(unittest.TestCase):
         self.assertNotIn("label", normalized)
         self.assertEqual("Get", normalized["profile"]["final_method"])
 
+    def test_rejects_label_like_public_raw_seed_fields_by_default(self) -> None:
+        seed = {
+            "sample_id": "tc-raw-label",
+            "input": json.dumps({"records": [_record("Get", "SUCCESS")]}),
+            "label": "pass",
+        }
+
+        with self.assertRaisesRegex(schema.SeedSchemaError, "forbidden_seed_fields:label"):
+            schema.normalize_seed(seed)
+
     def test_profile_calculates_dimension_vector(self) -> None:
         seed = schema.normalize_seed(
             {
@@ -114,11 +155,27 @@ class SelfInstructSeedSchemaTests(unittest.TestCase):
         self.assertEqual(["SUCCESS", "SUCCESS"], profile["status_sequence"])
         self.assertEqual("EndSession", profile["final_method"])
         self.assertEqual("SUCCESS", profile["final_status"])
+        self.assertEqual("canonical_instruction_records", profile["input_format"])
         self.assertEqual([0, 1], profile["return_value_counts"])
         self.assertEqual(1, profile["total_return_value_count"])
         self.assertEqual(1, profile["final_return_value_count"])
         self.assertEqual("1-32", profile["length_bin"])
         self.assertNotIn("label", profile)
+
+    def test_profile_extracts_public_command_and_status_variants(self) -> None:
+        seed = {
+            "sample_id": "variant-profile",
+            "records": [
+                {"command": "Write", "status": "pass", "output": {"return_values": []}},
+                {"input": {"command": "Read"}, "output": {"args": {"result": "Pattern 8E"}}},
+                {"input": {"method": "Get"}, "output": {"status": {"Name": "success"}}},
+            ],
+        }
+
+        profile = schema.profile_seed(seed)
+
+        self.assertEqual(["Write", "Read", "Get"], profile["method_sequence"])
+        self.assertEqual(["PASS", "PATTERN 8E", "SUCCESS"], profile["status_sequence"])
 
     def test_cli_writes_input_only_jsonl_and_profile_json(self) -> None:
         seed = {

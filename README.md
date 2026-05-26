@@ -7,6 +7,7 @@ SNU Introduction to Deep Learning (M2177.0043) Opal command-response trajectory 
 - 제출 및 학습 architecture는 LLM-only다.
 - rule engine, rule fallback, rule-id 기반 runtime, public label supervised 학습을 사용하지 않는다.
 - public 20은 supervised train source가 아니라 shape/reference 감사용으로만 사용한다.
+- Gate A/B/C 통과 후 데이터는 `train`, `val`, `test`, `public20_reference`로 분리한다.
 - 서버 작업 root는 `/workspace/sinjeongmin_opal_verifier`다. `/workspace/team6`는 현재 작업 root로 사용하지 않는다.
 - 서버 비밀번호나 token은 repo, 문서, script, shell command argument에 저장하지 않는다.
 
@@ -30,6 +31,8 @@ tools/analysis/
 +-- build_supervised_manifest.py
 +-- validate_manifest.py
 +-- data_audit.py
++-- self_instruct_invariants.py
++-- audit_self_instruct_quality.py
 
 tools/datagen/
 +-- self_instruct_seed_schema.py
@@ -49,7 +52,9 @@ tools/eval/
 +-- export_merged_model.py
 ```
 
-과거 rule pipeline, rule-prompt solver, public-label eval script, `/workspace/team6` 기반 script는 `tools/archive/legacy_rule_pipeline/` 아래에만 보존한다. 현재 학습/제출 실행 경로로 사용하지 않는다.
+<!-- Changed: remove the legacy executable archive from the active tools namespace. -->
+<!-- Why: stale executable code under tools/ kept reappearing in searches even though the current architecture is LLM-only. -->
+과거 rule pipeline, rule-prompt solver, public-label eval script, `/workspace/team6` 기반 script의 실행 코드는 active repo에서 제거했다. 필요한 폐기 근거와 삭제 범위는 [docs/archive/legacy/legacy_rule_pipeline_removed.md](docs/archive/legacy/legacy_rule_pipeline_removed.md)에만 둔다.
 
 <!-- Changed: remove legacy synthetic generators from the active datagen surface. -->
 <!-- Why: the current data path is Self-Instruct only, while v4/v4.1 and spec/gap generators are archived failure or legacy evidence. -->
@@ -61,7 +66,10 @@ v4/v4.1 long trajectory datagen과 spec/gap synthetic datagen은 active `tools/d
 
 - 서버 운영: [docs/server_operations_current.md](docs/server_operations_current.md)
 - 현재 handoff: [docs/current_task.md](docs/current_task.md)
+- agent 공통 맥락: [docs/agent_handoff.md](docs/agent_handoff.md)
+- Self-Instruct data plan: [docs/current_self_instruct_data_plan.md](docs/current_self_instruct_data_plan.md)
 - archive index: [docs/README.md](docs/README.md)
+- sample 공개 정책: [docs/samples/README.md](docs/samples/README.md)
 - 최신 cycle 기록: [docs/archive/cycles/2026-05-26/](docs/archive/cycles/2026-05-26/)
 
 ## 로컬 검증
@@ -73,6 +81,14 @@ git diff --check
 ```
 
 현재 로컬 회귀 테스트는 package readiness, no-rule marker gate, manifest trajectory 구조, data audit root guard, Self-Instruct seed/candidate schema, final-response invariant, full/selective fine-tuning CLI, LoRA sweep CLI, runtime smoke 계약을 포함한다.
+
+<!-- Changed: record public20 local reference facts and split policy in the root README. -->
+<!-- Why: data workers must not confuse public20 reference data with supervised training data. -->
+현재 public20 local reference는 `data/local/public20/public20_input.jsonl`과
+`data/local/public20/public20_labels.local.jsonl`이다. rows `20`, record_count
+min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
+label 파일은 aggregate 비교와 held-out metric에만 쓰고 generation/training prompt나
+manifest target에는 넣지 않는다.
 
 ## 서버 Sync 원칙
 
@@ -95,3 +111,4 @@ git bundle verify /tmp/opal_cycle3_<short_head>_after_fca0652.bundle
 - `tools/eval/check_submit_package.py` 통과.
 - `tools/eval/runtime_smoke_submit_package.py --offline --first-forward` 통과.
 - 기존 leaderboard 결과와 비교해 왜 지금 제출해야 하는지에 대한 Korean archive 기록.
+- Gate A/B/C 통과 후 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체와 public20 raw sample 1개 전체를 기록.

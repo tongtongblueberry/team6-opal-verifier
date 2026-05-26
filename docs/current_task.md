@@ -1,6 +1,6 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 15:02 KST
+- 최종 갱신: 2026-05-26 15:30 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
@@ -41,8 +41,7 @@
 - public20은 supervised 학습 소스가 아니라 shape reference로만 쓴다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
-- legacy helper solver인 `src/lora_solver.py`, `src/llm_solver.py`, `src/probe_solver.py`는 `tools/archive/legacy_rule_pipeline/src/`로 이동했다.
-- rule-prompt/27B public-eval 실험 solver인 `src/spec_solver.py`, `src/solver_27b.py`도 archive로 이동했다.
+- legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.
 - spec/gap synthetic generator와 v4/v4.1 generator는 active `tools/datagen/`에서 제거했다.
 
 ## 데이터 현황
@@ -138,9 +137,8 @@
 - active `src`는 `solver.py`, `__init__.py`만 남아 있다.
 - `tools/analysis/data_audit.py` 기본 입력 후보는 `/workspace/sinjeongmin_opal_verifier/training_data`, 로컬 `training_data`만 허용한다.
 - `/workspace/team6` 아래로 해석되는 `data_audit.py` input/reference path는 명시 입력 또는 symlink여도 실패한다.
-- `tools/training/run_full_pipeline.sh`, `tools/training/run_9b_pipeline.sh`, `tools/training/archive/cycle2_train.py`, `tools/training/archive/cycle3_train.py`는 `tools/archive/legacy_rule_pipeline/training/`으로 이동했다.
-- `tools/datagen/filter_data.py`, `tools/eval/eval_checkpoints.py`, `tools/training/train_probe.py`는 legacy helper solver import 때문에 archive로 이동했다.
-- active manifest path는 유지하고, archive 내부 legacy 파일은 제출/학습 실행에 사용하지 않는다.
+- legacy full pipeline shell, old cycle training scripts, old datagen/eval/training helper code는 active repo에서 제거했다.
+- active manifest path는 유지하고, legacy 실행 코드는 제출/학습 실행에 사용하지 않는다.
 - active `configs/`는 제거했다. `wandb_sweep.yaml`은 현재 사용하지 않고, 존재하지 않는 `tools/run_optional_sweep.py`를 가리키던 stale config라 삭제했다.
 - `tools/training/deploy_and_train.sh`는 비활성 legacy stub라 제거했다.
 - `tools/training/brier_trainer.py`는 active 학습 코드에서 import되지 않는 독립 실험 파일이라 제거했다.
@@ -151,6 +149,8 @@
 - legacy spec/gap synthetic generators는 Self-Instruct-only 경로와 맞지 않아 active datagen에서 제거했다.
 - v4/v4.1 long trajectory datagen도 active datagen에서 제거하고 archive evidence만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
+- `tools/archive/legacy_rule_pipeline/` 실행 코드는 active `tools/` namespace 혼동을 줄이기 위해 삭제했고, 삭제 범위와 폐기 사유는 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 둔다.
+- raw synthetic sample은 Gate A/B/C 통과 전에는 "합격 데이터"로 제시하지 않는다. 통과 뒤에는 `docs/samples/self_instruct_sample.md`에 전체 trajectory, label, profile, Gate A/B/C 요약을 기록한다.
 
 ## 서버 상태
 

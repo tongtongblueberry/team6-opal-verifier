@@ -61,9 +61,20 @@ def _method_name(record: Any) -> str:
     if not isinstance(record, Mapping):
         return ""
     input_value = record.get("input")
-    if not isinstance(input_value, Mapping):
-        return ""
-    method = input_value.get("method")
+    if isinstance(input_value, Mapping):
+        command = input_value.get("command")
+        if isinstance(command, str) and command.strip():
+            return command.strip()
+        method = input_value.get("method")
+        if isinstance(method, Mapping):
+            name = method.get("name") or method.get("Name")
+            return name.strip() if isinstance(name, str) else ""
+        if isinstance(method, str):
+            return method.strip()
+    command = record.get("command")
+    if isinstance(command, str) and command.strip():
+        return command.strip()
+    method = record.get("method")
     if isinstance(method, Mapping):
         name = method.get("name") or method.get("Name")
         return name.strip() if isinstance(name, str) else ""
@@ -93,11 +104,24 @@ def _record_status(record: Any) -> str:
     if not isinstance(record, Mapping):
         return ""
     output = record.get("output")
-    if not isinstance(output, Mapping):
-        return ""
-    statuses = _status_texts(output.get("status_codes"))
+    if isinstance(output, Mapping):
+        statuses = _status_texts(output.get("status_codes"))
+        if not statuses:
+            statuses = _status_texts(output.get("status"))
+        if not statuses:
+            statuses = _status_texts(record.get("status_codes"))
+        if not statuses:
+            statuses = _status_texts(record.get("status"))
+        if not statuses:
+            statuses = _status_texts(output.get("result"))
+        if not statuses:
+            args = output.get("args")
+            if isinstance(args, Mapping):
+                statuses = _status_texts(args.get("result"))
+        return statuses[0] if statuses else ""
+    statuses = _status_texts(record.get("status_codes"))
     if not statuses:
-        statuses = _status_texts(output.get("status"))
+        statuses = _status_texts(record.get("status"))
     return statuses[0] if statuses else ""
 
 
@@ -136,6 +160,29 @@ def _extract_records(candidate: Mapping[str, Any]) -> List[Any]:
     return copy.deepcopy(list(records))
 
 
+# Changed: support public/model raw rows whose `input` is the exact model input JSON string.
+# Why: public20 must be profiled without inventing an instruction field or changing the input dimension.
+def _extract_public_raw_input(candidate: Mapping[str, Any]) -> Optional[Tuple[str, List[Any]]]:
+    input_text = candidate.get("input")
+    if not isinstance(input_text, str):
+        return None
+    stripped = input_text.strip()
+    if not stripped:
+        raise SeedSchemaError("input_empty")
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError as exc:
+        raise SeedSchemaError(f"input_json_invalid:{exc.msg}") from exc
+    if not isinstance(payload, Mapping):
+        raise SeedSchemaError("input_json_root_not_object")
+    records = payload.get("records")
+    if not isinstance(records, Sequence) or isinstance(records, (bytes, bytearray, str)):
+        raise SeedSchemaError("records_not_list")
+    if len(records) == 0:
+        raise SeedSchemaError("records_empty")
+    return input_text, copy.deepcopy(list(records))
+
+
 def _forbidden_seed_fields(candidate: Mapping[str, Any]) -> List[str]:
     fields = sorted(key for key in candidate.keys() if str(key) in FORBIDDEN_SEED_FIELDS)
     trajectory = candidate.get("trajectory")
@@ -167,8 +214,16 @@ def normalize_seed(candidate: Mapping[str, Any], *, allow_label_fields_for_audit
         raise SeedSchemaError(f"forbidden_seed_fields:{','.join(forbidden_fields)}")
 
     sample_id = _required_string(candidate, ("sample_id", "seed_id", "id"), "sample_id")
-    instruction = _required_string(candidate, ("instruction", "task_instruction"), "instruction")
-    records = _extract_records(candidate)
+    raw_input = _extract_public_raw_input(candidate)
+    if raw_input is None:
+        instruction = _required_string(candidate, ("instruction", "task_instruction"), "instruction")
+        records = _extract_records(candidate)
+        input_text = None
+        input_format = "canonical_instruction_records"
+    else:
+        input_text, records = raw_input
+        instruction = None
+        input_format = "public_model_raw_json_text"
 
     final_record = records[-1]
     if not isinstance(final_record, Mapping):
@@ -179,10 +234,14 @@ def normalize_seed(candidate: Mapping[str, Any], *, allow_label_fields_for_audit
     normalized: Json = {
         "schema_version": SEED_SCHEMA_VERSION,
         "sample_id": sample_id,
-        "instruction": instruction,
         "records": records,
+        "input_format": input_format,
         "source": candidate.get("source") if isinstance(candidate.get("source"), str) else "public20_input_only",
     }
+    if instruction is not None:
+        normalized["instruction"] = instruction
+    if input_text is not None:
+        normalized["input_text"] = input_text
     normalized["profile"] = profile_seed(normalized)
     return normalized
 
@@ -198,15 +257,22 @@ def profile_seed(seed: Mapping[str, Any]) -> Json:
 
     method_sequence = [_method_name(record) for record in records]
     status_sequence = [_record_status(record) for record in records]
-    input_payload = {
-        "instruction": seed.get("instruction"),
-        "records": records,
-    }
-    input_json = json.dumps(input_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    input_text = seed.get("input_text")
+    if isinstance(input_text, str):
+        input_json = input_text
+        input_format = "public_model_raw_json_text"
+    else:
+        input_payload: Json = {"records": list(records)}
+        instruction = seed.get("instruction")
+        if isinstance(instruction, str):
+            input_payload["instruction"] = instruction
+        input_json = json.dumps(input_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        input_format = "canonical_instruction_records" if "instruction" in input_payload else "records_only"
     return_value_counts = [_return_value_count(record) for record in records]
 
     return {
         "sample_id": seed.get("sample_id"),
+        "input_format": input_format,
         "record_count": len(records),
         "input_json_chars": len(input_json),
         "method_sequence": method_sequence,

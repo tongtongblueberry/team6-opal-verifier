@@ -1,0 +1,6 @@
+{
+  "label_distribution_local_eval_only": {
+    "fail": 10,
+    "pass": 10
+  }
+}

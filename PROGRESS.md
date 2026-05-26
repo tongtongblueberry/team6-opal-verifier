@@ -1,6 +1,6 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 15:02 KST
+- 최종 갱신: 2026-05-26 15:43 KST
 - 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime, public label supervised 학습은 사용하지 않는다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
 - 현재 GitHub branch: `origin/sinjeongmin`
@@ -26,28 +26,20 @@ LLM next-token/logit decision
 
 ## 과거 Rule + LoRA 설명의 상태
 
-아래 구조는 과거 접근이고 현재 기준으로는 틀리다.
+<!-- Changed: remove the obsolete Rule+LoRA diagram from active progress. -->
+<!-- Why: active progress should not preserve a visual architecture that is explicitly forbidden for the current LLM-only submission path. -->
 
-```text
-Input trajectory
-       |
-[1] Rule Engine (StatefulOpalVerifier.verify_with_trace) -- 73.00 base
-       |
-  prediction + rule_id
-       |
-  rule_id == UNEXPECTED_ERROR_STATUS?
-       NO  --> rule prediction
-       YES --> LoRA 4B override
-```
-
-[Original Text/Data] 과거 문서에는 rule engine 73점 base가 먼저 판정하고 LoRA가 `UNEXPECTED_ERROR_STATUS` false positive를 rescue한다고 기록되어 있었다.
-→ [Exact Interpretation] 이것은 이전 실험/leaderboard 기록 설명으로는 남길 수 있지만 현재 제출 architecture 설명으로 사용하면 안 된다.
-→ [Detailed Explanation/Example] 현재 branch는 active `src`를 `solver.py`, `__init__.py`로 제한하고, legacy rule-prompt/solver 파일은 `tools/archive/legacy_rule_pipeline/` 아래로 이동했다.
+과거 Rule+LoRA diagram은 active progress에서 제거했다. 폐기 근거와 삭제된 legacy executable archive 목록은 [docs/archive/legacy/legacy_rule_pipeline_removed.md](docs/archive/legacy/legacy_rule_pipeline_removed.md)에 둔다.
 
 ## 현재 데이터/학습 상태
 
 - 가장 큰 병목은 데이터 구조와 public/reference shape mismatch다.
 - manifest builder의 records flatten 문제는 수정되어 전체 `records` trajectory가 하나의 supervised input으로 들어간다.
+- public20 local reference를 확보했다.
+  - input-only: `data/local/public20/public20_input.jsonl`
+  - labels local-only: `data/local/public20/public20_labels.local.jsonl`
+  - rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`
+  - public20은 `public20_reference`로만 두고 generated `train`, `val`, `test`와 섞지 않는다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -70,8 +62,9 @@ Input trajectory
   - `/workspace/sinjeongmin_opal_verifier/ops/runs/20260526_1051_KST_train_v3_alllinear_lora_r64_bs2`
   - adapter: `qwen35_4b_v3_alllinear_r64_lr2e4_e10_bs2ga4`
   - 마지막 확인 시 epoch 1 checkpoint 존재
-- 이후 SSH timeout이 반복되어 현재 학습 완료 여부는 미확정이다.
-- 서버 접속은 최소 10회 재시도 단위로 수행한다.
+- 이후 public20 reference fetch 시점에는 서버 접속이 1회 성공했다.
+- 기존 4B LoRA baseline 학습 완료 여부와 GPU 상태는 아직 재확인하지 않았다.
+- 서버 접속 재시도나 상태 확인은 agent가 최소 10회 재시도 단위로 수행한다.
 
 ## Leaderboard 제출 판단
 
@@ -102,3 +95,6 @@ Input trajectory
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - legacy spec/gap synthetic generator와 v4/v4.1 long trajectory generator는 active datagen에서 제거했다.
 - 삭제 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 남겼다.
+- `tools/archive/legacy_rule_pipeline/` 실행 코드는 active repo에서 삭제하고, 필요한 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 문서형 archive로 남겼다.
+- `docs/agent_handoff.md`는 README/PROGRESS/current docs와 함께 계속 갱신해야 하는 active 문서로 고정했다.
+- Gate A/B/C 통과 뒤에만 `docs/samples/self_instruct_sample.md`를 만들고, generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 포함한다.
