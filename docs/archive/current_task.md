@@ -1,12 +1,13 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 12:58 KST
+- 최종 갱신: 2026-05-26 13:03 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최신 로컬 commit:
+  - `3ba0f46 add prepare submit integration test`
   - `1c41129 harden data audit input roots`
   - `61d375e refresh current cycle handoff after guard cleanup`
   - `5056017 tighten submit and audit guards`
@@ -19,7 +20,7 @@
   - `c552158 archive legacy pipeline entrypoints`
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
-  - 마지막 확인된 remote: `61d375e refresh current cycle handoff after guard cleanup`
+  - 마지막 확인된 remote: `93389d8 refresh handoff after data audit hardening`
   - 다음 push 대상: local branch HEAD → `origin/sinjeongmin`
 - 서버 sync용 최신 bundle:
   - 최신 push 후 `/tmp/opal_cycle3_<head>_after_fca0652.bundle`를 재생성해야 한다.
@@ -112,6 +113,7 @@
 ## Package/Git 현황
 
 - `prepare_submit.sh`는 더 이상 `src/lora_solver.py`를 복사하지 않으며, 패키징 중 `check_submit_package.py`를 필수 실행한다.
+- `tests/test_prepare_submit_script.py`는 fake LoRA adapter로 `prepare_submit.sh` 전체 패키징 flow와 `[6i] Python package readiness gate` 실행을 검증한다.
 - `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.
 - `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
 - active `src`는 `solver.py`, `__init__.py`만 남아 있다.
@@ -130,6 +132,7 @@
 - 2026-05-26 12:27:36~12:30:37 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:43:30~12:46:45 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:53:05~12:56:20 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 12:58:54~13:02:10 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
