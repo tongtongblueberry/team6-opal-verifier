@@ -148,11 +148,9 @@ fi
 cp "$REPO/src/solver.py" "$SUBMIT_DIR/src/"
 echo "  solver.py 복사 완료"
 
-# lora_solver.py — LoRA 추론 모듈
-if [ -f "$REPO/src/lora_solver.py" ]; then
-    cp "$REPO/src/lora_solver.py" "$SUBMIT_DIR/src/"
-    echo "  lora_solver.py 복사 완료"
-fi
+# Changed: legacy helper solvers are intentionally not copied.
+# Why: solver.py contains the LLM-only model path inline; lora_solver.py can contain historical rule-context code.
+echo "  legacy helper solvers 복사 생략 (solver.py 단일 LLM-only entrypoint)"
 
 # __init__.py — 패키지 초기화
 if [ -f "$REPO/src/__init__.py" ]; then
@@ -365,11 +363,11 @@ else
     echo "    OK: solver.py에 절대 경로 없음"
 fi
 
-ABS_PATHS_LORA=$(grep -n "/workspace/" "$SUBMIT_DIR/src/lora_solver.py" 2>/dev/null | grep -v "^#" | grep -v "# " || true)
-if [ -n "$ABS_PATHS_LORA" ]; then
-    echo "    WARNING: lora_solver.py에 /workspace/ 절대 경로 발견:"
-    echo "$ABS_PATHS_LORA" | head -5 | sed 's/^/      /'
-    echo "    repo-local adapter가 우선 사용되면 운영 후보/로그 문자열은 경고로만 처리합니다."
+if [ -f "$SUBMIT_DIR/src/lora_solver.py" ]; then
+    echo "    FAIL: legacy lora_solver.py가 제출 패키지에 포함됨"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "    OK: legacy lora_solver.py 미포함"
 fi
 echo ""
 

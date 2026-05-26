@@ -270,6 +270,27 @@ def _check_no_rule_engine_path(solver_source: str) -> list[str]:
     return errors
 
 
+# Changed: scan every packaged Python helper for forbidden no-rule markers.
+# Why: a clean solver.py is not enough if prepare scripts accidentally include legacy helper solvers.
+def _check_no_rule_engine_sources(src_dir: Path) -> list[str]:
+    errors: list[str] = []
+    if not src_dir.exists():
+        return errors
+    for source_path in sorted(src_dir.glob("*.py")):
+        code_source = _python_code_without_comments_or_strings(_read_text(source_path))
+        for marker in FORBIDDEN_RULE_ENGINE_MARKERS:
+            if marker in code_source:
+                errors.append(
+                    f"{source_path.relative_to(src_dir.parent)} contains forbidden rule-engine marker {marker}"
+                )
+        if source_path.name != "solver.py" and re.search(
+            r"\b(from|import)\b[^\n]*(spec_solver|probe_solver|llm_solver|lora_solver)",
+            code_source,
+        ):
+            errors.append(f"{source_path.relative_to(src_dir.parent)} imports a legacy solver module")
+    return errors
+
+
 # Changed: expose a reusable package check for tests and runtime smoke.
 # Why: both static readiness and runtime smoke should enforce the same gate.
 def check_submit_package(package_dir: Path) -> list[str]:
@@ -289,6 +310,7 @@ def check_submit_package(package_dir: Path) -> list[str]:
     errors.extend(_check_setup_env(_read_text(setup_path)))
     errors.extend(_check_solver_hf_policy(solver_source))
     errors.extend(_check_no_rule_engine_path(solver_source))
+    errors.extend(_check_no_rule_engine_sources(package_dir / "src"))
     errors.extend(detect_model_artifact(package_dir).errors)
     return errors
 

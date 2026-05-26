@@ -58,9 +58,9 @@ echo "HEAD: $(git log --oneline -1)"
 rm -rf "$SUBMIT_DIR" 2>/dev/null
 mkdir -p "$SUBMIT_DIR/src"
 
-# Copy solver + lora_solver
+# Changed: copy only the submission entrypoint solver.
+# Why: solver.py has the LLM-only model path inline; legacy helper solvers can carry rule-context code.
 cp "$REPO/src/solver.py" "$SUBMIT_DIR/src/"
-cp "$REPO/src/lora_solver.py" "$SUBMIT_DIR/src/"
 
 # Create __init__.py
 echo "from .solver import Solver" > "$SUBMIT_DIR/src/__init__.py"

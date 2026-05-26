@@ -132,6 +132,19 @@ class SubmitPackageReadinessTest(unittest.TestCase):
             errors = check_submit_package(Path(temp_name))
         self.assertTrue(any("_init_rule_engine" in error for error in errors), errors)
 
+    def test_rule_engine_marker_in_helper_source_fails_readiness(self) -> None:
+        # Changed: cover forbidden markers in every packaged src/*.py file.
+        # Why: legacy helper solvers must not bypass the LLM-only package gate.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root) as temp_name:
+            helper_path = Path(temp_name) / "src" / "lora_solver.py"
+            helper_path.write_text(
+                "def legacy_helper():\n    rule_id = 'OLD_RULE'\n    return rule_id\n",
+                encoding="utf-8",
+            )
+            errors = check_submit_package(Path(temp_name))
+        self.assertTrue(any("lora_solver.py" in error and "rule_id" in error for error in errors), errors)
+
 
 if __name__ == "__main__":
     unittest.main()
