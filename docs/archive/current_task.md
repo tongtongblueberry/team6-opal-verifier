@@ -1,23 +1,26 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 12:40 KST
+- 최종 갱신: 2026-05-26 12:52 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최신 로컬 commit:
+  - `5056017 tighten submit and audit guards`
+  - `98612ba archive rule prompt experiments and disable public seed`
+  - `073f733 correct current handoff head`
   - `90fe432 archive second ssh retry batch`
-  - `25b952d archive github push and ssh retries`
   - `a2a24af archive legacy tool scripts`
   - `bad4fdd archive legacy source solvers`
   - `f1cb501 exclude legacy helper solvers from packages`
   - `c552158 archive legacy pipeline entrypoints`
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
-  - `origin/sinjeongmin` fast-forward push 완료: `034c7a2` → `90fe432`
+  - 다음 push 대상: local branch HEAD → `origin/sinjeongmin`
+  - 마지막 확인된 remote: `073f733 correct current handoff head`
 - 서버 sync용 최신 bundle:
-  - `/tmp/opal_cycle3_90fe432_after_fca0652.bundle`
+  - 최신 push 후 `/tmp/opal_cycle3_<head>_after_fca0652.bundle`를 재생성해야 한다.
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
 - leaderboard 제출 판단: 현재 no-go. 새 artifact의 학습 완료, calibration/hidden 평가, package `<12GB`, offline first-forward smoke가 아직 없다.
 
@@ -30,6 +33,8 @@
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver인 `src/lora_solver.py`, `src/llm_solver.py`, `src/probe_solver.py`는 `tools/archive/legacy_rule_pipeline/src/`로 이동했다.
+- rule-prompt/27B public-eval 실험 solver인 `src/spec_solver.py`, `src/solver_27b.py`도 archive로 이동했다.
+- `generate_spec_data.py --include-public-seed`는 hard-fail한다.
 
 ## 데이터 현황
 
@@ -104,9 +109,11 @@
 
 ## Package/Git 현황
 
-- `prepare_submit.sh`와 `prepare_submission.sh`는 더 이상 `src/lora_solver.py`를 복사하지 않는다.
+- `prepare_submit.sh`는 더 이상 `src/lora_solver.py`를 복사하지 않으며, 패키징 중 `check_submit_package.py`를 필수 실행한다.
+- `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.
 - `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
-- active `src`는 `solver.py`, `solver_27b.py`, `spec_solver.py`, `__init__.py`만 남아 있다.
+- active `src`는 `solver.py`, `__init__.py`만 남아 있다.
+- `tools/analysis/data_audit.py` 기본 입력 후보에서 `/workspace/team6/training_data`를 제거했고, 우리 root `/workspace/sinjeongmin_opal_verifier`만 기본 후보로 둔다.
 - `tools/training/run_full_pipeline.sh`, `tools/training/run_9b_pipeline.sh`, `tools/training/archive/cycle2_train.py`, `tools/training/archive/cycle3_train.py`는 `tools/archive/legacy_rule_pipeline/training/`으로 이동했다.
 - `tools/datagen/filter_data.py`, `tools/eval/eval_checkpoints.py`, `tools/training/train_probe.py`는 legacy helper solver import 때문에 archive로 이동했다.
 - active manifest path는 유지하고, archive 내부 legacy 파일은 제출/학습 실행에 사용하지 않는다.
@@ -115,9 +122,10 @@
 
 - SSH alias: `team6`
 - 반복 재시도 명령:
-  - `ssh -o BatchMode=yes -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 team6 '...'`
+  - `ssh -o BatchMode=yes -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=15 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 team6 '...'`
 - 2026-05-26 12:22:51~12:25:51 KST에 SSH 10회 연속 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 12:27:36~12:30:37 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 12:43:30~12:46:45 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
@@ -127,13 +135,14 @@
 
 ## 다음 실행 순서
 
-1. 서버 SSH를 계속 재시도한다.
-2. 서버 연결이 회복되면 local commits를 서버 repo에 fast-forward 방식으로 sync한다.
-3. v4.1 strict reference validate를 실행한다.
-4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
-5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
-6. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.
-7. 이후 0.8B/0.9B급 full FT를 비교한다.
+1. local HEAD를 `origin/sinjeongmin`에 fast-forward push하고 bundle을 재생성한다.
+2. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
+3. 서버 연결이 회복되면 local commits를 서버 repo에 fast-forward 방식으로 sync한다.
+4. v4.1 strict reference validate를 실행한다.
+5. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
+6. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
+7. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.
+8. 이후 0.8B/0.9B급 full FT를 비교한다.
 
 ## 보안
 
