@@ -50,10 +50,15 @@ LLM next-token/logit decision
 
 <!-- Changed: record completed epoch5, external probe, and batch_v2 Gate v2 outcomes. -->
 <!-- Why: active progress must distinguish no-go results from conditional synthetic candidates. -->
-- 0.9B full FT epoch 5 서버 run은 성공했지만 validation 기준 no-go다.
+<!-- Changed: pin current official-model evidence and avoid overreading seed11. -->
+<!-- Why: one full FT seed result must not replace LoRA auxiliary evidence or trigger sample/submission decisions. -->
+- full FT seed11/epoch 5 서버 run은 성공했지만 validation 기준 no-go다.
   - val accuracy `0.25`, fail recall `0.0`, pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`
   - OOM 1회 후 `label_smoothing=0`으로 성공했다.
   - fail recall `0.0`이므로 epoch `10/20` 확장은 no-go다.
+- LoRA seed11/29/47는 보조 비교 evidence로 유지한다. full FT seed11 결과 하나가 LoRA/QLoRA/selective
+  후보를 대체하지 않는다.
+- 현재 accepted synthetic `sample.md` 생성과 leaderboard 제출은 모두 no-go다.
 - `runs/self_instruct/external_llm_probe/`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다.
   `sample.md` 생성은 no-go다.
 - `runs/self_instruct/gemini_batch_v2/`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`,

@@ -45,9 +45,13 @@
 <!-- Why: resumed workers must see the active architecture, data, public20, model, server, and branch/push rules in current_task.md. -->
 <!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status. -->
 <!-- Why: current task state must separate completed no-go outcomes from conditional synthetic candidates. -->
+<!-- Changed: pin the current official-model evidence boundary. -->
+<!-- Why: seed11 full FT no-go must not be read as replacing LoRA auxiliary evidence or enabling submission. -->
 - 완료 결과 archive: `docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_2035_completed_results_archive.md`
-- 0.9B full FT epoch 5는 서버 run 성공 후 validation no-go다. val accuracy `0.25`, fail recall `0.0`,
+- 공식 모델 evidence 기준: full FT seed11/epoch 5는 서버 run 성공 후 validation no-go다. val accuracy `0.25`, fail recall `0.0`,
   pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`이며 epoch `10/20`은 no-go다.
+- LoRA seed11/29/47는 보조 비교 evidence로 유지한다. full FT seed11 결과 하나가 LoRA/selective 계열을
+  대체하지 않는다.
 - `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다.
   `sample.md` 생성은 no-go다.
 - `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
@@ -149,7 +153,9 @@
 
 <!-- Changed: record current public20-only full FT stopping decision. -->
 <!-- Why: next workers should not continue epoch 10/20 after fail recall collapsed at epoch 5. -->
-- 0.9B full FT epoch 5:
+<!-- Changed: separate full FT seed11 evidence from LoRA auxiliary evidence. -->
+<!-- Why: current docs must not overstate one failed full FT run or discard LoRA baselines. -->
+- 0.9B full FT seed11/epoch 5:
   - 서버 run 성공
   - OOM 1회 후 `label_smoothing=0`으로 성공
   - val accuracy `0.25`
@@ -157,6 +163,8 @@
   - pass recall `0.5`
   - confusion `TP=0 TN=1 FP=1 FN=2`
   - epoch `10/20` no-go
+- LoRA seed11/29/47 결과는 보조 evidence이며, full FT seed11 no-go가 LoRA/QLoRA/selective 후보를
+  대체하거나 폐기하는 근거는 아니다.
 - 서버에서 v3 기반 Qwen3.5-4B all-linear LoRA r64 baseline 학습을 시작했다.
 - 안정 run:
   - `/workspace/sinjeongmin_opal_verifier/ops/runs/20260526_1051_KST_train_v3_alllinear_lora_r64_bs2`

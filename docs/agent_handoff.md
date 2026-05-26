@@ -31,8 +31,12 @@
 
 <!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status to handoff. -->
 <!-- Why: next worker agents must not wait on epoch5 or treat conditional batch_v2 as accepted data. -->
-- 0.9B full FT epoch 5는 서버 run 성공 후 validation no-go로 종료했다.
+<!-- Changed: pin current official-model evidence and its limits. -->
+<!-- Why: handoff must keep seed11 full FT, LoRA auxiliary evidence, sample, and leaderboard decisions separate. -->
+- full FT seed11/epoch 5는 서버 run 성공 후 validation no-go로 종료했다.
   val accuracy `0.25`, fail recall `0.0`, pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`이며 epoch `10/20` 확장은 no-go다.
+- LoRA seed11/29/47는 보조 비교 evidence로 유지한다. full FT seed11 결과는 LoRA/selective 계열을
+  대체하지 않고, leaderboard 제출 근거도 아니다.
 - `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다. `sample.md` 생성은 no-go다.
 - `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
   label `pass=6/fail=3`, record_count min/mean/max `8/13.0/18`이다. Gate v2 결과는 Gate A `pass`, Gate B `conditional pass`,
