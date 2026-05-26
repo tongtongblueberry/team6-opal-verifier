@@ -12,6 +12,25 @@ from pathlib import Path
 from tools.training import run_trl_sft_public20 as runner
 
 
+# Changed: add tiny parameter/model fakes for full-FT verification tests.
+# Why: local tests must verify trainable-count logic without importing torch or TRL.
+class _FakeParameter:
+    def __init__(self, count: int, requires_grad: bool) -> None:
+        self._count = count
+        self.requires_grad = requires_grad
+
+    def numel(self) -> int:
+        return self._count
+
+
+class _FakeModel:
+    def __init__(self, parameters: list[_FakeParameter]) -> None:
+        self._parameters = parameters
+
+    def parameters(self) -> list[_FakeParameter]:
+        return self._parameters
+
+
 def _args(**overrides: object) -> argparse.Namespace:
     values = {
         "output_dir": "runs/model_validation/public20_trl_sft/adapters/seed11",
@@ -78,6 +97,28 @@ class RunTrlSftPublic20Tests(unittest.TestCase):
         self.assertEqual(1, summary.validation_rows)
         self.assertEqual({"pass": 1}, summary.train_label_counts)
         self.assertEqual({"fail": 1}, summary.validation_label_counts)
+
+    def test_full_ft_requires_all_parameters_trainable(self) -> None:
+        model = _FakeModel([
+            _FakeParameter(7, True),
+            _FakeParameter(3, False),
+        ])
+
+        with self.assertRaises(SystemExit):
+            runner.verify_training_mode(model, use_peft=False)
+
+    def test_full_ft_records_trainable_parameter_count(self) -> None:
+        model = _FakeModel([
+            _FakeParameter(7, True),
+            _FakeParameter(3, True),
+        ])
+
+        summary = runner.verify_training_mode(model, use_peft=False)
+
+        self.assertEqual(10, summary["total_parameters"])
+        self.assertEqual(10, summary["trainable_parameters"])
+        self.assertEqual(0, summary["frozen_parameters"])
+        self.assertTrue(summary["fully_trainable"])
 
 
 if __name__ == "__main__":

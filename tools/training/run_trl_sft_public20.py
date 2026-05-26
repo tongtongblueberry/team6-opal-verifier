@@ -318,6 +318,47 @@ def build_plan_report(
     }
 
 
+# Changed: record and validate trainable parameter coverage after TRL constructs the model.
+# Why: full fine-tuning must prove that no PEFT/freezing path left base parameters frozen.
+def parameter_training_summary(model: Any) -> dict[str, Any]:
+    total_parameters = 0
+    trainable_parameters = 0
+    parameter_tensors = 0
+    trainable_tensors = 0
+    for parameter in model.parameters():
+        parameter_tensors += 1
+        count = int(parameter.numel())
+        total_parameters += count
+        if bool(getattr(parameter, "requires_grad", False)):
+            trainable_tensors += 1
+            trainable_parameters += count
+    trainable_ratio = trainable_parameters / total_parameters if total_parameters else None
+    return {
+        "total_parameters": total_parameters,
+        "trainable_parameters": trainable_parameters,
+        "frozen_parameters": total_parameters - trainable_parameters,
+        "parameter_tensors": parameter_tensors,
+        "trainable_tensors": trainable_tensors,
+        "fully_trainable": total_parameters > 0 and trainable_parameters == total_parameters,
+        "trainable_ratio": trainable_ratio,
+    }
+
+
+# Changed: fail fast when the full-FT lane is not actually training every parameter.
+# Why: omitting --use-peft must mean full-parameter fine-tuning, not a silently frozen model.
+def verify_training_mode(model: Any, use_peft: bool) -> dict[str, Any]:
+    summary = parameter_training_summary(model)
+    if summary["total_parameters"] <= 0:
+        fail("Model exposes no parameters; cannot verify trainable parameter coverage")
+    if not use_peft and not summary["fully_trainable"]:
+        fail(
+            "Full fine-tuning requires every model parameter to be trainable; "
+            f"trainable={summary['trainable_parameters']} total={summary['total_parameters']} "
+            f"frozen={summary['frozen_parameters']}"
+        )
+    return summary
+
+
 def write_plan_reports(report: dict[str, Any], json_path: str | None, md_path: str | None) -> None:
     if json_path:
         Path(json_path).parent.mkdir(parents=True, exist_ok=True)
@@ -396,10 +437,14 @@ def run_training(args: argparse.Namespace, dataset_summary: DatasetSummary, conf
         eval_dataset=dataset["validation"] if args.eval_strategy != "no" else None,
         peft_config=peft_config,
     )
+    # Changed: verify parameter mode after SFTTrainer model construction and before training.
+    # Why: the official trainer owns model setup, so this is the point where full FT can be proven.
+    parameter_check = verify_training_mode(trainer.model, use_peft=bool(args.use_peft))
     train_result = trainer.train()
     eval_metrics = trainer.evaluate() if args.eval_strategy != "no" else None
     trainer.save_model(args.output_dir)
     return {
+        "parameter_check": parameter_check,
         "train_metrics": getattr(train_result, "metrics", None),
         "eval_metrics": eval_metrics,
         "saved_model_dir": args.output_dir,
