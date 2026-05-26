@@ -6,7 +6,8 @@
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
-- 최신 로컬 commit:
+- 최근 주요 commit:
+  - `72d3e6a archive ssh retry status after resume`
   - `28bcacd refresh handoff after prepare submit test`
   - `3ba0f46 add prepare submit integration test`
   - `1c41129 harden data audit input roots`
@@ -21,9 +22,11 @@
   - `c552158 archive legacy pipeline entrypoints`
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
-  - `origin/sinjeongmin` 확인 완료: `28bcacd refresh handoff after prepare submit test`
+  - authoritative check: `git ls-remote origin refs/heads/sinjeongmin`
+  - 이 handoff 직전 확인값: `72d3e6a archive ssh retry status after resume`
 - 서버 sync용 최신 bundle:
-  - `/tmp/opal_cycle3_28bcacd_after_fca0652.bundle`
+  - authoritative 생성 명령: `git bundle create /tmp/opal_cycle3_$(git rev-parse --short HEAD)_after_fca0652.bundle fca06523f66fdd8f4950da6c51d87e4efaa74b6d..HEAD`
+  - 이 handoff 직전 확인값: `/tmp/opal_cycle3_72d3e6a_after_fca0652.bundle`
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
 - 로컬 테스트:
   - `python3 -m unittest discover -s tests -v`: 61 tests OK
