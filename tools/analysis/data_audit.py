@@ -17,14 +17,13 @@ from pathlib import Path
 from typing import Any, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 
-# Changed: keep default audits inside the owned workspace, never the old shared team6 root.
-# Why: data validation must not silently read another team's or legacy workspace files.
+# Changed: keep default audits on supervised training roots, never broad data/reference directories.
+# Why: default data validation must not silently mix reference files into train-like audit inputs.
 DEFAULT_INPUT_CANDIDATES = (
     Path("/workspace/sinjeongmin_opal_verifier/training_data"),
-    Path("/workspace/sinjeongmin_opal_verifier/data"),
     Path("training_data"),
-    Path("data"),
 )
+FORBIDDEN_INPUT_ROOTS = (Path("/workspace/team6"),)
 JSON_SUFFIXES = {".json", ".jsonl"}
 KST = timezone(timedelta(hours=9), name="KST")
 
@@ -115,15 +114,39 @@ def fail(message: str) -> None:
     raise ValueError(message)
 
 
+# Changed: reject the old shared team6 root even when passed explicitly or via a symlink.
+# Why: this project must not audit or train from another workspace by default or by accident.
+def _is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def _validate_allowed_data_path(path: Path) -> Path:
+    candidates = [path]
+    try:
+        candidates.append(path.resolve(strict=False))
+    except OSError:
+        candidates.append(path.absolute())
+    for candidate in candidates:
+        for root in FORBIDDEN_INPUT_ROOTS:
+            if candidate == root or _is_relative_to(candidate, root):
+                fail(f"forbidden input root: {path} resolves under {root}")
+    return path
+
+
 def resolve_input_roots(values: Sequence[str]) -> List[Path]:
     if values:
-        return [Path(value) for value in values]
-    return [path for path in DEFAULT_INPUT_CANDIDATES if path.exists()]
+        return [_validate_allowed_data_path(Path(value)) for value in values]
+    return [_validate_allowed_data_path(path) for path in DEFAULT_INPUT_CANDIDATES if path.exists()]
 
 
 def collect_json_files(paths: Sequence[Path]) -> List[Path]:
     files: List[Path] = []
     for path in paths:
+        _validate_allowed_data_path(path)
         if not path.exists():
             fail(f"input path does not exist: {path}")
         if path.is_dir():
@@ -710,7 +733,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     output_dir = Path(args.output_dir)
     input_paths = resolve_input_roots(args.input)
-    reference_paths = [Path(value) for value in args.reference]
+    reference_paths = [_validate_allowed_data_path(Path(value)) for value in args.reference]
 
     if not input_paths:
         candidates = ", ".join(str(path) for path in DEFAULT_INPUT_CANDIDATES)
