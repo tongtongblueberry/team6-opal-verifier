@@ -18,6 +18,18 @@ from typing import Any
 VALID_LABELS = {"pass", "fail"}
 KST = timezone(timedelta(hours=9), name="KST")
 
+# Changed: recognize PEFT adapter and tokenizer artifacts explicitly.
+# Why: adapter-dir eval can be loaded directly, while --adapter-path must compose base model + LoRA adapter.
+ADAPTER_CONFIG_FILE = "adapter_config.json"
+TOKENIZER_MARKER_FILES = (
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json",
+    "merges.txt",
+    "sentencepiece.bpe.model",
+    "special_tokens_map.json",
+)
+
 
 @dataclass(frozen=True)
 class EvalRow:
@@ -146,6 +158,78 @@ def compute_generation_metrics(predictions: list[dict[str, Any]]) -> dict[str, A
     }
 
 
+def is_local_adapter_dir(path_text: str) -> bool:
+    path = Path(path_text).expanduser()
+    return path.is_dir() and (path / ADAPTER_CONFIG_FILE).is_file()
+
+
+# Changed: choose tokenizer source from the adapter when the adapter saved tokenizer files.
+# Why: TRL/PEFT adapter directories may carry the tokenizer state used by direct adapter-dir loading.
+def adapter_has_tokenizer(path_text: str) -> bool:
+    path = Path(path_text).expanduser()
+    return path.is_dir() and any((path / filename).is_file() for filename in TOKENIZER_MARKER_FILES)
+
+
+def tokenizer_source_for(model_name_or_path: str, adapter_path: str | None) -> str:
+    if adapter_path and adapter_has_tokenizer(adapter_path):
+        return adapter_path
+    return model_name_or_path
+
+
+# Changed: reject local double-adapter CLI usage before model loading.
+# Why: --adapter-path semantics require --model-name-or-path to identify the base model, not another adapter dir.
+def validate_model_adapter_args(model_name_or_path: str, adapter_path: str | None) -> None:
+    if not adapter_path:
+        return
+    adapter = Path(adapter_path).expanduser()
+    if adapter.is_absolute() and not adapter.exists():
+        fail(f"--adapter-path does not exist: {adapter_path}")
+    if adapter.exists() and not (adapter / ADAPTER_CONFIG_FILE).is_file():
+        fail(f"--adapter-path local directory must contain {ADAPTER_CONFIG_FILE}: {adapter_path}")
+    if is_local_adapter_dir(model_name_or_path):
+        fail(
+            "--adapter-path expects --model-name-or-path to be the base model. "
+            "For direct adapter-dir loading, omit --adapter-path and pass the adapter dir as --model-name-or-path."
+        )
+
+
+# Changed: prefer Transformers' PEFT adapter integration for adapter-path composition.
+# Why: official Transformers loading uses base AutoModelForCausalLM plus load_adapter(), matching direct adapter-dir semantics.
+def load_adapter_into_model(model: Any, adapter_path: str) -> Any:
+    if hasattr(model, "load_adapter"):
+        try:
+            model.load_adapter(adapter_path)
+        except ImportError as exc:
+            fail(f"--adapter-path requires peft for Transformers adapter loading: {exc}", exit_code=3)
+        if hasattr(model, "set_adapter"):
+            model.set_adapter("default")
+        return model
+
+    try:
+        from peft import PeftModel  # type: ignore
+    except ImportError as exc:
+        fail(f"--adapter-path requires peft: {exc}", exit_code=3)
+    return PeftModel.from_pretrained(model, adapter_path)
+
+
+def load_model_and_tokenizer(
+    auto_tokenizer: Any,
+    auto_model: Any,
+    model_name_or_path: str,
+    adapter_path: str | None,
+) -> tuple[Any, Any]:
+    validate_model_adapter_args(model_name_or_path, adapter_path)
+    tokenizer = auto_tokenizer.from_pretrained(tokenizer_source_for(model_name_or_path, adapter_path))
+    if tokenizer.pad_token_id is None and tokenizer.eos_token is not None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    model = auto_model.from_pretrained(model_name_or_path)
+    if adapter_path:
+        model = load_adapter_into_model(model, adapter_path)
+    model.eval()
+    return tokenizer, model
+
+
 def generate_predictions(args: argparse.Namespace, rows: list[EvalRow]) -> list[dict[str, Any]]:
     # Changed: defer heavyweight model imports until real generation.
     # Why: local tests and dry-runs must not download or load models.
@@ -155,17 +239,12 @@ def generate_predictions(args: argparse.Namespace, rows: list[EvalRow]) -> list[
     except ImportError as exc:
         fail(f"Generation evaluation requires torch and transformers: {exc}", exit_code=3)
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
-    if tokenizer.pad_token_id is None and tokenizer.eos_token is not None:
-        tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path)
-    if args.adapter_path:
-        try:
-            from peft import PeftModel  # type: ignore
-        except ImportError as exc:
-            fail(f"--adapter-path requires peft: {exc}", exit_code=3)
-        model = PeftModel.from_pretrained(model, args.adapter_path)
-    model.eval()
+    tokenizer, model = load_model_and_tokenizer(
+        AutoTokenizer,
+        AutoModelForCausalLM,
+        args.model_name_or_path,
+        args.adapter_path,
+    )
 
     predictions: list[dict[str, Any]] = []
     with torch.no_grad():
