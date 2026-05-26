@@ -1,21 +1,22 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 12:28 KST
+- 최종 갱신: 2026-05-26 12:32 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최신 로컬 commit:
+  - `25b952d archive github push and ssh retries`
   - `a2a24af archive legacy tool scripts`
   - `bad4fdd archive legacy source solvers`
   - `f1cb501 exclude legacy helper solvers from packages`
   - `c552158 archive legacy pipeline entrypoints`
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
-  - `origin/sinjeongmin` fast-forward push 완료: `034c7a2` → `a2a24af`
+  - `origin/sinjeongmin` fast-forward push 완료: `034c7a2` → `25b952d`
 - 서버 sync용 최신 bundle:
-  - 최신 bundle은 다음 handoff commit 이후 재생성한다.
+  - `/tmp/opal_cycle3_25b952d_after_fca0652.bundle`
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
 - leaderboard 제출 판단: 현재 no-go. 새 artifact의 학습 완료, calibration/hidden 평가, package `<12GB`, offline first-forward smoke가 아직 없다.
 
@@ -115,6 +116,7 @@
 - 반복 재시도 명령:
   - `ssh -o BatchMode=yes -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=3 team6 '...'`
 - 2026-05-26 12:22:51~12:25:51 KST에 SSH 10회 연속 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 12:27:36~12:30:37 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부
