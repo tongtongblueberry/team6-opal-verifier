@@ -1,0 +1,63 @@
+{
+  "completion_only_loss_basis": {
+    "dataset_columns": [
+      "prompt",
+      "completion"
+    ],
+    "sft_config": {
+      "completion_only_loss": true
+    },
+    "trainer_owns_loss_masking": true
+  },
+  "created_at": "2026-05-26T22:51:43.744941+09:00",
+  "custom_data_collator": false,
+  "custom_training_loop": false,
+  "dataset": {
+    "dataset_dir": "runs/model_validation/public20_trl_sft/seed11_retrieved_spec_context_dataset",
+    "train_label_counts": {
+      "fail": 8,
+      "pass": 8
+    },
+    "train_path": "runs/model_validation/public20_trl_sft/seed11_retrieved_spec_context_dataset/train.jsonl",
+    "train_rows": 16,
+    "validation_label_counts": {
+      "fail": 2,
+      "pass": 2
+    },
+    "validation_path": "runs/model_validation/public20_trl_sft/seed11_retrieved_spec_context_dataset/validation.jsonl",
+    "validation_rows": 4
+  },
+  "dataset_format": "standard_prompt_completion",
+  "dependency_report": null,
+  "formatting_func": null,
+  "model_name_or_path": "Qwen/Qwen3.5-0.8B",
+  "official_reference": "third_party/hf_trl_sft pinned HEAD a9993736c2250da0b3d2f206ec217f144b891e5a",
+  "output_dir": "runs/model_validation/public20_trl_sft/seed11_retrieved_spec_context_adapter",
+  "peft": {
+    "enabled": false,
+    "lora_alpha": null,
+    "lora_dropout": null,
+    "lora_r": null,
+    "lora_target_modules": null
+  },
+  "sft_config_kwargs": {
+    "completion_only_loss": true,
+    "eval_steps": 10,
+    "eval_strategy": "epoch",
+    "gradient_accumulation_steps": 8,
+    "gradient_checkpointing": true,
+    "learning_rate": 0.0001,
+    "logging_steps": 1,
+    "max_length": 4096,
+    "num_train_epochs": 5.0,
+    "output_dir": "runs/model_validation/public20_trl_sft/seed11_retrieved_spec_context_adapter",
+    "packing": false,
+    "per_device_eval_batch_size": 1,
+    "per_device_train_batch_size": 1,
+    "report_to": "none",
+    "save_steps": 10,
+    "save_strategy": "epoch",
+    "seed": 42
+  },
+  "training_core": "trl.SFTTrainer"
+}
