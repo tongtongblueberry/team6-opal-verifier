@@ -16,7 +16,8 @@ Gap categories:
 8. Session to Manufactured-Inactive SP
 9. Timeout validation
 
-Usage: Run on server, then re-run generate_uncertainty_data.py
+Usage: Run on the owned server root, then rebuild the canonical manifest with
+tools/analysis/build_supervised_manifest.py.
   cd /workspace/sinjeongmin_opal_verifier/repo
   PYTHONPATH=. python tools/datagen/generate_gap_data.py
 """
@@ -28,6 +29,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
 # Changed: datagen 산출물 기본 루트를 env로 재정의 가능하게 분리.
 # Why: 기본 실행이 이전 /workspace/team6/training_data에 쓰지 않도록 함.
 DEFAULT_RUNTIME_ROOT = Path(

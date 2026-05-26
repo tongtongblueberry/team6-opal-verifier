@@ -12,6 +12,15 @@ from pathlib import Path
 
 
 class PrepareSubmitScriptTest(unittest.TestCase):
+    # Changed: guard against reintroducing stale external workspace fallbacks.
+    # Why: submit package construction must be reproducible from the current repo only.
+    def test_prepare_submit_has_no_external_workspace_fallback(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        script = (root / "tools" / "eval" / "prepare_submit.sh").read_text(encoding="utf-8")
+
+        self.assertNotIn("/workspace/project", script)
+        self.assertNotIn("generate_uncertainty_data.py", script)
+
     def test_prepare_submit_runs_python_readiness_gate(self) -> None:
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as runtime_dir, tempfile.TemporaryDirectory() as adapter_dir:

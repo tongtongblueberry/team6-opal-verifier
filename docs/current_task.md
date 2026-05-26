@@ -1,17 +1,17 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 13:16 KST
+- 최종 갱신: 2026-05-26 13:35 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
 - 로컬 작업 폴더: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`
 - 현재 branch: `cycle3/training-methods-20260526-kst`
 - 최근 주요 commit:
+  - `0f9214d refresh current operations docs`
   - `b2f6d3d make handoff sync checks authoritative`
   - `72d3e6a archive ssh retry status after resume`
   - `28bcacd refresh handoff after prepare submit test`
   - `3ba0f46 add prepare submit integration test`
-  - `1c41129 harden data audit input roots`
   - `61d375e refresh current cycle handoff after guard cleanup`
   - `5056017 tighten submit and audit guards`
   - `98612ba archive rule prompt experiments and disable public seed`
@@ -24,13 +24,13 @@
   - `e8ba9b9 add v4.1 bin aware shape repair`
 - GitHub:
   - authoritative check: `git ls-remote origin refs/heads/sinjeongmin`
-  - 이 handoff 직전 확인값: `b2f6d3d make handoff sync checks authoritative`
+  - 이 cleanup 직전 확인값: `0f9214d refresh current operations docs`
 - 서버 sync용 최신 bundle:
   - authoritative 생성 명령: `git bundle create /tmp/opal_cycle3_$(git rev-parse --short HEAD)_after_fca0652.bundle fca06523f66fdd8f4950da6c51d87e4efaa74b6d..HEAD`
-  - 이 handoff 직전 확인값: `/tmp/opal_cycle3_b2f6d3d_after_fca0652.bundle`
+  - 이 cleanup 직전 확인값: `/tmp/opal_cycle3_0f9214d_after_fca0652.bundle`
   - required base: `fca06523f66fdd8f4950da6c51d87e4efaa74b6d`
 - 로컬 테스트:
-  - `python3 -m unittest discover -s tests -v`: 61 tests OK
+  - `python3 -m unittest discover -s tests -v`: 63 tests OK
 - leaderboard 제출 판단: 현재 no-go. 새 artifact의 학습 완료, calibration/hidden 평가, package `<12GB`, offline first-forward smoke가 아직 없다.
 
 ## 현재 Cycle 결론
@@ -121,8 +121,9 @@
 - `prepare_submit.sh`는 더 이상 `src/lora_solver.py`를 복사하지 않으며, 패키징 중 `check_submit_package.py`를 필수 실행한다.
 - `tests/test_prepare_submit_script.py`는 fake LoRA adapter로 `prepare_submit.sh` 전체 패키징 flow와 `[6i] Python package readiness gate` 실행을 검증한다.
 - `README.md`는 현재 LLM-only 구조와 `/workspace/sinjeongmin_opal_verifier` 운영 기준으로 정리했다.
+- `PROGRESS.md`는 현재 LLM-only 구조 기준으로 정리했고, rule engine + LoRA override 설명은 과거 접근으로 명시했다.
 - `docs/server_operations_current.md`는 현재 서버 접속, sync, 평가, 제출 판단 절차의 기준 문서다.
-- `docs/server_setup.md`, `docs/sweep_plan.md`는 legacy 문서로 표시했다.
+- `docs/server_setup.md`, `docs/sweep_plan.md` 등 legacy 문서는 `docs/archive/legacy/`로 이동했다.
 - `prepare_submission.sh`는 public label 평가가 섞인 legacy script라 archive로 이동했다.
 - `check_submit_package.py`는 package 안의 모든 `src/*.py`를 no-rule marker 대상으로 검사한다.
 - active `src`는 `solver.py`, `__init__.py`만 남아 있다.
@@ -131,6 +132,13 @@
 - `tools/training/run_full_pipeline.sh`, `tools/training/run_9b_pipeline.sh`, `tools/training/archive/cycle2_train.py`, `tools/training/archive/cycle3_train.py`는 `tools/archive/legacy_rule_pipeline/training/`으로 이동했다.
 - `tools/datagen/filter_data.py`, `tools/eval/eval_checkpoints.py`, `tools/training/train_probe.py`는 legacy helper solver import 때문에 archive로 이동했다.
 - active manifest path는 유지하고, archive 내부 legacy 파일은 제출/학습 실행에 사용하지 않는다.
+- active `configs/`는 제거했다. `wandb_sweep.yaml`은 현재 사용하지 않고, 존재하지 않는 `tools/run_optional_sweep.py`를 가리키던 stale config라 삭제했다.
+- `tools/training/deploy_and_train.sh`는 비활성 legacy stub라 제거했다.
+- `tools/training/brier_trainer.py`는 active 학습 코드에서 import되지 않는 독립 실험 파일이라 제거했다.
+- `tests/`는 현재 active tools와 `src/solver.py` 회귀 검증만 남긴다. `__pycache__`는 생성 산출물이므로 제거했다.
+- `tools/eval/prepare_submit.sh`는 repo-local `setup.sh`, `pyproject.toml`, `uv.lock`만 복사한다. 다른 workspace fallback은 제거했다.
+- `tools/datagen/generate_gap_data.py`의 stale `generate_uncertainty_data.py` 안내는 현재 `build_supervised_manifest.py` 기반 flow로 수정했다.
+- `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 
 ## 서버 상태
 
@@ -144,6 +152,7 @@
 - 2026-05-26 12:58:54~13:02:10 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 13:04:53~13:08:08 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 2026-05-26 13:11:56~13:15:11 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
+- 2026-05-26 13:20:28~13:23:43 KST에 SSH 10회 추가 재시도했으나 모두 `Operation timed out`.
 - 연결 회복 시 즉시 확인할 것:
   1. `/workspace/sinjeongmin_opal_verifier/repo` git status/head
   2. PID `101814` 학습 생존 여부

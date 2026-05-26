@@ -48,15 +48,19 @@ tools/eval/
 +-- runtime_smoke_submit_package.py
 +-- eval_manifest_adapter.py
 +-- select_manifest_sweep_candidate.py
++-- export_merged_model.py
 ```
 
 과거 rule pipeline, rule-prompt solver, public-label eval script, `/workspace/team6` 기반 script는 `tools/archive/legacy_rule_pipeline/` 아래에만 보존한다. 현재 학습/제출 실행 경로로 사용하지 않는다.
 
+현재 active `configs/` 폴더는 없다. `wandb` sweep은 사용하지 않는다.
+
 ## 현재 운영 문서
 
 - 서버 운영: [docs/server_operations_current.md](docs/server_operations_current.md)
-- 현재 handoff: [docs/archive/current_task.md](docs/archive/current_task.md)
-- 최신 cycle 기록: [docs/archive/](docs/archive/)
+- 현재 handoff: [docs/current_task.md](docs/current_task.md)
+- archive index: [docs/README.md](docs/README.md)
+- 최신 cycle 기록: [docs/archive/cycles/2026-05-26/](docs/archive/cycles/2026-05-26/)
 
 ## 로컬 검증
 

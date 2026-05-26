@@ -1,6 +1,6 @@
 # 현재 서버 운영 절차
 
-- 최종 갱신: 2026-05-26 13:15 KST
+- 최종 갱신: 2026-05-26 13:35 KST
 - 원칙: 제출/학습 architecture는 LLM-only다. rule engine, public label supervised 학습, legacy `/workspace/team6` 작업 root를 사용하지 않는다.
 - SSH alias: `team6`
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
@@ -51,8 +51,10 @@ set -euo pipefail
 cd /workspace/sinjeongmin_opal_verifier/repo
 test -z "$(git status --porcelain)"
 git fetch origin sinjeongmin
+expected="$(git rev-parse FETCH_HEAD)"
+git merge-base --is-ancestor HEAD FETCH_HEAD
 git merge --ff-only FETCH_HEAD
-git rev-parse HEAD
+test "$(git rev-parse HEAD)" = "$expected"
 '
 ```
 
@@ -64,9 +66,12 @@ ssh -o BatchMode=yes -o ControlMaster=no -o ControlPath=none team6 '
 set -euo pipefail
 cd /workspace/sinjeongmin_opal_verifier/repo
 test -z "$(git status --porcelain)"
+git rev-parse --verify fca06523f66fdd8f4950da6c51d87e4efaa74b6d^{commit}
 git fetch /tmp/opal_cycle3_<short_head>_after_fca0652.bundle HEAD
+expected="$(git rev-parse FETCH_HEAD)"
+git merge-base --is-ancestor HEAD FETCH_HEAD
 git merge --ff-only FETCH_HEAD
-git rev-parse HEAD
+test "$(git rev-parse HEAD)" = "$expected"
 '
 ```
 
@@ -78,7 +83,7 @@ git rev-parse HEAD
    - adapter: `qwen35_4b_v3_alllinear_r64_lr2e4_e10_bs2ga4`
 3. GPU 상태: `nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu --format=csv,noheader`.
 4. v4.1 strict reference validation:
-   - manifest/reference는 `docs/archive/current_task.md`의 최신 경로를 따른다.
+   - manifest/reference는 `docs/current_task.md`의 최신 경로를 따른다.
 5. LoRA baseline이 완료되어 있으면 calibration/hidden threshold sweep 평가.
 6. package `<12GB`, `check_submit_package.py`, offline first-forward smoke가 모두 통과할 때만 leaderboard 제출을 검토한다.
 

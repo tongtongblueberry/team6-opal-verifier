@@ -183,14 +183,11 @@ echo ""
 # ============================================================
 echo "[5/7] setup.sh, pyproject.toml 복사..."
 
-# Changed: 우리 repo의 setup.sh 우선, 없으면 /workspace/project/ fallback.
-# Why: 우리 setup.sh에 peft 설치가 포함되어 있음.
+# Changed: repo-local setup/metadata만 복사하고 외부 workspace fallback을 제거.
+# Why: 제출 패키지는 현재 repo에서 재현되어야 하며 다른 workspace 의존은 stale 경로다.
 if [ -f "$REPO/setup.sh" ]; then
     cp "$REPO/setup.sh" "$SUBMIT_DIR/"
     echo "  setup.sh 복사 (from repo)"
-elif [ -f "/workspace/project/setup.sh" ]; then
-    cp "/workspace/project/setup.sh" "$SUBMIT_DIR/"
-    echo "  setup.sh 복사 (from /workspace/project/)"
 else
     echo "WARNING: setup.sh를 찾을 수 없음"
 fi
@@ -198,17 +195,15 @@ fi
 if [ -f "$REPO/pyproject.toml" ]; then
     cp "$REPO/pyproject.toml" "$SUBMIT_DIR/"
     echo "  pyproject.toml 복사 (from repo)"
-elif [ -f "/workspace/project/pyproject.toml" ]; then
-    cp "/workspace/project/pyproject.toml" "$SUBMIT_DIR/"
-    echo "  pyproject.toml 복사 (from /workspace/project/)"
 else
     echo "WARNING: pyproject.toml을 찾을 수 없음"
 fi
 
-# uv.lock이 있으면 복사
-if [ -f "/workspace/project/uv.lock" ]; then
-    cp "/workspace/project/uv.lock" "$SUBMIT_DIR/"
-    echo "  uv.lock 복사"
+# Changed: uv.lock도 repo-local 파일만 선택적으로 복사.
+# Why: 외부 workspace lockfile을 섞으면 제출 환경 재현성이 깨진다.
+if [ -f "$REPO/uv.lock" ]; then
+    cp "$REPO/uv.lock" "$SUBMIT_DIR/"
+    echo "  uv.lock 복사 (from repo)"
 fi
 echo ""
 

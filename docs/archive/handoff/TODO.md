@@ -1,6 +1,14 @@
 <!-- Changed: update handoff to reflect LoRA override architecture and current project state. -->
 <!-- Why: RAG hybrid is no longer used. Architecture is rule engine (71.50 base) + LoRA override. -->
 
+# Legacy Handoff - 현재 사용 금지
+
+이 파일은 2026-05-19 기준 과거 handoff 기록이다. 현재 architecture, 서버 root, 제출 판단 기준으로 사용하지 않는다.
+
+- 현재 handoff: [current_task.md](current_task.md)
+- 현재 서버 운영: [../server_operations_current.md](../server_operations_current.md)
+- 현재 원칙: LLM-only architecture. rule engine + LoRA override는 과거 접근이다.
+
 # TODO / Handoff
 
 작성일: 2026-05-19
