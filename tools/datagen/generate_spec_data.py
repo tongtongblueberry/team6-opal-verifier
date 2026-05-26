@@ -324,6 +324,10 @@ def main():
         help="Opt-in only: append public-labelled seed rows from runtime training_data/training_cases.json.",
     )
     args = parser.parse_args()
+    if args.include_public_seed:
+        # Changed: make public-labelled seed ingestion fail closed.
+        # Why: public/eval labels may be used only as holdout/reference, never as supervised training rows.
+        parser.error("--include-public-seed is disabled by the LLM-only data contract")
 
     cases = gen_all()
     random.shuffle(cases)
