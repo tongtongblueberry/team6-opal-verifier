@@ -33,6 +33,6 @@ leaderboard hidden 평가로 둔다.
 현재 상태: Gate A/B/C를 모두 통과한 Self-Instruct synthetic dataset이 아직 없으므로
 `self_instruct_sample.md`는 작성하지 않는다.
 
-2026-05-26 16:26 KST 기준 `runs/self_instruct/fixture_smoke/`에 deterministic fixture
-2개가 있지만, 이는 Gate A/B 연결 smoke용 no-go evidence다. 최종 학습 데이터가 아니므로
+ad-hoc fixture/smoke generated data is not accepted synthetic data.
+논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은
 `self_instruct_sample.md`에 합격 sample로 공개하지 않는다.

@@ -45,16 +45,11 @@ LLM next-token/logit decision
   - public20은 `public20_reference`로만 두고 generated synthetic `train`, `val`, `test`와 섞지 않는다.
   - public20-only 모델 후보 검증은 20개를 `train`/`val`로만 분리한다. public20 `test` split은 만들지 않는다.
 - Gate B public20/generated profile 비교 도구 `tools/analysis/compare_public20_dimensions.py`를 추가했다.
-  - generated candidate 파일이 없어도 fixture로 JSON/MD report와 no-go warning 동작을 검증했다.
+  - public20 reference와 generated profile을 비교하는 도구이며, 실제 generated 후보가 없으면 합격 데이터를 선언하지 않는다.
   - public20 label은 synthetic prompt/judge/generated manifest target에는 쓰지 않는다.
     public20-only 모델 검증 artifact에서는 train target과 `val` metric에만 쓴다.
-- Self-Instruct fixture smoke generator를 추가했다.
-  - tool: `tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`
-  - output: `runs/self_instruct/fixture_smoke/candidates/fixture_candidates.jsonl`
-  - fixture rows: `2`, labels `pass=1`, `fail=1`, record_count values `[3, 17]`
-  - Gate A hard invariant: pass `2`, fail `0`
-  - Gate B expected no-go warning: generated 평균 record_count `10.0` vs public20 `16.4`
-  - 결론: pipeline smoke는 통과했지만 최종 학습 데이터가 아니며 `docs/samples/self_instruct_sample.md`를 만들지 않는다.
+- 임의 deterministic fixture/smoke synthetic data는 논문 기반 생성 데이터가 아니므로 active surface에서 제거한다.
+  accepted synthetic data는 Self-Instruct output-first generation, LLM-only filtering, Gate A/B/C를 통과한 후보만 의미한다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -106,7 +101,7 @@ LLM next-token/logit decision
 - `tools/training/deploy_and_train.sh`, `tools/training/brier_trainer.py`는 active 경로에서 제거했다.
 - `src`, `tools`, `tests`의 `__pycache__` 생성 산출물은 제거했다.
 - `tools/eval/prepare_submit.sh`의 외부 workspace fallback을 제거했다.
-- active `tools/datagen/`은 Self-Instruct seed/candidate schema와 fixture-smoke candidate generator만 남긴다.
+- active `tools/datagen/`은 Self-Instruct seed/candidate schema만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - legacy spec/gap synthetic generator와 v4/v4.1 long trajectory generator는 active datagen에서 제거했다.
 - 삭제 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 남겼다.

@@ -42,7 +42,8 @@ Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/cu
 - 모델 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
 - public20 local reference facts는 rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
 - Gate B dimension comparison 도구는 `tools/analysis/compare_public20_dimensions.py`이며, public20 label은 local aggregate distribution으로만 사용한다.
-- `tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`는 Gate A/B smoke용 fixture만 만든다. 최종 학습 데이터가 아니며 no-go evidence로만 다룬다.
+- ad-hoc fixture/smoke generated data is not accepted synthetic data.
+  논문 기반 생성 방법과 Gate A/B/C를 거치지 않은 임의 synthetic 산출물은 active tools/runs에 두지 않는다.
 - Self-Instruct synthetic data가 Gate A/B/C를 통과하면 `docs/samples/self_instruct_sample.md`에 generated raw trajectory 전체, label, target, primary evidence, profile, public20 raw sample 1개 전체, Gate A audit summary, Gate B comparison summary, Gate C manifest/model-input summary를 기록한다.
 - public20 reference audit pack은 public20 검증 결과가 아니라 reference structure/profile 확인용 산출물로 표현한다.
 - Gate A/B/C 전에는 raw synthetic sample을 "합격 데이터"로 제시하지 않는다.

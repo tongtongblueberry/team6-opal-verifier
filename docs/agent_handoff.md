@@ -31,9 +31,11 @@
   - 재현 근거: fail sample에서 중간 `Set FAIL` 뒤 마지막 `EndSession SUCCESS`인데 label이 `fail`이었다.
   - 원천 fail 538개 중 440개가 final `EndSession SUCCESS`로 끝나는 문제가 archive에 기록되어 있다.
   - 원인은 fail case 뒤에 `_endsession()`을 붙여 final-response label target이 중간 event로 밀린 생성 패턴이다.
-- active `tools/datagen/`에는 Self-Instruct seed/candidate schema와 fixture-smoke candidate generator만 남긴다.
+- active `tools/datagen/`에는 Self-Instruct seed/candidate schema만 남긴다.
   - v4/v4.1 generator와 spec/gap synthetic generator는 active datagen에서 제거했다.
   - 정리 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 둔다.
+- ad-hoc fixture/smoke generated data is not accepted synthetic data.
+  임의 deterministic fixture/smoke 산출물은 논문 기반 생성 데이터나 검증된 코드 기반 synthetic data가 아니므로 active surface에 두지 않는다.
 - 새 데이터 생성은 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다.
   - output-first classification generation을 사용한다.
   - LLM-only judge filtering을 사용한다.
@@ -55,11 +57,6 @@
     기본 split은 stratified `16 train / 4 val`이고 val은 `pass 2 / fail 2`를 목표로 한다.
 - label-bearing generated row는 `tools/datagen/self_instruct_candidate_schema.py`의
   candidate schema로만 다루며, final-response invariant는 candidate에만 적용한다.
-- `tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`는 deterministic
-  fixture 2개만 만든다. 이 fixture는 schema/Gate A/B smoke용이며 최종 학습 데이터가 아니다.
-  - fixture artifact: `runs/self_instruct/fixture_smoke/`
-  - Gate A hard invariant pass `2`, fail `0`
-  - Gate B는 평균 record_count 차이 no-go warning을 낸다.
 - leaderboard 제출은 Gate A-D와 package/runtime/secret/no-rule gate가 모두 통과한 뒤에만 검토한다.
 - Self-Instruct synthetic data가 Gate A/B/C를 통과한 뒤에만 `docs/samples/self_instruct_sample.md`에 raw trajectory 전체를 "합격 데이터" sample로 공개한다. 그 전에는 sample을 검수 대상 또는 실패/대기 데이터로만 표기한다.
   - sample 문서는 generated raw trajectory 전체와 public20 raw sample 1개 전체를 모두 생략 없이 포함해야 한다.
@@ -125,9 +122,10 @@
 - public20은 이미 주어진 기준 입력이다. public20 자체를 검증하지 말고, synthetic 데이터와 비교할 reference structure/profile 및 public20-only 모델 `train`/`val` 검증 소스로만 사용한다.
 - public20-only 모델 검증 기본 split은 stratified 16 train / 4 val이며, val은 후보 선택/튜닝/early stopping용 내부 검증이다. test는 public20에서 만들지 않고 leaderboard hidden 평가로만 둔다.
 - v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
-- active datagen은 Self-Instruct seed/candidate schema와 fixture-smoke generator만 남긴다. v4/v4.1 및 spec/gap synthetic generator는 active tools에서 제거됐다.
+- active datagen은 Self-Instruct seed/candidate schema만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
 - 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
 - Gate A/B/C가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C 요약을 기록한다.
+- ad-hoc fixture/smoke generated data is not accepted synthetic data. sample.md는 Gate A/B/C를 통과한 Self-Instruct synthetic data에만 생성한다.
 - synthetic 데이터 검증 완료 뒤 dataset은 train/val/test/public20_reference로 분리한다. public20-only 모델 후보 검증은 train/val만 쓰고, test는 leaderboard hidden 평가다.
 - active docs update set은 README.md, PROGRESS.md, docs/README.md, docs/current_task.md, docs/current_self_instruct_data_plan.md, docs/agent_handoff.md, docs/samples/README.md 이다.
 - Gate 순서: A synthetic 질적 state-transition audit, B public20 reference dimension/schema/pass-fail 분포 비교, C manifest/model input path equivalence, D leaderboard 제출 판단.
@@ -159,6 +157,6 @@
 - public20 input-only와 local label reference는 확보됐다. 다음 agent는 public20을 synthetic 데이터 검증의 대상처럼 다루지 말고 dimension/schema/distribution reference로만 써야 한다. public20-only 모델 후보 검증에서는 `train`/`val`만 사용한다.
 - public20 reference structure/profile audit pack은 `runs/self_instruct/public20_baseline/gate_a/public20_reference_audit_pack.md`에 있다. 이것은 public20 검증 결과가 아니라 reference 구조 확인용 pack이다. sample별 label은 노출하지 않았고 local label은 aggregate report에만 있다.
 - 생성 candidate가 만들어지면 일부 sample을 직접 state-transition audit한 뒤에 `compare_public20_dimensions.py`로 public20 dimension 비교 report를 만든다.
-- 현재 생성 candidate는 fixture-smoke뿐이다. 최종 학습 데이터로 쓰지 말고 real LLM output-first generation과 judge filtering을 다음 단계로 구현한다.
+- 현재 Gate A/B/C를 통과한 generated candidate는 없다. 다음 단계는 real LLM output-first generation과 judge filtering을 논문 protocol에 맞게 구현하는 것이다.
 - 서버 SSH는 main이 직접 치지 말고 agent가 10회 이상 재시도 단위로 수행한다.
 - 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.

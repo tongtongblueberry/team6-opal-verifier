@@ -45,8 +45,8 @@
 - public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이며 val은 `pass 2 / fail 2`를 목표로 한다. 여러 split을 돌려도 모두 validation이다.
 - 최종 제출 후보가 정해진 뒤에만 선택 recipe로 public20 20개 전체를 학습에 쓸지 별도 판단한다.
 - Gate B public20/generated profile 비교 도구는 `tools/analysis/compare_public20_dimensions.py`다.
-- Self-Instruct fixture smoke generator는 `tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`다.
-  fixture는 schema/Gate A/B smoke용이며 최종 학습 데이터가 아니다.
+- ad-hoc fixture/smoke generated data는 논문 기반 synthetic data가 아니므로 active surface에서 제거한다.
+  다음 synthetic generation은 Self-Instruct output-first generation과 LLM-only judge filtering을 따라야 한다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.
@@ -160,11 +160,8 @@
 - `tools/archive/legacy_rule_pipeline/` 실행 코드는 active `tools/` namespace 혼동을 줄이기 위해 삭제했고, 삭제 범위와 폐기 사유는 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 둔다.
 - raw synthetic sample은 Gate A/B/C 통과 전에는 "합격 데이터"로 제시하지 않는다. 통과 뒤에는 `docs/samples/self_instruct_sample.md`에 generated 전체 trajectory, label, profile, public20 raw sample 1개 전체, Gate A/B/C 요약을 기록한다.
 - Gate B dimension comparison은 public20 label을 local aggregate distribution과 public20-only `val` metric으로만 사용하고, row-level label을 synthetic generation/judge/generated manifest 입력에 넣지 않는다.
-- fixture-smoke output은 `runs/self_instruct/fixture_smoke/`에 생성됐다.
-  - rows `2`, labels `pass=1`, `fail=1`, record_count `[3, 17]`
-  - Gate A hard invariant pass `2`, fail `0`
-  - Gate B no-go warning: generated 평균 record_count `10.0` vs public20 `16.4`
-  - 결론: pipeline smoke는 통과했지만 `docs/samples/self_instruct_sample.md`를 만들 조건은 아니다.
+- 임의 fixture/smoke generator와 관련 runs 산출물은 삭제 대상이다.
+  학습, 검증, leaderboard 제출 근거로 사용하지 않는다.
 - RAG/full fine-tuning/selective fine-tuning 후보 검증은 데이터 검증 이후 또는 병렬 보조로만 진행한다. 구현은 논문과 검증된 라이브러리/reference code를 우선 따른다.
 - 모델 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory state reasoning이 모두 필요하므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 본다.

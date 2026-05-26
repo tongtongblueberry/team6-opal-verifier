@@ -46,7 +46,6 @@ tools/analysis/
 tools/datagen/
 +-- self_instruct_seed_schema.py
 +-- self_instruct_candidate_schema.py
-+-- generate_self_instruct_candidates.py
 
 tools/training/
 +-- train_manifest_lora.py
@@ -132,11 +131,12 @@ public20에서 만들지 않는다. 하루 5회 제한이 있는 leaderboard hid
 trajectory reasoning, final response classification을 함께 보는 RAFT-style retrieval-augmented
 classifier를 최종 유력 후보로 둔다.
 
-<!-- Changed: add the deterministic Self-Instruct fixture generator to the active surface. -->
-<!-- Why: Gate A/B plumbing needs a tiny output-first smoke candidate pool before real LLM generation is enabled. -->
-`tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`는 schema와 Gate A/B
-연결을 확인하는 deterministic fixture 2개만 만든다. 이 fixture는 최종 학습 데이터가
-아니며, `runs/self_instruct/fixture_smoke/`의 report도 no-go smoke evidence다.
+<!-- Changed: remove ad-hoc fixture/smoke generation from the active surface. -->
+<!-- Why: synthetic data must come from the selected paper protocol and pass Gate A/B/C before it can be treated as candidate training data. -->
+임의 deterministic fixture/smoke generated data는 accepted synthetic data가 아니다.
+active datagen에는 public20 input-only seed schema와 label-bearing candidate schema만 둔다.
+새 synthetic generation 구현은 Self-Instruct output-first generation, LLM-only filtering,
+논문식 quality audit protocol을 따르는 후보만 허용한다.
 
 ## 서버 Sync 원칙
 
