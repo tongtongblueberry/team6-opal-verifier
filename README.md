@@ -124,13 +124,14 @@ public20에서 만들지 않는다. 하루 5회 제한이 있는 leaderboard hid
 여러 split을 돌릴 수는 있지만 모두 validation이며 test라고 부르지 않는다. 최종 제출 후보가
 정해지면 선택된 recipe로 public20 20개 전체를 학습에 쓸지 별도 결정한다.
 
-모델 후보는 다섯 개로 고정한다.
+모델 검증 축은 사용자 요청 중심 후보 4개와 agent가 추가한 sanity baseline 1개로 분리한다.
 
-- Prompt-only / few-shot baseline: public20 train examples만 prompt examples로 쓰며 학습하지 않는다. val로 prompt format을 고른다.
+- 사용자 요청 중심 후보: Frozen RAG classifier, 0.9B full fine-tuning, 4B QLoRA/LoRA selective fine-tuning, RAFT-style RAG + SFT/QLoRA.
 - Frozen RAG classifier: rulebook/spec chunk retrieval과 base LLM logprob pass/fail 판정으로 RAG 적합성을 본다.
 - 0.9B full fine-tuning: public20 train만 사용하고 epoch `5/10/20` 후보를 비교한다. val loss/F1 악화 시 early stopping한다.
 - 4B QLoRA/LoRA selective fine-tuning: PEFT/Transformers 검증 코드를 사용하고 epoch `3/5/10` 후보를 비교한다. val overfit이면 즉시 중단한다.
 - RAFT-style RAG + SFT/QLoRA: trajectory와 retrieved spec chunks를 함께 넣는다. pure RAG와 pure FT의 중간 후보이며 frozen RAG와 FT baseline 뒤에 진행한다.
+- Agent 추가 sanity baseline: non-training prompt/logprob baseline. 이 항목은 사용자 요청 후보가 아니라 RAG/FT 결과가 의미 있는지 확인하는 최소 비학습 대조군이며, public20 train examples만 prompt examples로 쓰고 val로 prompt format/logprob calibration을 확인한다.
 
 이 문제는 pure RAG는 아니지만 RAG 성격이 강하다. rulebook/spec은 weight에 모두 암기시키기
 어렵고, trajectory state transition은 검색만으로 해결되지 않는다. 따라서 retrieval된 규칙,

@@ -170,7 +170,8 @@
 - 임의 fixture/smoke generator와 관련 runs 산출물은 삭제 대상이다.
   학습, 검증, leaderboard 제출 근거로 사용하지 않는다.
 - RAG/full fine-tuning/selective fine-tuning 후보 검증은 데이터 검증 이후 또는 병렬 보조로만 진행한다. 구현은 논문과 검증된 라이브러리/reference code를 우선 따른다.
-- 모델 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- 사용자 요청 중심 모델 후보는 Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- non-training prompt/logprob baseline은 agent가 추가한 sanity baseline이며, 사용자 요청 후보가 아니라 RAG/FT 비교 결과가 의미 있는지 확인하는 최소 비학습 대조군이다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory state reasoning이 모두 필요하므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 본다.
 
 ## 서버 상태

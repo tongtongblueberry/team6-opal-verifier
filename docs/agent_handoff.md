@@ -72,7 +72,8 @@
   다만 전체 자원을 모델 검증에 몰아주지 않고, synthetic 데이터 생성의 질적/정량 검증을 계속 병렬 진행한다.
   RAG/FT 후보 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
   이때 `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다.
-- 모델 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- 사용자 요청 중심 모델 후보는 Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- non-training prompt/logprob baseline은 agent가 추가한 sanity baseline이며, 사용자 요청 후보가 아니라 RAG/FT 비교 결과가 의미 있는지 확인하는 최소 비학습 대조군이다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요하므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 둔다.
 - val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard는 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 사용한다.
 
@@ -141,7 +142,8 @@
 - active docs update set은 README.md, PROGRESS.md, docs/README.md, docs/current_task.md, docs/current_self_instruct_data_plan.md, docs/agent_handoff.md, docs/samples/README.md 이다.
 - Gate 순서: A synthetic 질적 state-transition audit, B public20 reference dimension/schema/pass-fail 분포 비교, C manifest/model input path equivalence, D leaderboard 제출 판단.
 - 모델 후보 조사는 데이터 검증 이후 또는 병렬 보조로만 진행한다. RAG/FT 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
-- 모델 후보 5개는 Prompt-only/few-shot, Frozen RAG, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- 사용자 요청 중심 모델 후보는 Frozen RAG, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- agent가 추가한 sanity baseline은 non-training prompt/logprob baseline 하나뿐이며, 사용자 지시 후보처럼 취급하지 않는다.
 - invariant checker/state-transition audit는 데이터 품질 gate이지 runtime rule engine이 아니다.
 - 작업 root는 /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst 이고 서버 기준 root는 /workspace/sinjeongmin_opal_verifier 이다.
 - push 대상은 origin/sinjeongmin 이다.
