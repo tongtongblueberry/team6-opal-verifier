@@ -33,6 +33,30 @@ generation accuracy, macro-F1, recall 등 task metric은
 `tools/eval/eval_trl_sft_public20_generation.py`에서 별도 adapter로 계산한다. 이 metric
 adapter는 rule engine이나 runtime verifier를 호출하지 않는다.
 
+## Official TRL Full FT 3-seed 결과
+
+<!-- Changed: add the completed full fine-tuning seed11/29/47 results. -->
+<!-- Why: the research note should distinguish official TRL full FT evidence from LoRA adapter evidence and custom-wrapper results. -->
+
+아래 결과는 official TRL lane에서 PEFT/LoRA를 끈 full fine-tuning 결과다. 모든 full FT seed의 trainable check는
+trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled다.
+
+| seed | acc | macro-F1 | fail recall | pass recall | TP | TN | FP | FN | INVALID |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 11 | `0.5` | `0.6667` | `1.0` | `0.0` | `2` | `0` | `2` | `0` | `0` |
+| 29 | `1.0` | `1.0` | `1.0` | `1.0` | `2` | `2` | `0` | `0` | `0` |
+| 47 | `0.75` | `0.7333` | `0.5` | `1.0` | `1` | `2` | `0` | `1` | `0` |
+
+해석: seed29 `1.0`은 의미 있는 긍정 신호지만 public20 `val`이 split별 4개라 variance가 높다.
+따라서 leaderboard 제출 판단은 no-go로 유지한다. LoRA seed 결과는 lower/unstable 보조 evidence로만 둔다.
+
+다음 결정 기준:
+
+1. official TRL full FT logprob evaluator 결과를 generation metric과 대조한다.
+2. retrieved-context seed11 결과를 plain seed11 full FT와 비교한다.
+3. 필요 시 seed29 full FT artifact inspect/calibration과 threshold 결정을 수행한다.
+4. package `<12GB`, `tools/eval/check_submit_package.py`, `tools/eval/runtime_smoke_submit_package.py --offline --first-forward` gate를 확인한다.
+
 ## 서버 실행 command 초안
 
 ```bash

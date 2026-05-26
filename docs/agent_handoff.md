@@ -31,12 +31,16 @@
 
 <!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status to handoff. -->
 <!-- Why: next worker agents must not wait on epoch5 or treat conditional batch_v2 as accepted data. -->
-<!-- Changed: pin current official-model evidence and its limits. -->
-<!-- Why: handoff must keep seed11 full FT, LoRA auxiliary evidence, sample, and leaderboard decisions separate. -->
-- full FT seed11/epoch 5는 서버 run 성공 후 validation no-go로 종료했다.
-  val accuracy `0.25`, fail recall `0.0`, pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`이며 epoch `10/20` 확장은 no-go다.
-- LoRA seed11/29/47는 보조 비교 evidence로 유지한다. full FT seed11 결과는 LoRA/selective 계열을
-  대체하지 않고, leaderboard 제출 근거도 아니다.
+<!-- Changed: update current official-model evidence to the official TRL full FT 3-seed archive lane. -->
+<!-- Why: handoff must keep high-variance public20 val evidence separate from leaderboard/package decisions. -->
+- official TRL full FT seed11/29/47 서버 결과를 archive lane evidence로 둔다.
+  - seed11: acc `0.5`, macro-F1 `0.6667`, fail recall `1.0`, pass recall `0.0`, confusion `TP=2 TN=0 FP=2 FN=0 INVALID=0`
+  - seed29: acc `1.0`, macro-F1 `1.0`, fail recall `1.0`, pass recall `1.0`, confusion `TP=2 TN=2 FP=0 FN=0 INVALID=0`
+  - seed47: acc `0.75`, macro-F1 `0.7333`, fail recall `0.5`, pass recall `1.0`, confusion `TP=1 TN=2 FP=0 FN=1 INVALID=0`
+  - full trainable check all seeds: trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled.
+- public20 `val`은 split별 4개라 variance가 높다. seed29 `1.0`은 중요한 근거지만 leaderboard 제출 근거로는 아직 부족하다.
+- LoRA seed11/29/47는 lower/unstable 보조 비교 evidence로 유지한다. full FT 3-seed 결과는 LoRA/selective 계열을
+  완전히 대체하지 않고, leaderboard 제출 근거도 아니다.
 - `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다. `sample.md` 생성은 no-go다.
 - `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
   label `pass=6/fail=3`, record_count min/mean/max `8/13.0/18`이다. Gate v2 결과는 Gate A `pass`, Gate B `conditional pass`,
@@ -108,7 +112,10 @@
 - Full/selective FT standalone checkpoint의 `val` 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다.
   이 도구는 LoRA adapter evaluator가 아니며, `train_manifest_full.build_messages` prompt contract와 full model path 직접 로드를 사용한다.
   metric은 accuracy, macro-F1, fail recall, pass recall, confusion matrix, per-sample prediction/logprob이다.
-- val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard는 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 사용한다.
+- 다음 결정 기준은 official TRL full FT logprob evaluator 결과 확인, retrieved-context seed11 비교,
+  필요 시 seed29 artifact inspect/calibration, package/runtime gate다.
+- val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다.
+  leaderboard는 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 사용한다.
 
 ## 데이터 Gate 순서
 
@@ -216,7 +223,9 @@
 - Gate v2 결과는 `gemini_batch_v2` final `conditional`로 기록됐다. Gate A/C는 pass지만 Gate B가 conditional이므로 accepted-data `sample.md` 생성은 no-go다.
 - larger/balanced batch v3로 Gate B full pass를 목표로 한다.
 - `runs/self_instruct/gemini_batch_v2/` raw run 산출물은 원문과 큰 파일을 포함할 수 있으므로 commit하지 않는다. 문서에는 경로와 counts만 남긴다.
-- 0.9B full FT epoch 5 no-go 때문에 epoch `10/20` 확장은 중단 상태를 유지한다.
+- official TRL full FT 3-seed 결과는 기록됐지만 public20 `val` 4개 기준이라 leaderboard no-go를 유지한다.
+- 다음 모델 판단은 logprob evaluator 결과 확인, retrieved-context seed11 비교, 필요 시 seed29 artifact inspect/calibration,
+  package/runtime gate 순서로 진행한다.
 - 새 Self-Instruct pipeline 구현 전에 Gate A-D를 실행 가능한 도구와 문서로 고정한다.
 - public20 input-only와 local label reference는 확보됐다. 다음 agent는 public20을 synthetic 데이터 검증의 대상처럼 다루지 말고 dimension/schema/distribution reference로만 써야 한다. public20-only 모델 후보 검증에서는 `train`/`val`만 사용한다.
 - public20-only 모델 검증 split은 `tools/analysis/build_public20_train_val_split.py`로 만들며, 현재 seed `11`, `29`, `47` 산출물이 `runs/model_validation/public20_splits/`에 있다. 각 split은 `16 train / 4 val`, val `pass=2/fail=2`, public20 test `0`이다.

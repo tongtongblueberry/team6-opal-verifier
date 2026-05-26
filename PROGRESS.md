@@ -50,14 +50,16 @@ LLM next-token/logit decision
 
 <!-- Changed: record completed epoch5, external probe, and batch_v2 Gate v2 outcomes. -->
 <!-- Why: active progress must distinguish no-go results from conditional synthetic candidates. -->
-<!-- Changed: pin current official-model evidence and avoid overreading seed11. -->
-<!-- Why: one full FT seed result must not replace LoRA auxiliary evidence or trigger sample/submission decisions. -->
-- full FT seed11/epoch 5 서버 run은 성공했지만 validation 기준 no-go다.
-  - val accuracy `0.25`, fail recall `0.0`, pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`
-  - OOM 1회 후 `label_smoothing=0`으로 성공했다.
-  - fail recall `0.0`이므로 epoch `10/20` 확장은 no-go다.
-- LoRA seed11/29/47는 보조 비교 evidence로 유지한다. full FT seed11 결과 하나가 LoRA/QLoRA/selective
-  후보를 대체하지 않는다.
+<!-- Changed: replace the earlier single-seed full FT note with official TRL full FT 3-seed evidence. -->
+<!-- Why: next decisions should use the completed official TRL lane while preserving the small-val no-go boundary. -->
+- official TRL full FT seed11/29/47 서버 결과를 archive lane evidence로 기록한다.
+  - seed11: acc `0.5`, macro-F1 `0.6667`, fail recall `1.0`, pass recall `0.0`, confusion `TP=2 TN=0 FP=2 FN=0 INVALID=0`
+  - seed29: acc `1.0`, macro-F1 `1.0`, fail recall `1.0`, pass recall `1.0`, confusion `TP=2 TN=2 FP=0 FN=0 INVALID=0`
+  - seed47: acc `0.75`, macro-F1 `0.7333`, fail recall `0.5`, pass recall `1.0`, confusion `TP=1 TN=2 FP=0 FN=1 INVALID=0`
+  - all full FT seed trainable check: trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled.
+  - public20 `val`은 split별 4개라 variance가 높다. seed29 `1.0`은 강한 근거지만 leaderboard 제출 단독 근거로는 부족하다.
+- LoRA seed11/29/47는 lower/unstable 보조 비교 evidence로 유지한다. official TRL full FT 3-seed 결과가
+  LoRA/QLoRA/selective 후보를 완전히 대체하거나 leaderboard 제출을 허용하는 근거는 아니다.
 - 현재 accepted synthetic `sample.md` 생성과 leaderboard 제출은 모두 no-go다.
 - `runs/self_instruct/external_llm_probe/`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다.
   `sample.md` 생성은 no-go다.
@@ -135,14 +137,18 @@ LLM next-token/logit decision
 
 ## Leaderboard 제출 판단
 
-현재 leaderboard 제출은 no-go다.
+<!-- Changed: keep leaderboard no-go after the official TRL full FT 3-seed result. -->
+<!-- Why: public20 val has only four rows per split, so seed29 perfect val cannot stand alone as a hidden-submit basis. -->
+현재 leaderboard 제출은 no-go다. seed29 official TRL full FT `1.0`은 의미 있는 신호지만 public20 `val` 4개 기준이라
+분산이 크고 hidden leaderboard 제출 근거로는 아직 부족하다.
 
 제출 가능 조건:
 
 - 서버 repo가 현재 `origin/sinjeongmin` HEAD로 fast-forward sync됨.
 - v4/v4.1 raw/manifest가 평가 대상 학습 입력에 포함되지 않음.
-- 평가 대상 artifact의 학습 완료 확인.
-- calibration/hidden 평가 및 threshold 결정 기록.
+- official TRL full FT logprob evaluator 결과 확인.
+- retrieved-context seed11 비교 결과 확인.
+- 필요 시 seed29 full FT artifact inspect/calibration 및 threshold 결정 기록.
 - package 크기 `<12GB`.
 - `tools/eval/check_submit_package.py` 통과.
 - `tools/eval/runtime_smoke_submit_package.py --offline --first-forward` 통과.
@@ -187,5 +193,7 @@ LLM next-token/logit decision
   fail recall, pass recall, confusion matrix, per-sample prediction/logprob이다. epoch별
   report에서 val macro-F1이 정체되고 fail recall이 떨어지면 no-go 또는 patience 중단으로 판단한다.
 - pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제다. 따라서 retrieval만 하는 비학습 대체물이 아니라 retrieval + fine-tuning/RAFT-style 학습을 최종 방향으로 둔다.
-- val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard 제출은 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 단위로 판단한다.
+- official TRL full FT 다음 결정 기준은 logprob evaluator 결과 확인, retrieved-context seed11 비교, 필요 시 seed29 artifact inspect/calibration,
+  package/runtime gate 순서다. val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다.
+  leaderboard 제출은 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 단위로 판단한다.
 - Self-Instruct 공식 구현 계획은 [docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md)에 아카이빙했다.

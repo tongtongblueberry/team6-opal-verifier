@@ -45,13 +45,17 @@
 <!-- Why: resumed workers must see the active architecture, data, public20, model, server, and branch/push rules in current_task.md. -->
 <!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status. -->
 <!-- Why: current task state must separate completed no-go outcomes from conditional synthetic candidates. -->
-<!-- Changed: pin the current official-model evidence boundary. -->
-<!-- Why: seed11 full FT no-go must not be read as replacing LoRA auxiliary evidence or enabling submission. -->
+<!-- Changed: update official-model evidence to the completed official TRL full FT 3-seed lane. -->
+<!-- Why: current_task must preserve the stronger full FT evidence without overstating a four-row validation split. -->
 - 완료 결과 archive: `docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_2035_completed_results_archive.md`
-- 공식 모델 evidence 기준: full FT seed11/epoch 5는 서버 run 성공 후 validation no-go다. val accuracy `0.25`, fail recall `0.0`,
-  pass recall `0.5`, confusion `TP=0 TN=1 FP=1 FN=2`이며 epoch `10/20`은 no-go다.
-- LoRA seed11/29/47는 보조 비교 evidence로 유지한다. full FT seed11 결과 하나가 LoRA/selective 계열을
-  대체하지 않는다.
+- 공식 모델 evidence 기준: official TRL full FT seed11/29/47 서버 결과를 archive lane 결과로 둔다.
+  - seed11: acc `0.5`, macro-F1 `0.6667`, fail recall `1.0`, pass recall `0.0`, confusion `TP=2 TN=0 FP=2 FN=0 INVALID=0`
+  - seed29: acc `1.0`, macro-F1 `1.0`, fail recall `1.0`, pass recall `1.0`, confusion `TP=2 TN=2 FP=0 FN=0 INVALID=0`
+  - seed47: acc `0.75`, macro-F1 `0.7333`, fail recall `0.5`, pass recall `1.0`, confusion `TP=1 TN=2 FP=0 FN=1 INVALID=0`
+  - full trainable check는 모든 full FT seed에서 trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled다.
+- public20 `val`은 split별 4개라 variance가 높다. seed29 `1.0`은 중요한 근거지만 leaderboard 제출 근거로는 아직 부족하다.
+- LoRA seed11/29/47는 lower/unstable 보조 비교 evidence로 유지한다. full FT 3-seed 결과가 LoRA/selective 계열을
+  완전히 대체하거나 leaderboard 제출을 허용하지 않는다.
 - `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다.
   `sample.md` 생성은 no-go다.
 - `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
@@ -156,19 +160,15 @@
 
 ## 학습 현황
 
-<!-- Changed: record current public20-only full FT stopping decision. -->
-<!-- Why: next workers should not continue epoch 10/20 after fail recall collapsed at epoch 5. -->
-<!-- Changed: separate full FT seed11 evidence from LoRA auxiliary evidence. -->
-<!-- Why: current docs must not overstate one failed full FT run or discard LoRA baselines. -->
-- 0.9B full FT seed11/epoch 5:
-  - 서버 run 성공
-  - OOM 1회 후 `label_smoothing=0`으로 성공
-  - val accuracy `0.25`
-  - fail recall `0.0`
-  - pass recall `0.5`
-  - confusion `TP=0 TN=1 FP=1 FN=2`
-  - epoch `10/20` no-go
-- LoRA seed11/29/47 결과는 보조 evidence이며, full FT seed11 no-go가 LoRA/QLoRA/selective 후보를
+<!-- Changed: replace older custom-wrapper seed11 stopping note with official TRL full FT 3-seed results. -->
+<!-- Why: the active learning status should reflect completed full FT seeds and the remaining decision gates. -->
+- official TRL full FT seed11/29/47:
+  - seed11: acc `0.5`, macro-F1 `0.6667`, fail recall `1.0`, pass recall `0.0`, confusion `TP=2 TN=0 FP=2 FN=0 INVALID=0`
+  - seed29: acc `1.0`, macro-F1 `1.0`, fail recall `1.0`, pass recall `1.0`, confusion `TP=2 TN=2 FP=0 FN=0 INVALID=0`
+  - seed47: acc `0.75`, macro-F1 `0.7333`, fail recall `0.5`, pass recall `1.0`, confusion `TP=1 TN=2 FP=0 FN=1 INVALID=0`
+  - full trainable check all seeds: trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled.
+  - split별 public20 `val`이 4개뿐이므로 seed29 perfect score는 high-variance evidence다.
+- LoRA seed11/29/47 결과는 lower/unstable 보조 evidence이며, full FT 결과가 LoRA/QLoRA/selective 후보를
   대체하거나 폐기하는 근거는 아니다.
 - 서버에서 v3 기반 Qwen3.5-4B all-linear LoRA r64 baseline 학습을 시작했다.
 - 안정 run:
@@ -263,13 +263,16 @@
 
 ## 다음 실행 순서
 
-<!-- Changed: update next actions for completed conditional Gate v2 and epoch5 no-go. -->
-<!-- Why: immediate work should archive the conditional result, avoid raw-run commits, and avoid extending failed epoch runs. -->
+<!-- Changed: update next actions for completed conditional Gate v2 and official TRL full FT 3-seed evidence. -->
+<!-- Why: immediate work should compare evaluators/context variants before any leaderboard decision. -->
 1. `gemini_batch_v2` Gate v2 결과를 archive와 active docs에 반영한다: Gate A `pass`, Gate B `conditional pass`, Gate C `pass`, final `conditional`, `sample.md` no-go.
 2. raw run 산출물은 commit하지 않고 `PROGRESS.md`, `docs/agent_handoff.md`, `docs/current_task.md`, archive note에 경로와 counts만 기록한다.
 3. larger/balanced batch v3로 Gate B full pass를 목표로 한다.
-4. 0.9B full FT epoch `10/20`은 epoch 5 fail recall `0.0` 근거로 중단 상태를 유지한다.
-5. 서버 SSH가 별도 작업에 필요하면 10회 이상 단위로 재시도하고, 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다.
+4. official TRL full FT logprob evaluator 결과를 확인하고 generation metric과 불일치하는 sample을 기록한다.
+5. retrieved-context seed11 결과와 plain seed11 full FT 결과를 비교한다.
+6. 필요 시 seed29 full FT artifact inspect/calibration 및 threshold 결정을 수행한다.
+7. package `<12GB`, `check_submit_package.py`, offline first-forward runtime smoke gate를 통과하기 전까지 leaderboard no-go를 유지한다.
+8. 서버 SSH가 별도 작업에 필요하면 10회 이상 단위로 재시도하고, 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다.
 
 ## 보안
 
