@@ -1,5 +1,8 @@
 # 현재 진행 상태 (세션 이어받기용)
 
+<!-- 변경: Self-Instruct/RAG/RAFT 논리 구조 연구 기록 경로를 추가했다. 이유: 현재 작업의 산출물 위치만 최소 기록하기 위함이다. -->
+- 연구 기록: docs/archive/research/paper_logic_self_instruct_rag_raft_2026-05-26_kst.md
+
 - 최종 갱신: 2026-05-26 20:39 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
