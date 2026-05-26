@@ -1,6 +1,6 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 14:13 KST
+- 최종 갱신: 2026-05-26 15:02 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
@@ -43,7 +43,7 @@
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver인 `src/lora_solver.py`, `src/llm_solver.py`, `src/probe_solver.py`는 `tools/archive/legacy_rule_pipeline/src/`로 이동했다.
 - rule-prompt/27B public-eval 실험 solver인 `src/spec_solver.py`, `src/solver_27b.py`도 archive로 이동했다.
-- `generate_spec_data.py --include-public-seed`는 hard-fail한다.
+- spec/gap synthetic generator와 v4/v4.1 generator는 active `tools/datagen/`에서 제거했다.
 
 ## 데이터 현황
 
@@ -53,9 +53,11 @@
   - manifest 최단 `record_count=2`, reference 최단 `record_count=1`
 - v4는 1-record coverage와 char median을 개선했지만 `513-1024` token bin이 145개 생겨 strict `length_jsd=0.109264 > 0.08`로 실패했다.
 - v4/v4.1은 label alignment 문제 때문에 학습 금지 및 폐기 후보로 전환한다.
+  <!-- Changed: keep active task docs from naming deleted datagen modules as active evidence paths. -->
+  <!-- Why: v4/v4.1 failure details now live in archive-only evidence, while active docs should not preserve executable generator references. -->
   - raw line 2 재현: `label=fail`, 마지막 response `EndSession SUCCESS`.
   - 같은 row의 `records[25]`는 0-based 기준 `Set FAIL`이며, 1-based로는 26번째 step이다.
-  - `generate_long_trajectories.py` 원천 fail 538개 중 440개가 마지막 `EndSession SUCCESS`로 끝난다.
+  - 폐기 archive의 원천 통계상 fail 538개 중 440개가 마지막 `EndSession SUCCESS`로 끝난다.
   - 코드 원인은 fail case 뒤에 `_endsession()`을 append하는 생성 패턴이다.
   - 마지막 response 기준 과제라면 v4/v4.1은 label target이 중간 event로 밀려 학습 신호가 오염된다.
 
@@ -92,8 +94,9 @@
 - 폐기 근거 archive:
   - `docs/archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md`
 - active datagen 처리:
-  - `tools/datagen/generate_long_trajectories.py` CLI는 deprecated/audit-only로 기본 실행을 차단한다.
-  - `tools/datagen/generate_long_shape_source.py` CLI는 deprecated/audit-only로 기본 실행을 차단한다.
+  - v4/v4.1 generator는 active `tools/datagen/`에서 제거했다.
+  - spec/gap synthetic generator도 새 Self-Instruct-only 경로와 맞지 않아 active `tools/datagen/`에서 제거했다.
+  - 정리 근거는 `docs/archive/legacy_datagen/README.md`에 둔다.
 
 ## 학습 현황
 
@@ -143,8 +146,10 @@
 - `tools/training/brier_trainer.py`는 active 학습 코드에서 import되지 않는 독립 실험 파일이라 제거했다.
 - `tests/`는 현재 active tools와 `src/solver.py` 회귀 검증만 남긴다. `__pycache__`는 생성 산출물이므로 제거했다.
 - `tools/eval/prepare_submit.sh`는 repo-local `setup.sh`, `pyproject.toml`, `uv.lock`만 복사한다. 다른 workspace fallback은 제거했다.
-- `tools/datagen/generate_gap_data.py`의 stale `generate_uncertainty_data.py` 안내는 현재 `build_supervised_manifest.py` 기반 flow로 수정했다.
-- v4/v4.1 long trajectory datagen은 삭제하지 않고 archive evidence와 연결한 deprecated/audit-only 상태로 둔다.
+<!-- Changed: remove active references to deleted spec/gap generator filenames. -->
+<!-- Why: current_task should describe the Self-Instruct-only active surface without keeping removed datagen filenames in active docs. -->
+- legacy spec/gap synthetic generators는 Self-Instruct-only 경로와 맞지 않아 active datagen에서 제거했다.
+- v4/v4.1 long trajectory datagen도 active datagen에서 제거하고 archive evidence만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 
 ## 서버 상태
@@ -171,7 +176,7 @@
 
 1. 서버 SSH를 10회 이상 단위로 계속 재시도한다.
 2. 서버 연결이 회복되면 현재 `origin/sinjeongmin` HEAD를 서버 repo에 fast-forward 방식으로 sync한다.
-3. v4/v4.1 raw/manifest가 새 학습 입력이나 제출 판단에 포함되지 않는지 확인한다.
+3. v4/v4.1 및 spec/gap synthetic raw/manifest가 새 학습 입력이나 제출 판단에 포함되지 않는지 확인한다.
 4. LoRA baseline이 완료됐으면 calibration/hidden threshold sweep 평가를 수행한다.
 5. package `<12GB`와 offline first-forward smoke가 통과할 때만 leaderboard 제출을 검토한다.
 6. GPU가 비면 4B selective FT 4096 short-run을 먼저 실행한다.

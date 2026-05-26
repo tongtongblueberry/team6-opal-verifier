@@ -48,5 +48,5 @@
 
 - v4 raw와 v4.1 raw/manifest는 학습 금지다.
 - v4/v4.1은 폐기 후보이며, 새 학습 artifact의 근거로 사용하지 않는다.
-- `tools/datagen/generate_long_trajectories.py`와 `tools/datagen/generate_long_shape_source.py`는 삭제하지 않고 deprecated/audit-only로 남긴다.
+- 후속 정리(2026-05-26 15:02 KST): `tools/datagen/generate_long_trajectories.py`와 `tools/datagen/generate_long_shape_source.py`는 active datagen에서 제거했다. 실패 근거는 이 archive와 `docs/archive/legacy_datagen/README.md`로 보존한다.
 - active handoff와 서버 운영 절차에서는 v4.1 strict reference validation을 다음 단계에서 제거한다.

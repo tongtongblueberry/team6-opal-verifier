@@ -3,7 +3,7 @@
 
 # Agent Handoff
 
-- 최종 갱신: 2026-05-26 14:37 KST
+- 최종 갱신: 2026-05-26 15:02 KST
 - 목적: 새 agent가 단발 작업만 수행하지 않고, 현재 논의 맥락과 금지사항을 유지한 채 작업하게 한다.
 - 적용 범위: repo 작업, 문서 정리, 데이터 생성/검증, 학습 실행, 서버 SSH 재시도, git push를 맡는 모든 worker agent.
 
@@ -26,10 +26,17 @@
   - 재현 근거: fail sample에서 중간 `Set FAIL` 뒤 마지막 `EndSession SUCCESS`인데 label이 `fail`이었다.
   - 원천 fail 538개 중 440개가 final `EndSession SUCCESS`로 끝나는 문제가 archive에 기록되어 있다.
   - 원인은 fail case 뒤에 `_endsession()`을 붙여 final-response label target이 중간 event로 밀린 생성 패턴이다.
+- active `tools/datagen/`에는 Self-Instruct seed/candidate schema만 남긴다.
+  - v4/v4.1 generator와 spec/gap synthetic generator는 active datagen에서 제거했다.
+  - 정리 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 둔다.
 - 새 데이터 생성은 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다.
   - output-first classification generation을 사용한다.
   - LLM-only judge filtering을 사용한다.
   - 논문식 quality audit, evaluation, data-size/data-quality ablation을 구현 대상으로 둔다.
+- public20 seed schema는 input-only다. `label`, `gold_label`, `expected_label`, `answer`
+  계열 필드는 default에서 reject하고 output에도 쓰지 않는다.
+- label-bearing generated row는 `tools/datagen/self_instruct_candidate_schema.py`의
+  candidate schema로만 다루며, final-response invariant는 candidate에만 적용한다.
 - leaderboard 제출은 Gate A-D와 package/runtime/secret/no-rule gate가 모두 통과한 뒤에만 검토한다.
 - 12GB 제출 한계를 고려해 LoRA 3MB만 고집하지 않는다.
   - 0.8B/0.9B급 full fine-tuning은 후보로 유지한다.
@@ -77,6 +84,7 @@
 - 목표는 LLM-only Opal verifier이며 architecture에 rule engine은 절대 넣지 않는다.
 - 현재 병목은 데이터다. 생성 데이터는 평균 dimension뿐 아니라 pass/fail이 final response 기준으로 질적으로 맞는지 sampling state-transition audit로 확인해야 한다.
 - v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
+- active datagen은 Self-Instruct seed/candidate schema만 남긴다. v4/v4.1 및 spec/gap synthetic generator는 active tools에서 제거됐다.
 - 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
 - Gate 순서: A 질적 state-transition audit, B public20 dimension/schema/pass-fail 분포 비교, C manifest/model input path equivalence, D leaderboard 제출 판단.
 - invariant checker/state-transition audit는 데이터 품질 gate이지 runtime rule engine이 아니다.

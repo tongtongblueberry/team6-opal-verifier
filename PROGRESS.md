@@ -1,6 +1,6 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 14:13 KST
+- 최종 갱신: 2026-05-26 15:02 KST
 - 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime, public label supervised 학습은 사용하지 않는다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
 - 현재 GitHub branch: `origin/sinjeongmin`
@@ -56,9 +56,11 @@ Input trajectory
   - char median: `5472.0`
   - record_count min: `1`
 - 폐기 근거:
+  <!-- Changed: summarize deprecated generator evidence through archive-only wording. -->
+  <!-- Why: deleted datagen modules should not remain visible as active code targets in progress notes. -->
   - raw line 2는 `label=fail`이지만 마지막 response가 `EndSession SUCCESS`다.
   - 같은 row의 `records[25]`는 0-based 기준 `Set FAIL`이다.
-  - `generate_long_trajectories.py` 원천 fail 538개 중 440개가 마지막 `EndSession SUCCESS`로 끝난다.
+  - 폐기 archive의 원천 통계상 fail 538개 중 440개가 마지막 `EndSession SUCCESS`로 끝난다.
   - 마지막 response 기준 과제라면 v4/v4.1은 학습 금지다.
 
 ## 현재 서버 상태
@@ -96,7 +98,7 @@ Input trajectory
 - `tools/training/deploy_and_train.sh`, `tools/training/brier_trainer.py`는 active 경로에서 제거했다.
 - `src`, `tools`, `tests`의 `__pycache__` 생성 산출물은 제거했다.
 - `tools/eval/prepare_submit.sh`의 외부 workspace fallback을 제거했다.
-- `tools/datagen/generate_gap_data.py`의 missing `generate_uncertainty_data.py` 안내를 현재 manifest builder 경로로 고쳤다.
+- active `tools/datagen/`은 Self-Instruct seed/candidate schema만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
-- `tests/test_generate_gap_data_defaults.py`를 추가해 gap datagen 기본 경로가 항상 우리 workspace로 잡히는지 검증한다.
-- v4/v4.1 long trajectory datagen은 deprecated/audit-only로 두고 기본 CLI 실행을 차단했다.
+- legacy spec/gap synthetic generator와 v4/v4.1 long trajectory generator는 active datagen에서 제거했다.
+- 삭제 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 남겼다.

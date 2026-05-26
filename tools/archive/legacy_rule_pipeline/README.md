@@ -3,7 +3,8 @@
 이 디렉터리는 현재 LLM-only manifest cycle에서 사용하지 않는 과거 pipeline 파일을 보관한다.
 
 - 현재 active 학습 경로는 `tools/training/train_manifest_lora.py`와 `tools/training/train_manifest_full.py`이다.
-- 현재 active 데이터 경로는 `tools/datagen/generate_long_shape_source.py`, `tools/analysis/build_supervised_manifest.py`, `tools/analysis/validate_manifest.py`이다.
+- 현재 active 데이터 경로는 Self-Instruct seed/candidate schema, `tools/analysis/build_supervised_manifest.py`, `tools/analysis/validate_manifest.py`, 그리고 Gate A-C 도구 구현 대상이다.
+- `tools/datagen/generate_long_shape_source.py`, `generate_long_trajectories.py`, `generate_spec_data.py`, `generate_gap_data.py`는 active datagen에서 제거됐다.
 - 현재 active 제출 entrypoint는 `src/solver.py`이다.
 - `src/lora_solver.py`, `src/llm_solver.py`, `src/probe_solver.py`는 과거 helper solver이므로 이 archive 아래로 이동했다.
 - `src/spec_solver.py`, `src/solver_27b.py`는 rule-prompt/27B public-eval 실험 파일이므로 이 archive 아래로 이동했다.
