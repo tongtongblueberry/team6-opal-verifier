@@ -1,7 +1,10 @@
 # Progress Log
 
-- 최종 갱신: 2026-05-26 16:00 KST
-- 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime, public label supervised 학습은 사용하지 않는다.
+- 최종 갱신: 2026-05-26 16:26 KST
+- 현재 원칙: 제출/학습 architecture는 LLM-only다. rule engine, rule fallback, rule-id runtime은 사용하지 않는다.
+- public20은 synthetic 데이터 검증 대상이 아니다. public20 label은 synthetic generation/judge/generated manifest target으로 쓰지 않는다. public20-only 모델 후보 검증에서는 `train`/`val`만 쓰고, test는 leaderboard hidden 평가다.
+- `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다. public20 validation 결과를 test 결과로 기록하지 않는다.
+- main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않고 worker agent 결과를 종합해 최종 판단한다.
 - 현재 서버 root: `/workspace/sinjeongmin_opal_verifier`
 - 현재 GitHub branch: `origin/sinjeongmin`
 - 현재 운영 문서: [docs/server_operations_current.md](docs/server_operations_current.md)
@@ -39,10 +42,19 @@ LLM next-token/logit decision
   - input-only: `data/local/public20/public20_input.jsonl`
   - labels local-only: `data/local/public20/public20_labels.local.jsonl`
   - rows `20`, record_count min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`
-  - public20은 `public20_reference`로만 두고 generated `train`, `val`, `test`와 섞지 않는다.
+  - public20은 `public20_reference`로만 두고 generated synthetic `train`, `val`, `test`와 섞지 않는다.
+  - public20-only 모델 후보 검증은 20개를 `train`/`val`로만 분리한다. public20 `test` split은 만들지 않는다.
 - Gate B public20/generated profile 비교 도구 `tools/analysis/compare_public20_dimensions.py`를 추가했다.
   - generated candidate 파일이 없어도 fixture로 JSON/MD report와 no-go warning 동작을 검증했다.
-  - public20 label은 local aggregate distribution report에만 쓰고 prompt/manifest/training 입력으로 쓰지 않는다.
+  - public20 label은 synthetic prompt/judge/generated manifest target에는 쓰지 않는다.
+    public20-only 모델 검증 artifact에서는 train target과 `val` metric에만 쓴다.
+- Self-Instruct fixture smoke generator를 추가했다.
+  - tool: `tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`
+  - output: `runs/self_instruct/fixture_smoke/candidates/fixture_candidates.jsonl`
+  - fixture rows: `2`, labels `pass=1`, `fail=1`, record_count values `[3, 17]`
+  - Gate A hard invariant: pass `2`, fail `0`
+  - Gate B expected no-go warning: generated 평균 record_count `10.0` vs public20 `16.4`
+  - 결론: pipeline smoke는 통과했지만 최종 학습 데이터가 아니며 `docs/samples/self_instruct_sample.md`를 만들지 않는다.
 - v4.1 local shape repair evidence는 폐기 후보 evidence로 전환한다.
   - raw count: `1171`
   - manifest selected records: `1170`
@@ -94,7 +106,7 @@ LLM next-token/logit decision
 - `tools/training/deploy_and_train.sh`, `tools/training/brier_trainer.py`는 active 경로에서 제거했다.
 - `src`, `tools`, `tests`의 `__pycache__` 생성 산출물은 제거했다.
 - `tools/eval/prepare_submit.sh`의 외부 workspace fallback을 제거했다.
-- active `tools/datagen/`은 Self-Instruct seed/candidate schema만 남긴다.
+- active `tools/datagen/`은 Self-Instruct seed/candidate schema와 fixture-smoke candidate generator만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - legacy spec/gap synthetic generator와 v4/v4.1 long trajectory generator는 active datagen에서 제거했다.
 - 삭제 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 남겼다.
@@ -102,4 +114,9 @@ LLM next-token/logit decision
 - `docs/agent_handoff.md`는 README/PROGRESS/current docs와 함께 계속 갱신해야 하는 active 문서로 고정했다.
 - Gate A/B/C 통과 뒤에만 `docs/samples/self_instruct_sample.md`를 만들고, generated raw trajectory 전체와 public20 raw sample 1개 전체를 생략 없이 포함한다.
 - Gate B dimension comparison은 `tools/analysis/compare_public20_dimensions.py`로 수행한다.
-- public20 reference용 Gate A qualitative audit pack을 `runs/self_instruct/public20_baseline/gate_a/`에 생성했다. 이 pack은 sample별 label을 노출하지 않고 state-transition/shape 검수용 빈 섹션만 제공한다.
+- public20 reference structure/profile audit pack을 `runs/self_instruct/public20_baseline/gate_a/`에 생성했다. 이 pack은 public20 검증 결과가 아니라 reference 구조 확인용이며, sample별 label을 노출하지 않고 state-transition/shape 메모용 빈 섹션만 제공한다.
+- 모델 방법론 조사는 데이터 검증 이후 또는 병렬 보조로 진행한다. RAG/full FT/selective FT 구현은 관련 논문과 검증된 라이브러리/reference code를 따르며, synthetic 데이터의 질적/정량 검증을 중단하지 않는다.
+- public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이고, val은 `pass 2 / fail 2`를 목표로 한다.
+- 비교 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full fine-tuning, 4B QLoRA/LoRA selective fine-tuning, RAFT-style RAG+SFT/QLoRA다.
+- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요한 문제이므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 둔다.
+- val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다. leaderboard 제출은 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 단위로 판단한다.

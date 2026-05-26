@@ -5,11 +5,18 @@ SNU Introduction to Deep Learning (M2177.0043) Opal command-response trajectory 
 ## 현재 원칙
 
 - 제출 및 학습 architecture는 LLM-only다.
-- rule engine, rule fallback, rule-id 기반 runtime, public label supervised 학습을 사용하지 않는다.
-- public 20은 supervised train source가 아니라 shape/reference 감사용으로만 사용한다.
-- Gate A/B/C 통과 후 데이터는 `train`, `val`, `test`, `public20_reference`로 분리한다.
+- rule engine, rule fallback, rule-id 기반 runtime을 사용하지 않는다.
+- public20은 synthetic 데이터 검증 대상이 아니라 shape/reference 비교 기준이다.
+- public20 label은 synthetic generation/judge/generated manifest target으로 쓰지 않는다.
+  public20-only 모델 후보 검증에서는 별도 local artifact로 20개를 stratified `16 train` /
+  `4 val`로만 나눠 labels를 train target과 val metric에 쓸 수 있고, test는 leaderboard
+  hidden 평가다.
+- Gate A/B/C 통과 후 generated synthetic 데이터는 `train`, `val`, `test`로 분리하고,
+  public20은 `public20_reference`로 따로 둔다.
 - 서버 작업 root는 `/workspace/sinjeongmin_opal_verifier`다. `/workspace/team6`는 현재 작업 root로 사용하지 않는다.
 - 서버 비밀번호나 token은 repo, 문서, script, shell command argument에 저장하지 않는다.
+- main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않는다.
+  실행/검색/수정/학습은 worker agent가 수행하고, main agent는 결과 종합과 최종 판단을 담당한다.
 
 ## 현재 제출 구조
 
@@ -39,6 +46,7 @@ tools/analysis/
 tools/datagen/
 +-- self_instruct_seed_schema.py
 +-- self_instruct_candidate_schema.py
++-- generate_self_instruct_candidates.py
 
 tools/training/
 +-- train_manifest_lora.py
@@ -89,14 +97,46 @@ git diff --check
 현재 public20 local reference는 `data/local/public20/public20_input.jsonl`과
 `data/local/public20/public20_labels.local.jsonl`이다. rows `20`, record_count
 min/mean/max `1/16.4/39`, label distribution `fail=10`, `pass=10`이다.
-label 파일은 aggregate 비교와 held-out metric에만 쓰고 generation/training prompt나
-manifest target에는 넣지 않는다.
+label 파일은 synthetic generation, judge prompt, generated manifest target에는 넣지 않는다.
+public20-only 모델 후보 검증에서는 별도 local artifact 안에서만 train target과 validation
+metric에 사용하며 public20 `test` split은 만들지 않는다.
 
 <!-- Changed: add the Gate B dimension comparison tool to the active surface. -->
 <!-- Why: generated candidate profiles must be compared against public20 before Gate C model-input checks. -->
 Gate B dimension 비교는 `tools/analysis/compare_public20_dimensions.py`가 담당한다.
 이 도구는 public20 label을 row-level로 읽지 않고, local aggregate JSON만 선택적으로
-받아 distribution report에 기록한다.
+받아 distribution report에 기록한다. 이것은 public20 자체 검증이 아니라 generated
+synthetic 데이터가 public20 reference 구조/분포를 반영하는지 확인하는 gate다.
+
+<!-- Changed: record the public20-only model validation rule. -->
+<!-- Why: validation and test must not be conflated; leaderboard is the hidden test. -->
+RAG, full fine-tuning, selective fine-tuning 후보 검증은 public20-only `train`/`val`
+split으로 병렬 진행할 수 있다. 이때 `val`은 후보 선택/튜닝용 내부 검증이고, `test`는
+public20에서 만들지 않는다. 하루 5회 제한이 있는 leaderboard hidden 평가가 test다.
+따라서 public20-only 결과는 validation evidence이며 최종 test evidence로 쓰지 않는다.
+모델 구현은 관련 논문과 검증된 라이브러리/reference code를 우선 따른다.
+기본 split은 stratified `16 train / 4 val`이고, val은 `pass 2 / fail 2`를 목표로 한다.
+여러 split을 돌릴 수는 있지만 모두 validation이며 test라고 부르지 않는다. 최종 제출 후보가
+정해지면 선택된 recipe로 public20 20개 전체를 학습에 쓸지 별도 결정한다.
+
+모델 후보는 다섯 개로 고정한다.
+
+- Prompt-only / few-shot baseline: public20 train examples만 prompt examples로 쓰며 학습하지 않는다. val로 prompt format을 고른다.
+- Frozen RAG classifier: rulebook/spec chunk retrieval과 base LLM logprob pass/fail 판정으로 RAG 적합성을 본다.
+- 0.9B full fine-tuning: public20 train만 사용하고 epoch `5/10/20` 후보를 비교한다. val loss/F1 악화 시 early stopping한다.
+- 4B QLoRA/LoRA selective fine-tuning: PEFT/Transformers 검증 코드를 사용하고 epoch `3/5/10` 후보를 비교한다. val overfit이면 즉시 중단한다.
+- RAFT-style RAG + SFT/QLoRA: trajectory와 retrieved spec chunks를 함께 넣는다. pure RAG와 pure FT의 중간 후보이며 frozen RAG와 FT baseline 뒤에 진행한다.
+
+이 문제는 pure RAG는 아니지만 RAG 성격이 강하다. rulebook/spec은 weight에 모두 암기시키기
+어렵고, trajectory state transition은 검색만으로 해결되지 않는다. 따라서 retrieval된 규칙,
+trajectory reasoning, final response classification을 함께 보는 RAFT-style retrieval-augmented
+classifier를 최종 유력 후보로 둔다.
+
+<!-- Changed: add the deterministic Self-Instruct fixture generator to the active surface. -->
+<!-- Why: Gate A/B plumbing needs a tiny output-first smoke candidate pool before real LLM generation is enabled. -->
+`tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`는 schema와 Gate A/B
+연결을 확인하는 deterministic fixture 2개만 만든다. 이 fixture는 최종 학습 데이터가
+아니며, `runs/self_instruct/fixture_smoke/`의 report도 no-go smoke evidence다.
 
 ## 서버 Sync 원칙
 

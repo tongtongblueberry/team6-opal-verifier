@@ -1,6 +1,6 @@
 # 현재 진행 상태 (세션 이어받기용)
 
-- 최종 갱신: 2026-05-26 16:00 KST
+- 최종 갱신: 2026-05-26 16:26 KST
 - 원칙: 제출/학습 architecture에는 rule engine을 포함하지 않는다. 학습과 제출은 LLM 기반으로만 진행한다.
 - 운영 root: `/workspace/sinjeongmin_opal_verifier`
 - repo root: `/workspace/sinjeongmin_opal_verifier/repo`
@@ -38,8 +38,15 @@
 - 가장 큰 문제는 데이터 구조와 shape mismatch다.
 - manifest builder가 개별 step 단위로 flatten되던 문제는 수정되어 `records` trajectory 전체가 하나의 supervised input으로 들어간다.
 - `/workspace/team6`는 우리 작업 root가 아니므로 새 작업은 `/workspace/sinjeongmin_opal_verifier` 아래에서만 진행한다.
-- public20은 supervised 학습 소스가 아니라 shape reference로만 쓴다.
+- synthetic 데이터 검증 대상은 public20이 아니라 우리가 생성한 generated data다.
+- public20은 synthetic 데이터의 shape/profile/reference 비교 기준으로 쓴다.
+- public20-only 모델 후보 검증에서는 public20 20개를 `train`/`val`로만 나누며 public20 `test` split은 만들지 않는다. test는 leaderboard hidden 평가다.
+- `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가이므로 public20 validation 결과를 test 결과로 기록하지 않는다.
+- public20-only 모델 검증 기본 split은 stratified `16 train / 4 val`이며 val은 `pass 2 / fail 2`를 목표로 한다. 여러 split을 돌려도 모두 validation이다.
+- 최종 제출 후보가 정해진 뒤에만 선택 recipe로 public20 20개 전체를 학습에 쓸지 별도 판단한다.
 - Gate B public20/generated profile 비교 도구는 `tools/analysis/compare_public20_dimensions.py`다.
+- Self-Instruct fixture smoke generator는 `tools/datagen/generate_self_instruct_candidates.py --fixture-smoke`다.
+  fixture는 schema/Gate A/B smoke용이며 최종 학습 데이터가 아니다.
 - rulebase 73-clean verifier는 데이터 품질 감사용 weak reference일 수는 있지만, 모델 architecture나 제출 runtime에 넣지 않는다.
 - 제출 package는 `src/solver.py` 단일 LLM-only entrypoint를 기준으로 한다.
 - legacy helper solver와 rule-prompt/27B public-eval 실험 solver 실행 코드는 active repo에서 삭제했고, 필요한 폐기 근거만 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 남긴다.
@@ -151,8 +158,16 @@
 - v4/v4.1 long trajectory datagen도 active datagen에서 제거하고 archive evidence만 남긴다.
 - `tools/eval/merge_adapters.py`는 active 호출/테스트 경로가 없는 adapter-soup 실험 도구라 제거했다.
 - `tools/archive/legacy_rule_pipeline/` 실행 코드는 active `tools/` namespace 혼동을 줄이기 위해 삭제했고, 삭제 범위와 폐기 사유는 `docs/archive/legacy/legacy_rule_pipeline_removed.md`에 둔다.
-- raw synthetic sample은 Gate A/B/C 통과 전에는 "합격 데이터"로 제시하지 않는다. 통과 뒤에는 `docs/samples/self_instruct_sample.md`에 전체 trajectory, label, profile, Gate A/B/C 요약을 기록한다.
-- Gate B dimension comparison은 public20 label을 local aggregate distribution으로만 사용하고, row-level label을 generation/training 입력에 넣지 않는다.
+- raw synthetic sample은 Gate A/B/C 통과 전에는 "합격 데이터"로 제시하지 않는다. 통과 뒤에는 `docs/samples/self_instruct_sample.md`에 generated 전체 trajectory, label, profile, public20 raw sample 1개 전체, Gate A/B/C 요약을 기록한다.
+- Gate B dimension comparison은 public20 label을 local aggregate distribution과 public20-only `val` metric으로만 사용하고, row-level label을 synthetic generation/judge/generated manifest 입력에 넣지 않는다.
+- fixture-smoke output은 `runs/self_instruct/fixture_smoke/`에 생성됐다.
+  - rows `2`, labels `pass=1`, `fail=1`, record_count `[3, 17]`
+  - Gate A hard invariant pass `2`, fail `0`
+  - Gate B no-go warning: generated 평균 record_count `10.0` vs public20 `16.4`
+  - 결론: pipeline smoke는 통과했지만 `docs/samples/self_instruct_sample.md`를 만들 조건은 아니다.
+- RAG/full fine-tuning/selective fine-tuning 후보 검증은 데이터 검증 이후 또는 병렬 보조로만 진행한다. 구현은 논문과 검증된 라이브러리/reference code를 우선 따른다.
+- 모델 후보는 Prompt-only/few-shot, Frozen RAG classifier, 0.9B full FT, 4B QLoRA/LoRA selective FT, RAFT-style RAG+SFT/QLoRA다.
+- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory state reasoning이 모두 필요하므로 RAFT-style retrieval-augmented classifier를 최종 유력 후보로 본다.
 
 ## 서버 상태
 
