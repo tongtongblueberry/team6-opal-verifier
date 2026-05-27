@@ -185,8 +185,8 @@ def predict(dataset: Any) -> list[str]:
     for index, case in enumerate(iterable):
         case_id = str(case.get("id", f"case_{index}")) if isinstance(case, dict) else f"case_{index}"
         if case_id not in predictions:
-            _logger.warning("prediction missing for %s; defaulting to PASS", case_id)
-            ordered.append("PASS")
+            _logger.warning("prediction missing for %s; defaulting to pass", case_id)
+            ordered.append("pass")
         else:
             ordered.append(predictions[case_id])
     return ordered
@@ -197,7 +197,7 @@ def predict_one(testcase: Any) -> str:
     # Why: module helpers must match the submission architecture and fail closed.
     case_id = str(testcase.get("id", "case_0")) if isinstance(testcase, dict) else "case_0"
     predictions = Solver().predict([testcase])
-    return predictions.get(case_id, "PASS")
+    return predictions.get(case_id, "pass")
 
 # ---------------------------------------------------------------------------
 # Changed: LLM(LoRA) 기반 format 함수를 solver.py에 인라인.
@@ -631,24 +631,33 @@ class Solver:
         self._pass_id = self.tokenizer.encode("pass", add_special_tokens=False)[0]
         self._fail_id = self.tokenizer.encode("fail", add_special_tokens=False)[0]
 
-    def predict(self, dataset: Any) -> dict[str, str]:
-        """케이스 목록에 대해 pass/fail 예측.
+    def predict(self, dataset: Any):
+        """케이스에 대해 pass/fail 예측.
 
-        Changed: skeleton evaluate.py 인터페이스 유지 — predict(dataset) -> dict.
-        Why: /dl2026/skeleton/evaluate.py가 [{"id": "tc1.json", "steps": [...]}] 형태로
-             전달하고 {"tc1.json": "pass"} dict를 기대한다.
+        Changed: 두 가지 evaluator 인터페이스를 모두 지원.
+        Why: /workspace/project/evaluate.py는 solver.predict(steps) → str 기대,
+             /dl2026/skeleton/evaluate.py는 solver.predict(dataset) → dict 기대.
 
-        Args:
-            dataset: [{"id": ..., "steps": [...]}, ...] 또는 단일 trajectory list
-
-        Returns:
-            {case_id: "pass" or "fail", ...}
+        단일 trajectory (list of records) → str 반환
+        배치 (list of {"id", "steps"}) → dict 반환
+        dict ({"records": [...]}) → str 반환
         """
+        # Changed: handle dict input (e.g. {"records": [...]}) as single trajectory.
+        # Why: tc*.json may be loaded as a dict with "records" key.
+        if isinstance(dataset, dict):
+            records = _parse_records(dataset)
+            if not records:
+                return "pass"
+            try:
+                return self._predict_one_trajectory(records)
+            except Exception as e:
+                _logger.warning("predict failed for dict input: %s; defaulting to pass", e)
+                return "pass"
+
         if not isinstance(dataset, list) or not dataset:
-            return {}
+            return "pass"
 
         # Changed: fail closed if model initialization did not complete.
-        # Why: deterministic fallback is forbidden on the submission path.
         if (
             not getattr(self, "_available", False)
             or self.model is None
@@ -658,46 +667,38 @@ class Solver:
         ):
             raise RuntimeError("LLM-only architecture gate: LLM model artifact unavailable")
 
-        predictions: dict[str, str] = {}
-
         # Changed: detect batch vs single-trajectory mode.
-        # Why: skeleton evaluate.py sends [{"id":..,"steps":[...]},...] (batch),
-        #      local evaluate.py may send [step1, step2, ...] (single trajectory).
+        # Why: batch items have "steps" or "id" keys; raw records have "input"/"output".
         first = dataset[0]
         is_batch = isinstance(first, dict) and ("steps" in first or "id" in first)
 
         if is_batch:
+            predictions: dict[str, str] = {}
             for index, item in enumerate(dataset):
                 case_id = str(item.get("id", item.get("sample_id", f"case_{index}")))
-                # Changed: accept evaluator cases with steps, records, or raw input JSON.
-                # Why: full-FT public20 packages must preserve the prompt contract when input is passed directly.
                 steps = item.get("steps", item.get("records", item.get("input", item)))
                 records = _parse_records(steps)
                 if not records:
-                    # Changed: default to PASS instead of crashing.
-                    # Why: RuntimeError kills entire evaluation.
-                    _logger.warning("no records for %s; defaulting to PASS", case_id)
-                    predictions[case_id] = "PASS"
+                    _logger.warning("no records for %s; defaulting to pass", case_id)
+                    predictions[case_id] = "pass"
                 else:
                     try:
                         predictions[case_id] = self._predict_one_trajectory(records)
                     except Exception as e:
-                        _logger.warning("predict failed for %s: %s; defaulting to PASS", case_id, e)
-                        predictions[case_id] = "PASS"
+                        _logger.warning("predict failed for %s: %s; defaulting to pass", case_id, e)
+                        predictions[case_id] = "pass"
+            return predictions
         else:
-            # Single trajectory mode: dataset IS the list of step dicts
+            # Changed: single trajectory mode → return STRING, not dict.
+            # Why: /workspace/project/evaluate.py calls solver.predict(steps) and expects a string.
             records = _parse_records(dataset)
             if not records:
-                _logger.warning("no records in single trajectory; defaulting to PASS")
-                predictions["case_0"] = "PASS"
-            else:
-                try:
-                    predictions["case_0"] = self._predict_one_trajectory(records)
-                except Exception as e:
-                    _logger.warning("predict failed for single trajectory: %s; defaulting to PASS", e)
-                    predictions["case_0"] = "PASS"
-
-        return predictions
+                return "pass"
+            try:
+                return self._predict_one_trajectory(records)
+            except Exception as e:
+                _logger.warning("predict failed for single trajectory: %s; defaulting to pass", e)
+                return "pass"
 
     def _predict_one_trajectory(self, records: list) -> str:
         """단일 trajectory의 records로 pass/fail logit 비교.
@@ -760,9 +761,9 @@ class Solver:
                 math.exp(p_logit - mx) + math.exp(f_logit - mx)
             )
 
-        # Changed: output uppercase PASS/FAIL to match project.pdf specification.
-        # Why: project.pdf defines y ∈ {PASS, FAIL}; evaluator may do exact string match.
-        prediction = "FAIL" if p_fail > THRESHOLD else "PASS"
+        # Changed: output lowercase pass/fail to match evaluator label comparison.
+        # Why: evaluate.py does answer = labels[...].strip().lower() → compares with lowercase.
+        prediction = "fail" if p_fail > THRESHOLD else "pass"
         _logger.info(
             "pass_logit=%.4f fail_logit=%.4f p_fail=%.4f threshold=%.2f -> %s",
             p_logit, f_logit, p_fail, THRESHOLD, prediction,
@@ -781,11 +782,10 @@ class Solver:
             pass_score = self._candidate_completion_mean_logprob(records, "pass")
             fail_score = self._candidate_completion_mean_logprob(records, "fail")
         except (RuntimeError, Exception) as e:
-            _logger.warning("trl_prompt_completion scoring failed: %s; defaulting to PASS", e)
-            return "PASS"
-        # Changed: output uppercase PASS/FAIL.
-        # Why: project.pdf defines y ∈ {PASS, FAIL}.
-        prediction = "FAIL" if fail_score > pass_score else "PASS"
+            _logger.warning("trl_prompt_completion scoring failed: %s; defaulting to pass", e)
+            return "pass"
+        # Changed: output lowercase pass/fail to match evaluator.
+        prediction = "fail" if fail_score > pass_score else "pass"
         _logger.info(
             "trl_prompt_completion pass_mean_logprob=%.4f fail_mean_logprob=%.4f -> %s",
             pass_score,
