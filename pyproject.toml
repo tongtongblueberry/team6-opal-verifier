@@ -4,9 +4,9 @@
 name = "team6-opal-verifier"
 version = "0.1.0"
 description = "LLM-only SSD TCG/Opal command-response trajectory verifier for Team 6"
-# Changed: relax Python version pin to avoid uv sync failure on eval server.
-# Why: ==3.12.3 exact pin causes uv sync Error if eval server Python is 3.12.4+.
-requires-python = ">=3.12"
+# Changed: match skeleton requires-python exactly.
+# Why: eval server is Python 3.12.3; skeleton uses ==3.12.3.
+requires-python = "==3.12.3"
 dependencies = [
     "accelerate>=1.13.0",
     "torch>=2.11.0",
