@@ -1,0 +1,19 @@
+{
+  "accepted_label_distribution": {},
+  "artifact_note": "이 입력은 generated synthetic candidate pool이며 state-transition audit decision을 채워야 한다.",
+  "audit_targets": [],
+  "generated_at_kst": "2026-05-29T12:04:02+09:00",
+  "hard_invariant_fail_count": 0,
+  "hard_invariant_pass_count": 0,
+  "input": "runs/self_instruct/server_qwen_prod_gen2/combined_incremental/dedup_candidates.combined.namespaced.jsonl",
+  "invariant_failures": [],
+  "sample_label_distribution": {},
+  "sample_md_policy": "create-only-after-gate-a-b-c-pass",
+  "sample_size_actual": 0,
+  "sample_size_requested": 40,
+  "schema_version": "self_instruct.gate_a_quality_audit.v1",
+  "seed": 20260529,
+  "status": "pending-qualitative-state-transition-audit",
+  "total_candidates": 0,
+  "training_use": "pending-gate-a-human-or-llm-judge-review"
+}

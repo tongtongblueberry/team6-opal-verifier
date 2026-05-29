@@ -1,0 +1,23 @@
+{
+  "accepted_count": 11,
+  "audit_model": "codex_agent_fallback_qualitative_audit",
+  "audit_provenance_note": "Offline codex-agent fallback qualitative state-transition review; not Gemini, not a runtime rule engine, and not package inference logic.",
+  "audit_provider": "codex_agent_fallback_qualitative_audit",
+  "hard_invariant_input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/gate_a_invariant.codex_agent_fallback.jsonl",
+  "input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/judge_accepted.codex_agent_fallback.jsonl",
+  "label_distribution": {
+    "fail": 3,
+    "pass": 8
+  },
+  "notes": [
+    "All 11 judge-accepted candidates were qualitatively reviewed because count <= 20.",
+    "Actual state-transition reasoning is recorded per sample in gate_a_qualitative_review.codex_agent_fallback.jsonl."
+  ],
+  "qualitative_review_jsonl": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/gate_a_qualitative_review.codex_agent_fallback.jsonl",
+  "rejected_count": 0,
+  "reviewed_count": 11,
+  "sample_md_policy": "blocked-until-all-gates-and-required-evals-pass",
+  "schema_version": "self_instruct.gate_a_qualitative_report.codex_agent_fallback.v1",
+  "status": "pass",
+  "training_use": "blocked-pending-gate-b-gate-c-ablation-package-gates"
+}

@@ -19,7 +19,13 @@ MOCK_RAW_OUTPUT_FIXTURE = FIXTURE_ROOT / "mock_raw_outputs.jsonl"
 
 def _record(method: str, status: str) -> dict[str, object]:
     return {
-        "input": {"method": {"name": method}},
+        # Changed: parser fixtures use concrete method args and invoking UID.
+        # Why: raw Qwen candidates with null input fields or bare args:{} are now rejected before normalization.
+        "input": {
+            "method": {"name": method, "args": {"required": {"HostSessionID": "00000001"}, "optional": {}}},
+            "invoking_id": {"uid": "00 00 00 06 00 00 00 01"},
+            "status_codes": ["SUCCESS"],
+        },
         "output": {"status_codes": status, "return_values": []},
     }
 
@@ -40,7 +46,10 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
     final_index = len(records) - 1
     return {
         "sample_id": sample_id,
-        "instruction": "Judge only the final response.",
+        # Changed: include generated instruction provenance in mock candidates.
+        # Why: parser normalization now requires official-stage provenance before candidate preparation.
+        "source_instruction_id": "self-instruct-instruction-00000",
+        "instruction": parser.FIXED_OPAL_VERIFIER_INSTRUCTION,
         "records": records,
         "label": label,
         "label_target": "final_response",
@@ -53,27 +62,37 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "reason": "The final response determines the label.",
         },
         "spec_grounding": _spec_grounding(),
+        "generation_provenance": {
+            "source_instruction_id": "self-instruct-instruction-00000",
+            "classification_detection_id": "self-instruct-clf-00000",
+            "official_instruction_artifact": "machine_generated_instructions.jsonl",
+            "official_classification_artifact": "is_clf_or_not_audited_noop.jsonl",
+            "official_instance_artifact": "machine_generated_instances.jsonl",
+        },
     }
 
 
 class ParseSelfInstructOutputsTests(unittest.TestCase):
-    # Changed: parse a spec-grounded mock raw output fixture through the CLI.
-    # Why: raw->parser wiring must be verified without placing mock data in runs/ or accepted datasets.
+    # Changed: build the parser smoke raw row with the active fixed instruction.
+    # Why: stale fixture instructions must not keep old gen2 prompt contracts alive after the gen3 restart.
     def test_spec_grounded_mock_raw_fixture_passes_parser(self) -> None:
-        self.assertTrue(MOCK_RAW_OUTPUT_FIXTURE.is_file())
-        self.assertIn("tests/fixtures", str(MOCK_RAW_OUTPUT_FIXTURE))
-
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
+            input_path = tmp / "mock_raw_outputs.jsonl"
             output_path = tmp / "parser.accepted.jsonl"
             reject_path = tmp / "parser.rejects.jsonl"
             report_path = tmp / "parser.report.json"
             profile_path = tmp / "parser.profile.json"
+            raw_row = {
+                "request_id": "mock-fixture-raw-1",
+                "raw_output": json.dumps(_candidate("fixture-spec-grounded-pass", "pass", [_record("Get", "SUCCESS")])),
+            }
+            input_path.write_text(json.dumps(raw_row) + "\n", encoding="utf-8")
 
             exit_code = parser.main(
                 [
                     "--input",
-                    str(MOCK_RAW_OUTPUT_FIXTURE),
+                    str(input_path),
                     "--output",
                     str(output_path),
                     "--reject-output",
@@ -93,9 +112,11 @@ class ParseSelfInstructOutputsTests(unittest.TestCase):
             self.assertEqual(1, len(accepted))
             self.assertEqual("fixture-spec-grounded-pass", accepted[0]["sample_id"])
             self.assertEqual("self_instruct.candidate.v1", accepted[0]["schema_version"])
+            self.assertEqual("self-instruct-instruction-00000", accepted[0]["source_instruction_id"])
             self.assertEqual("docs/legacy_spec_rules.md:10-15", accepted[0]["spec_grounding"][0]["source_span"])
             self.assertEqual(1, report["accepted_count"])
             self.assertEqual(0, report["rejected_count"])
+            self.assertEqual("candidate_preparation", report["official_stage"])
 
     def test_parses_raw_llm_output_and_writes_reject_report(self) -> None:
         valid = _candidate("si-parse-ok", "pass", [_record("Get", "SUCCESS")])
@@ -137,9 +158,9 @@ class ParseSelfInstructOutputsTests(unittest.TestCase):
             self.assertEqual(1, report["accepted_count"])
             self.assertEqual(1, report["rejected_count"])
 
-    def test_rejects_final_response_invariant_violation(self) -> None:
-        bad = _candidate(
-            "si-bad-final",
+    def test_accepts_fail_label_with_success_final_response_when_final_targeted(self) -> None:
+        candidate = _candidate(
+            "si-final-success-fail",
             "fail",
             [
                 _record("Set", "FAIL"),
@@ -147,12 +168,28 @@ class ParseSelfInstructOutputsTests(unittest.TestCase):
             ],
         )
 
-        accepted, rejected = parser.parse_raw_output_rows([(1, {"raw_output": json.dumps(bad)})])
+        accepted, rejected = parser.parse_raw_output_rows([(1, {"raw_output": json.dumps(candidate)})])
+
+        self.assertEqual([], rejected)
+        self.assertEqual(1, len(accepted))
+        self.assertEqual("si-final-success-fail", accepted[0]["sample_id"])
+        self.assertEqual("fail", accepted[0]["label"])
+
+    def test_rejects_non_fixed_instruction_and_null_input(self) -> None:
+        bad_instruction = _candidate("si-bad-instruction", "pass", [_record("Get", "SUCCESS")])
+        bad_instruction["instruction"] = "Generate a new task instruction."
+        bad_null = _candidate("si-null-input", "pass", [_record("Get", "SUCCESS")])
+        bad_null["records"][0]["input"]["invoking_id"]["uid"] = None
+
+        accepted, rejected = parser.parse_raw_output_rows(
+            [
+                (1, {"raw_output": json.dumps(bad_instruction)}),
+                (2, {"raw_output": json.dumps(bad_null)}),
+            ]
+        )
 
         self.assertEqual([], accepted)
-        self.assertEqual(1, len(rejected))
-        self.assertEqual("normalize", rejected[0]["stage"])
-        self.assertEqual("intermediate_failure_before_final_endsession_success", rejected[0]["reason"])
+        self.assertEqual(["instruction_not_fixed", "record_0_input_contains_null:records.0.input.invoking_id.uid"], [row["reason"] for row in rejected])
 
     def test_parses_fenced_json_candidate_list(self) -> None:
         first = _candidate("si-fenced-1", "pass", [_record("Get", "SUCCESS")])

@@ -166,6 +166,72 @@ class BuildSupervisedManifestTests(unittest.TestCase):
         self.assertNotIn("spec_grounding", records[0].input_text)
         self.assertNotIn("legacy_spec_rules", records[0].input_text)
 
+    def test_record_count_preserving_length_selector_uses_reference_mean(self) -> None:
+        # Changed: cover the optional record_count-aware length selector.
+        # Why: token length-bin balancing alone can drop the wrong high-depth group when JSD ties.
+        def manifest_record(sample_id: str, label: str, record_count: int, length_bin: str, group_id: str) -> builder.ManifestRecord:
+            input_text = builder.stable_json({"records": [{"index": index, "payload": sample_id} for index in range(record_count)]})
+            return builder.ManifestRecord(
+                index=record_count,
+                sample_id=sample_id,
+                input_text=input_text,
+                label=label,
+                source="unit_test",
+                label_source="label",
+                template_id=f"tmpl-{sample_id}",
+                mutation_family="record-count-selector",
+                length_bin=length_bin,
+                input_token_count=builder.token_count(input_text),
+                content_hash=builder.content_hash(input_text, label),
+                input_hash_no_label=builder.input_hash_no_label(input_text),
+                parse_status="full_trajectory",
+                metadata_only=False,
+                prompt_schema_version=builder.PROMPT_SCHEMA_VERSION,
+                prompt_schema_hash=builder.prompt_schema_hash(),
+                family_component="unit_test::record-count-selector",
+                group_id=group_id,
+                path="unit.jsonl",
+                row=record_count,
+                blocklisted=False,
+                blocklist_matches=(),
+            )
+
+        records = [
+            manifest_record("short", "pass", 1, "1-32", "group-short"),
+            manifest_record("middle", "fail", 10, "257-512", "group-middle"),
+            manifest_record("drop-lower-depth", "pass", 20, "513-1024", "group-z"),
+            manifest_record("keep-higher-depth", "fail", 30, "513-1024", "group-a"),
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            reference_path = Path(temp_dir) / "reference.jsonl"
+            reference_rows = [
+                {"sample_id": "ref-1", "length_bin": "1-32", "record_count": 1},
+                {"sample_id": "ref-2", "length_bin": "257-512", "record_count": 10},
+                {"sample_id": "ref-3", "length_bin": "513-1024", "record_count": 31},
+            ]
+            reference_path.write_text("".join(json.dumps(row) + "\n" for row in reference_rows), encoding="utf-8")
+            args = type(
+                "Args",
+                (),
+                {
+                    "length_balance_reference": str(reference_path),
+                    "length_balance_target_jsd": 0.001,
+                    "length_balance_max_drop_fraction": 0.25,
+                    "preserve_record_count_distribution": True,
+                    "min_template_entropy": 0.0,
+                    "max_top_template_share": 1.0,
+                },
+            )()
+
+            outcome = builder.select_length_balanced_records(records, args)
+
+        selected_ids = {record.sample_id for record in outcome.records}
+        self.assertEqual({"short", "middle", "keep-higher-depth"}, selected_ids)
+        self.assertTrue(outcome.report["record_count_preservation"]["applied"])
+        self.assertEqual("record_count_preserving_target_reached", outcome.report["reason"])
+        self.assertEqual(0.0, outcome.report["after"]["jsd"])
+
 
 if __name__ == "__main__":
     unittest.main()

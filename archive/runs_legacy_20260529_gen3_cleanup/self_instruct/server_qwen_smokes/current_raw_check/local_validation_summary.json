@@ -1,0 +1,31 @@
+{
+  "dedup": 11,
+  "dedup_label_counts": {
+    "fail": 5,
+    "pass": 6
+  },
+  "dedup_record_counts": {
+    "1": 2,
+    "2": 1,
+    "7": 1,
+    "9": 1,
+    "10": 2,
+    "11": 1,
+    "21": 2,
+    "26": 1
+  },
+  "dedup_rejects": 0,
+  "parse_rejects": 5,
+  "parsed": 11,
+  "parsed_record_counts": {
+    "1": 2,
+    "2": 1,
+    "7": 1,
+    "9": 1,
+    "10": 2,
+    "11": 1,
+    "21": 2,
+    "26": 1
+  },
+  "raw_rows": 16
+}

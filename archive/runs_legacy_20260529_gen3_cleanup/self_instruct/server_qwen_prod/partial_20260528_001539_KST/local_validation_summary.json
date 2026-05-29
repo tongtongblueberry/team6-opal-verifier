@@ -1,0 +1,30 @@
+{
+  "dedup": 16,
+  "dedup_label_counts": {
+    "fail": 6,
+    "pass": 10
+  },
+  "dedup_record_counts": {
+    "1": 2,
+    "2": 1,
+    "7": 2,
+    "9": 1,
+    "10": 1,
+    "11": 1,
+    "21": 4,
+    "26": 2,
+    "27": 1,
+    "39": 1
+  },
+  "dedup_rejects": 0,
+  "parse_reject_reason_counts": {
+    "fail_label_final_response_success_compatible": 7,
+    "primary_evidence_not_final_response": 2,
+    "target_index_not_last_record": 4,
+    "target_response_not_last_record_output": 3
+  },
+  "parse_rejects": 16,
+  "parsed": 16,
+  "raw_rows": 32,
+  "source_run": "qwen_local_200_full_c1_batch16_prod_20260528_001539_KST"
+}

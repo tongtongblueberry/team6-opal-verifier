@@ -1,0 +1,39 @@
+{
+  "auth_session_row_count": 3,
+  "clean_output_dir": true,
+  "effective_limit": 29,
+  "input_path": "data/local/gen/gen_input.jsonl",
+  "label_counts": {
+    "fail": 10,
+    "pass": 19
+  },
+  "label_path": "data/local/gen/gen_labels.local.jsonl",
+  "min_auth_row_rate": 0.0,
+  "output_dir": "data/local/gen",
+  "public20_reference_jsonl": "/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst/data/local/public20/public20_input.jsonl",
+  "public_shape_compatible_count": 29,
+  "public_shape_reject_counts": {
+    "duplicate_export_input": 1,
+    "public20_sequence_skeleton_duplicate": 8,
+    "record_1_unsupported_public20_method": 2,
+    "record_2_unsupported_public20_method": 2
+  },
+  "record_count_counts": {
+    "10": 8,
+    "11": 1,
+    "12": 1,
+    "2": 5,
+    "20": 2,
+    "3": 1,
+    "4": 2,
+    "6": 6,
+    "7": 1,
+    "8": 1,
+    "9": 1
+  },
+  "requested_limit": 0,
+  "require_balanced_labels": false,
+  "row_count": 29,
+  "schema_version": "self_instruct.public_schema_export.v1",
+  "source": "qwen_local_self_instruct_incremental"
+}

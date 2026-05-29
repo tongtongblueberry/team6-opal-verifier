@@ -1,0 +1,57 @@
+{
+  "adapter": "public20_trl_sft_prompt_completion",
+  "completion_only_loss_intent": {
+    "reason": "prompt/completion columns let TRL mask prompt tokens and train on completion tokens.",
+    "trl_sft_config": {
+      "completion_only_loss": true
+    }
+  },
+  "created_at": "2026-05-27T04:32:23.116447+09:00",
+  "custom_training_loop": false,
+  "dataset_format": "standard_prompt_completion",
+  "output_dir": "runs/model_validation/public20_trl_sft/datasets/retrieved_seed_47",
+  "outputs": [
+    {
+      "label_counts": {
+        "fail": 8,
+        "pass": 8
+      },
+      "output_path": "runs/model_validation/public20_trl_sft/datasets/retrieved_seed_47/train.jsonl",
+      "output_split": "train",
+      "retrieved_spec_context_char_max": 1127,
+      "retrieved_spec_context_char_min": 1107,
+      "retrieved_spec_context_enabled": true,
+      "row_count": 16,
+      "source_path": "runs/model_validation/public20_splits/split_seed_47/train.jsonl",
+      "source_split": "train"
+    },
+    {
+      "label_counts": {
+        "fail": 2,
+        "pass": 2
+      },
+      "output_path": "runs/model_validation/public20_trl_sft/datasets/retrieved_seed_47/validation.jsonl",
+      "output_split": "validation",
+      "retrieved_spec_context_char_max": 1148,
+      "retrieved_spec_context_char_min": 1127,
+      "retrieved_spec_context_enabled": true,
+      "row_count": 4,
+      "source_path": "runs/model_validation/public20_splits/split_seed_47/val.jsonl",
+      "source_split": "val"
+    }
+  ],
+  "prompt_suffix": "\n",
+  "public20_test_split_created": false,
+  "retrieved_spec_context": {
+    "enabled": true,
+    "label_used_for_retrieval": false,
+    "max_context_chars": 1200,
+    "retrieval_method": "deterministic lexical overlap over prompt input text only",
+    "rule_card_count": 86,
+    "runtime_rule_engine": false,
+    "source_path": "docs/legacy_spec_rules.md",
+    "top_k": 3
+  },
+  "split_dir": "runs/model_validation/public20_splits/split_seed_47",
+  "training_core": "trl.SFTTrainer"
+}

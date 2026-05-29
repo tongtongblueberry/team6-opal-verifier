@@ -1,0 +1,18 @@
+{
+  "accepted_count": 135,
+  "input": "runs/self_instruct/server_qwen_prod/rebuild_from_archived_raw_384_20260528_153529_KST/parsed_candidates.qwen_local.jsonl",
+  "near_duplicate_mode": "domain_text",
+  "near_duplicate_mode_default": "domain_text",
+  "public20_reference": "data/local/public20/public20_input.jsonl",
+  "reject_filter_stage_counts": {
+    "domain_adapted_rouge_l": 1,
+    "trajectory_level_duplicate": 12
+  },
+  "reject_reason_counts": {
+    "exact_duplicate": 12,
+    "near_duplicate_domain_text": 1
+  },
+  "rejected_count": 13,
+  "rouge_l_threshold": 0.7,
+  "schema_version": "self_instruct.candidate_dedup.v1"
+}

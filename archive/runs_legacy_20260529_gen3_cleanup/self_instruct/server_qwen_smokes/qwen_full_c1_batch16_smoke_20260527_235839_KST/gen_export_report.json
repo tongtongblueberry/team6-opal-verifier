@@ -1,0 +1,15 @@
+{
+  "clean_output_dir": true,
+  "input_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/gen_export/gen_input.jsonl",
+  "label_counts": {
+    "pass": 1
+  },
+  "label_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/gen_export/gen_labels.local.jsonl",
+  "output_dir": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/gen_export",
+  "record_count_counts": {
+    "1": 1
+  },
+  "row_count": 1,
+  "schema_version": "self_instruct.public_schema_export.v1",
+  "source": "qwen_local_self_instruct_batch16"
+}

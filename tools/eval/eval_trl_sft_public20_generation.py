@@ -16,6 +16,7 @@ from typing import Any
 # Changed: keep generation metrics separate from TRL trainer eval_loss.
 # Why: eval_loss is official Trainer output, while pass/fail accuracy is a task adapter.
 VALID_LABELS = {"pass", "fail"}
+DATASET_COLUMNS = ("input", "labels")
 KST = timezone(timedelta(hours=9), name="KST")
 
 # Changed: recognize PEFT adapter and tokenizer artifacts explicitly.
@@ -46,16 +47,32 @@ def fail(message: str, exit_code: int = 2) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate pass/fail labels from a TRL SFT model and score converted public20 JSONL."
+        description="Generate pass/fail labels from a TRL SFT model and score public20 input/labels JSONL."
     )
-    parser.add_argument("--dataset-jsonl", required=True, help="Converted validation JSONL with prompt/completion.")
+    parser.add_argument("--dataset-jsonl", required=True, help="Validation JSONL with input/labels only.")
     parser.add_argument("--model-name-or-path", required=True, help="Model path/name for generation.")
     parser.add_argument("--adapter-path", default=None, help="Optional PEFT adapter path.")
     parser.add_argument("--output-json", required=True)
     parser.add_argument("--output-md", required=True)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=3)
+    # Changed: accept an optional generation prompt token budget from queue wrappers.
+    # Why: corrected public20 TRL queues pass --max-length 8192 and the evaluator must honor it during tokenization.
+    parser.add_argument(
+        "--max-length",
+        type=int,
+        default=None,
+        help="Optional maximum prompt token length for generation tokenization/truncation.",
+    )
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--device-map", default=None, help="Thin pass-through to Transformers from_pretrained(device_map=...).")
+    parser.add_argument("--torch-dtype", default=None, help="Thin pass-through to Transformers from_pretrained(torch_dtype=...).")
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=None,
+        help="Metadata only. Evaluator does not hard-kill; queue wrappers own timeout enforcement.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Validate dataset only; no model load.")
     return parser.parse_args(argv)
 
@@ -75,15 +92,20 @@ def read_eval_rows(path: Path, limit: int | None = None) -> list[EvalRow]:
                 fail(f"Invalid JSONL at {path}:{line_number}: {exc}")
             if not isinstance(value, dict):
                 fail(f"Row {path}:{line_number} is not an object")
-            prompt = value.get("prompt")
-            completion = value.get("completion")
-            sample_id = value.get("sample_id", f"line-{line_number}")
+            # Changed: evaluation accepts the same two-column schema as public20.
+            # Why: validation artifacts must not carry prompt/completion/sample_id metadata.
+            if set(value) != set(DATASET_COLUMNS):
+                fail(
+                    f"Row {path}:{line_number} must contain exactly "
+                    f"{list(DATASET_COLUMNS)!r}; got {sorted(value)}"
+                )
+            prompt = value.get("input")
+            completion = value.get("labels")
+            sample_id = f"line-{line_number}"
             if not isinstance(prompt, str) or not prompt:
-                fail(f"Row {path}:{line_number} has missing prompt")
+                fail(f"Row {path}:{line_number} has missing input")
             if not isinstance(completion, str) or completion not in VALID_LABELS:
-                fail(f"Row {path}:{line_number} has invalid completion {completion!r}")
-            if not isinstance(sample_id, str):
-                fail(f"Row {path}:{line_number} has non-string sample_id")
+                fail(f"Row {path}:{line_number} has invalid labels {completion!r}")
             rows.append(EvalRow(sample_id=sample_id, prompt=prompt, gold=completion, line_number=line_number))
             if limit is not None and len(rows) >= limit:
                 break
@@ -218,6 +240,27 @@ def validate_model_adapter_args(model_name_or_path: str, adapter_path: str | Non
         )
 
 
+def build_model_from_pretrained_kwargs(torch_module: Any, device_map: str | None, torch_dtype: str | None) -> dict[str, Any]:
+    # Changed: expose official Transformers placement/dtype kwargs without custom device logic.
+    # Why: server evaluators need GPU placement while preserving from_pretrained as the authority for loading semantics.
+    kwargs: dict[str, Any] = {}
+    if device_map:
+        kwargs["device_map"] = device_map
+    if torch_dtype:
+        kwargs["torch_dtype"] = getattr(torch_module, torch_dtype, torch_dtype)
+    return kwargs
+
+
+def build_generation_tokenizer_kwargs(max_length: int | None) -> dict[str, Any]:
+    # Changed: centralize tokenizer kwargs for generation prompt preparation.
+    # Why: tests can verify --max-length is actually applied without importing Transformers or loading a model.
+    kwargs: dict[str, Any] = {"return_tensors": "pt", "padding": True}
+    if max_length is not None:
+        kwargs["truncation"] = True
+        kwargs["max_length"] = max_length
+    return kwargs
+
+
 # Changed: prefer Transformers' PEFT adapter integration for adapter-path composition.
 # Why: official Transformers loading uses base AutoModelForCausalLM plus load_adapter(), matching direct adapter-dir semantics.
 def load_adapter_into_model(model: Any, adapter_path: str) -> Any:
@@ -242,13 +285,16 @@ def load_model_and_tokenizer(
     auto_model: Any,
     model_name_or_path: str,
     adapter_path: str | None,
+    model_from_pretrained_kwargs: dict[str, Any] | None = None,
 ) -> tuple[Any, Any]:
     validate_model_adapter_args(model_name_or_path, adapter_path)
     tokenizer = auto_tokenizer.from_pretrained(tokenizer_source_for(model_name_or_path, adapter_path))
     if tokenizer.pad_token_id is None and tokenizer.eos_token is not None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = auto_model.from_pretrained(model_name_or_path)
+    # Changed: pass only caller-selected official Transformers kwargs through to model loading.
+    # Why: --device-map/--torch-dtype should affect placement at load time instead of after CPU-heavy initialization.
+    model = auto_model.from_pretrained(model_name_or_path, **(model_from_pretrained_kwargs or {}))
     if adapter_path:
         model = load_adapter_into_model(model, adapter_path)
     model.eval()
@@ -269,6 +315,7 @@ def generate_predictions(args: argparse.Namespace, rows: list[EvalRow]) -> list[
         AutoModelForCausalLM,
         args.model_name_or_path,
         args.adapter_path,
+        build_model_from_pretrained_kwargs(torch, args.device_map, args.torch_dtype),
     )
 
     predictions: list[dict[str, Any]] = []
@@ -276,7 +323,9 @@ def generate_predictions(args: argparse.Namespace, rows: list[EvalRow]) -> list[
         for start in range(0, len(rows), args.batch_size):
             batch = rows[start : start + args.batch_size]
             prompts = [row.prompt for row in batch]
-            encoded = tokenizer(prompts, return_tensors="pt", padding=True)
+            # Changed: pass optional max-length truncation into the tokenizer call.
+            # Why: queue-provided --max-length must affect the actual model input, not only report metadata.
+            encoded = tokenizer(prompts, **build_generation_tokenizer_kwargs(args.max_length))
             encoded = {key: value.to(model.device) for key, value in encoded.items()}
             output_ids = model.generate(**encoded, max_new_tokens=args.max_new_tokens, do_sample=False)
             # Changed: slice generated tokens after the padded model input length.
@@ -305,10 +354,15 @@ def write_reports(report: dict[str, Any], output_json: Path, output_md: Path) ->
         encoding="utf-8",
     )
     metrics = report["metrics"]
+    # Changed: surface tokenization metadata in the human-readable report too.
+    # Why: server operators should be able to confirm --max-length without opening the JSON artifact.
+    tokenization = report.get("tokenization", {})
     lines = [
         "# public20 TRL SFT pass/fail generation metric",
         "",
         "- trainer eval_loss와 분리된 task metric adapter 결과다.",
+        f"- max_length: `{tokenization.get('max_length')}`",
+        f"- truncation: `{tokenization.get('truncation')}`",
         f"- rows: `{metrics['n']}`",
         f"- accuracy: `{metrics['accuracy']}`",
         f"- macro_f1: `{metrics['macro_f1']}`",
@@ -324,8 +378,14 @@ def main(argv: list[str] | None = None) -> int:
         fail("--batch-size must be positive")
     if args.max_new_tokens <= 0:
         fail("--max-new-tokens must be positive")
+    # Changed: validate optional generation max length before tokenization.
+    # Why: non-positive truncation lengths would make the corrected queue contract ambiguous.
+    if args.max_length is not None and args.max_length <= 0:
+        fail("--max-length must be positive when provided")
     if args.limit is not None and args.limit <= 0:
         fail("--limit must be positive when provided")
+    if args.timeout_seconds is not None and args.timeout_seconds <= 0:
+        fail("--timeout-seconds must be positive when provided")
 
     rows = read_eval_rows(Path(args.dataset_jsonl), limit=args.limit)
     if args.dry_run:
@@ -348,6 +408,21 @@ def main(argv: list[str] | None = None) -> int:
         "dry_run": bool(args.dry_run),
         "model_name_or_path": args.model_name_or_path,
         "adapter_path": args.adapter_path,
+        "model_from_pretrained_kwargs": {
+            "device_map": args.device_map,
+            "torch_dtype": args.torch_dtype,
+        },
+        # Changed: record generation tokenization settings in the report.
+        # Why: server archives must show whether corrected queue runs used --max-length 8192.
+        "tokenization": {
+            "max_length": args.max_length,
+            "truncation": args.max_length is not None,
+        },
+        "timeout": {
+            "timeout_seconds": args.timeout_seconds,
+            "enforced_by_evaluator": False,
+            "owner": "queue_wrapper",
+        },
         "metrics": compute_generation_metrics(predictions),
         "predictions": predictions,
     }

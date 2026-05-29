@@ -1,0 +1,20 @@
+{
+  "seed": 11,
+  "source_train": "runs/model_validation/public20_trl_sft_10_10_augmented20/20260527_230901_KST/datasets/plain_seed_11/train.jsonl",
+  "output_train": "runs/model_validation/public20_trl_sft_10_10_augmented20_filtered_maxlen8192/20260527_234456_KST/datasets/plain_seed_11/train.jsonl",
+  "train_rows": 22,
+  "excluded_rows": 2,
+  "train_label_counts": {
+    "fail": 11,
+    "pass": 11
+  },
+  "train_source_counts": {
+    "generated_train": 12,
+    "train": 10
+  },
+  "excluded_sample_ids": [
+    "generated20_codex-agent-fallback-targeted-schedule-00038",
+    "generated20_codex-agent-fallback-targeted-schedule-00039"
+  ],
+  "note": "Filtered RETRAIN-20 max_length-compatible experiment: generated train split 14 minus 2 long rows = 12 generated train rows; public20 validation unchanged."
+}

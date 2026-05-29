@@ -79,6 +79,23 @@ def _normalized_statuses(output: Any) -> Tuple[str, ...]:
     return tuple(text.upper() for text in texts)
 
 
+def _command_response_markers(output: Any) -> Tuple[str, ...]:
+    # Changed: accept public20 command outputs that expose a command/result instead of a status code.
+    # Why: preserving public20 rows must not require injecting synthetic status_codes into COMMAND:Read/Write responses.
+    if not isinstance(output, Mapping):
+        return ()
+    command = output.get("command")
+    if not isinstance(command, str) or not command.strip():
+        return ()
+    markers: List[str] = [f"COMMAND:{command.strip()}"]
+    result_texts = _status_texts(output.get("result"))
+    args = output.get("args")
+    if not result_texts and isinstance(args, Mapping):
+        result_texts = _status_texts(args.get("result"))
+    markers.extend(f"RESULT:{text}" for text in result_texts)
+    return tuple(markers)
+
+
 def _has_success_compatible_status(output: Any) -> bool:
     return any(status in SUCCESS_COMPATIBLE_STATUSES for status in _normalized_statuses(output))
 
@@ -102,6 +119,11 @@ def _method_name(record: Any) -> Optional[str]:
             return name.strip()
     if isinstance(method, str) and method.strip():
         return method.strip()
+    # Changed: accept public20 command-style records as method-bearing records.
+    # Why: public20 includes storage command rows with input.command instead of input.method.
+    command = input_value.get("command")
+    if isinstance(command, str) and command.strip():
+        return command.strip()
     return None
 
 
@@ -170,20 +192,22 @@ def check_final_response_label_invariant(candidate: Mapping[str, Any]) -> Invari
     last_output = _record_output(last_record)
     final_method = _method_name(last_record)
     final_statuses = _normalized_statuses(last_output)
+    final_response_markers = final_statuses or _command_response_markers(last_output)
     details = _base_details(candidate, final_index)
     details.update(
         {
             "record_count": len(records),
             "final_method": final_method,
             "final_statuses": list(final_statuses),
+            "final_response_markers": list(final_response_markers),
         }
     )
-    # Changed: make final method/status presence a hard structural gate.
+    # Changed: make final method/final-response presence a hard structural gate.
     # Why: downstream label checks are meaningless if the last response cannot be identified.
     if final_method is None:
         return _failure("final_method_missing", details)
-    if not final_statuses:
-        return _failure("final_status_missing", details)
+    if not final_response_markers:
+        return _failure("final_response_marker_missing", details)
 
     target = candidate.get("target")
     if not isinstance(target, Mapping):
@@ -245,19 +269,8 @@ def check_final_response_label_invariant(candidate: Mapping[str, Any]) -> Invari
             evidence_step_details["actual_evidence_step"] = evidence_step_value
             return _failure("evidence_step_not_final_response", evidence_step_details)
 
-    failure_status_indices = _record_indices_with_failure_status(records)
-    if label == "pass" and failure_status_indices:
-        pass_details = dict(details)
-        pass_details["failure_compatible_record_indices"] = failure_status_indices
-        return _failure("pass_label_contains_failure_compatible_status", pass_details)
-
-    if label == "fail" and _has_success_compatible_status(last_output):
-        fail_details = dict(details)
-        fail_details["success_compatible_final_status"] = True
-        fail_details["failure_compatible_record_indices"] = failure_status_indices
-        if final_method and final_method.strip().lower() == "endsession" and any(index < final_index for index in failure_status_indices):
-            return _failure("intermediate_failure_before_final_endsession_success", fail_details)
-        return _failure("fail_label_final_response_success_compatible", fail_details)
+    # Changed: do not hard-reject label/status correlations here.
+    # Why: public20 includes final SUCCESS rows with fail labels, so status-label leakage belongs in qualitative audit metrics.
 
     return InvariantResult(True, "ok", details)
 

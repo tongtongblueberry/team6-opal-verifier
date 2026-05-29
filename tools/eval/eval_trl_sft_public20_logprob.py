@@ -70,6 +70,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Maximum prompt+candidate token length. Rows exceeding it fail instead of silently dropping labels.",
     )
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--device-map", default=None, help="Thin pass-through to Transformers from_pretrained(device_map=...).")
+    parser.add_argument("--torch-dtype", default=None, help="Thin pass-through to Transformers from_pretrained(torch_dtype=...).")
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=1,
+        help="Write flushed stderr progress every N completed rows. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=None,
+        help="Metadata only. Evaluator does not hard-kill; queue wrappers own timeout enforcement.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Validate dataset only; no model load.")
     return parser.parse_args(argv)
 
@@ -81,6 +95,10 @@ def validate_args(args: argparse.Namespace) -> None:
         fail("--max-length must be greater than 1")
     if args.limit is not None and args.limit <= 0:
         fail("--limit must be positive when provided")
+    if args.progress_every < 0:
+        fail("--progress-every must be zero or positive")
+    if args.timeout_seconds is not None and args.timeout_seconds <= 0:
+        fail("--timeout-seconds must be positive when provided")
 
 
 def ensure_token_list(value: Any, label: str) -> list[int]:
@@ -355,8 +373,12 @@ def evaluate_rows(
     torch: Any,
     batch_size: int,
     max_length: int,
+    progress_every: int = 0,
+    progress_stream: Any | None = None,
 ) -> list[dict[str, Any]]:
     predictions: list[dict[str, Any]] = []
+    total_rows = len(rows)
+    stream = progress_stream if progress_stream is not None else sys.stderr
     for batch_rows in batched(rows, batch_size):
         features = [
             build_candidate_features(tokenizer, row, candidate_label, max_length)
@@ -373,7 +395,7 @@ def evaluate_rows(
             prediction = prediction_from_candidate_scores(candidate_scores)
             pass_score = candidate_scores["pass"]
             fail_score = candidate_scores["fail"]
-            predictions.append(
+            prediction_record = (
                 {
                     "line_number": row.line_number,
                     "sample_id": row.sample_id,
@@ -395,6 +417,17 @@ def evaluate_rows(
                     "sum_logprob_margin_fail_minus_pass": fail_score.sum_logprob - pass_score.sum_logprob,
                 }
             )
+            predictions.append(prediction_record)
+            # Changed: emit flushed per-row progress from the logprob loop.
+            # Why: long CPU/GPU logprob runs need visible liveness without evaluator-owned timeout or signal handling.
+            completed = len(predictions)
+            if progress_every and (completed % progress_every == 0 or completed == total_rows):
+                print(
+                    f"[logprob-progress] row {completed}/{total_rows} "
+                    f"sample_id={row.sample_id} prediction={prediction_record['prediction']}",
+                    file=stream,
+                    flush=True,
+                )
     return predictions
 
 
@@ -412,6 +445,7 @@ def load_logprob_model_and_tokenizer(
     auto_model: Any,
     model_name_or_path: str,
     adapter_path: str | None,
+    model_from_pretrained_kwargs: dict[str, Any] | None = None,
 ) -> tuple[Any, Any]:
     # Changed: route all model loading through the generation evaluator helper.
     # Why: full-model and direct/explicit LoRA adapter semantics must stay identical across public20 evaluators.
@@ -420,6 +454,7 @@ def load_logprob_model_and_tokenizer(
         auto_model,
         model_name_or_path,
         adapter_path,
+        model_from_pretrained_kwargs,
     )
 
 
@@ -430,8 +465,9 @@ def generate_logprob_predictions(args: argparse.Namespace, rows: Sequence[genera
         auto_model,
         args.model_name_or_path,
         args.adapter_path,
+        generation_eval.build_model_from_pretrained_kwargs(torch, args.device_map, args.torch_dtype),
     )
-    return evaluate_rows(rows, tokenizer, model, torch, args.batch_size, args.max_length)
+    return evaluate_rows(rows, tokenizer, model, torch, args.batch_size, args.max_length, args.progress_every)
 
 
 def write_reports(report: dict[str, Any], output_json: Path, output_md: Path) -> None:
@@ -478,6 +514,16 @@ def build_report(
             "pad_tokens_ignored": True,
             "transformers_causal_lm_labels_contract": True,
             "max_length": args.max_length,
+            "progress_every": args.progress_every,
+        },
+        "model_from_pretrained_kwargs": {
+            "device_map": args.device_map,
+            "torch_dtype": args.torch_dtype,
+        },
+        "timeout": {
+            "timeout_seconds": args.timeout_seconds,
+            "enforced_by_evaluator": False,
+            "owner": "queue_wrapper",
         },
         "dataset": {
             "dataset_jsonl": args.dataset_jsonl,

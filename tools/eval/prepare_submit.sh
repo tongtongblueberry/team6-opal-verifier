@@ -1,62 +1,104 @@
 #!/usr/bin/env bash
-# Changed: adapter 경로를 인자로 받아 제출 패키지를 빌드하는 스크립트.
-# Why: 서버에서 학습된 adapter를 즉시 제출 디렉토리로 패키징해야 함.
+# Changed: adapter 또는 full-model 경로를 인자로 받아 제출 패키지를 빌드하는 스크립트.
+# Why: full fine-tuning 제출은 package-local artifacts/merged_model/에 standalone model directory를 넣어야 함.
 #
 # 사용법:
 #   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189
+#   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/ops/runs/.../models/plain_seed11_e30 --full-model
 #   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189 --submit
 #   bash tools/eval/prepare_submit.sh /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189 --name my-run
 #
 # 필수 조건:
 #   - 서버에서 실행 (평가 환경 아님)
-#   - adapter_config.json이 있는 유효한 adapter 경로
+#   - adapter_config.json이 있는 유효한 adapter 경로 또는 config.json+weights+tokenizer가 있는 full-model 경로
 #   - git repo 안에서 실행하거나 OPAL_REPO를 지정
 set -euo pipefail
 
 # ============================================================
 # 인자 파싱
 # ============================================================
-ADAPTER_PATH=""
+# Changed: keep the positional artifact generic, then infer LoRA vs merged full-model mode.
+# Why: one package builder must support both legacy LoRA submissions and current full FT submissions.
+ARTIFACT_PATH=""
+ARTIFACT_KIND="auto"
 DO_SUBMIT=false
 JOB_NAME=""
 
 for arg in "$@"; do
     case "$arg" in
         --submit) DO_SUBMIT=true ;;
+        --full-model|--merged-model) ARTIFACT_KIND="full_model" ;;
+        --lora|--adapter|--lora-adapter) ARTIFACT_KIND="lora_adapter" ;;
         --name)   shift_next=true ;;
         --name=*) JOB_NAME="${arg#--name=}" ;;
         *)
             if [ "${shift_next:-false}" = true ]; then
                 JOB_NAME="$arg"
                 shift_next=false
-            elif [ -z "$ADAPTER_PATH" ]; then
-                ADAPTER_PATH="$arg"
+            elif [ -z "$ARTIFACT_PATH" ]; then
+                ARTIFACT_PATH="$arg"
             fi
             ;;
     esac
 done
 
-if [ -z "$ADAPTER_PATH" ]; then
-    echo "ERROR: adapter 경로가 필요합니다."
+if [ -z "$ARTIFACT_PATH" ]; then
+    echo "ERROR: artifact 경로가 필요합니다."
     echo ""
-    echo "사용법: $0 <adapter_path> [--submit] [--name <job_name>]"
+    echo "사용법: $0 <artifact_path> [--full-model|--lora-adapter] [--submit] [--name <job_name>]"
     echo ""
     echo "예시:"
     echo "  $0 /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189"
+    echo "  $0 /workspace/sinjeongmin_opal_verifier/ops/runs/.../models/plain_seed11_e30 --full-model"
     echo "  $0 /workspace/sinjeongmin_opal_verifier/adapters/best_adapter --submit --name lora-v3-best"
     exit 1
 fi
 
-# adapter 경로 유효성 검사
-if [ ! -d "$ADAPTER_PATH" ]; then
-    echo "ERROR: adapter 경로가 존재하지 않음: $ADAPTER_PATH"
+# artifact 경로 유효성 검사
+if [ ! -d "$ARTIFACT_PATH" ]; then
+    echo "ERROR: artifact 경로가 존재하지 않음: $ARTIFACT_PATH"
     exit 1
 fi
 
-if [ ! -f "$ADAPTER_PATH/adapter_config.json" ]; then
-    echo "ERROR: adapter_config.json이 없음: $ADAPTER_PATH"
-    echo "해당 디렉토리 내용:"
-    ls -la "$ADAPTER_PATH" 2>/dev/null || echo "  (디렉토리 접근 불가)"
+# Changed: detect the artifact family before package layout validation.
+# Why: full FT checkpoints have config.json/model weights, while LoRA adapters have adapter_config.json.
+if [ "$ARTIFACT_KIND" = "auto" ]; then
+    if [ -f "$ARTIFACT_PATH/adapter_config.json" ]; then
+        ARTIFACT_KIND="lora_adapter"
+    elif [ -f "$ARTIFACT_PATH/config.json" ]; then
+        ARTIFACT_KIND="full_model"
+    else
+        echo "ERROR: artifact kind 자동 판별 실패: adapter_config.json 또는 config.json 없음: $ARTIFACT_PATH"
+        echo "해당 디렉토리 내용:"
+        ls -la "$ARTIFACT_PATH" 2>/dev/null || echo "  (디렉토리 접근 불가)"
+        exit 1
+    fi
+fi
+
+if [ "$ARTIFACT_KIND" = "lora_adapter" ]; then
+    if [ ! -f "$ARTIFACT_PATH/adapter_config.json" ]; then
+        echo "ERROR: adapter_config.json이 없음: $ARTIFACT_PATH"
+        echo "해당 디렉토리 내용:"
+        ls -la "$ARTIFACT_PATH" 2>/dev/null || echo "  (디렉토리 접근 불가)"
+        exit 1
+    fi
+elif [ "$ARTIFACT_KIND" = "full_model" ]; then
+    if [ ! -f "$ARTIFACT_PATH/config.json" ]; then
+        echo "ERROR: config.json이 없음: $ARTIFACT_PATH"
+        exit 1
+    fi
+    # Changed: validate standalone full-model weight and tokenizer markers before copying.
+    # Why: artifacts/merged_model with config only would be selected by solver.py and fail at runtime.
+    if ! find "$ARTIFACT_PATH" -maxdepth 1 -type f \( -name "model*.safetensors" -o -name "pytorch_model*.bin" \) | grep -q .; then
+        echo "ERROR: full model weight shard가 없음: $ARTIFACT_PATH"
+        exit 1
+    fi
+    if [ ! -f "$ARTIFACT_PATH/tokenizer.json" ] && [ ! -f "$ARTIFACT_PATH/tokenizer_config.json" ] && [ ! -f "$ARTIFACT_PATH/vocab.json" ] && [ ! -f "$ARTIFACT_PATH/sentencepiece.bpe.model" ]; then
+        echo "ERROR: tokenizer marker file이 없음: $ARTIFACT_PATH"
+        exit 1
+    fi
+else
+    echo "ERROR: 알 수 없는 artifact kind: $ARTIFACT_KIND"
     exit 1
 fi
 
@@ -76,18 +118,18 @@ else
     fi
 fi
 
-# Changed: adapter 경로에서 실험명 추출하여 제출 디렉토리 이름 생성.
-# Why: 여러 adapter를 동시에 제출 준비할 수 있도록 구분.
+# Changed: artifact 경로에서 실험명 추출하여 제출 디렉토리 이름 생성.
+# Why: 여러 adapter/full-model artifact를 동시에 제출 준비할 수 있도록 구분.
 # 예: /workspace/sinjeongmin_opal_verifier/adapters/exp_a/checkpoints/checkpoint-189 -> submit-exp-a
-ADAPTER_BASENAME=$(basename "$ADAPTER_PATH")
-ADAPTER_PARENT=$(basename "$(dirname "$ADAPTER_PATH")")
-ADAPTER_GRANDPARENT=$(basename "$(dirname "$(dirname "$ADAPTER_PATH")")")
+ARTIFACT_BASENAME=$(basename "$ARTIFACT_PATH")
+ARTIFACT_PARENT=$(basename "$(dirname "$ARTIFACT_PATH")")
+ARTIFACT_GRANDPARENT=$(basename "$(dirname "$(dirname "$ARTIFACT_PATH")")")
 
 # checkpoint-XXX 패턴이면 상위 디렉토리명 사용
-if echo "$ADAPTER_BASENAME" | grep -q "^checkpoint-"; then
-    EXP_NAME="$ADAPTER_GRANDPARENT"
+if echo "$ARTIFACT_BASENAME" | grep -q "^checkpoint-"; then
+    EXP_NAME="$ARTIFACT_GRANDPARENT"
 else
-    EXP_NAME="$ADAPTER_BASENAME"
+    EXP_NAME="$ARTIFACT_BASENAME"
 fi
 
 # 디렉토리명에 안전하지 않은 문자 제거
@@ -97,7 +139,8 @@ SUBMIT_DIR="$OPAL_RUNTIME_ROOT/submissions/submit-${EXP_NAME}"
 SEP="============================================================"
 echo "$SEP"
 echo "제출 패키지 빌더"
-echo "  Adapter:    $ADAPTER_PATH"
+echo "  Artifact:   $ARTIFACT_PATH"
+echo "  Kind:       $ARTIFACT_KIND"
 echo "  실험명:     $EXP_NAME"
 echo "  제출 디렉토리: $SUBMIT_DIR"
 echo "  제출 실행:  $DO_SUBMIT"
@@ -131,7 +174,14 @@ if [ -d "$SUBMIT_DIR" ]; then
 fi
 
 mkdir -p "$SUBMIT_DIR/src"
-mkdir -p "$SUBMIT_DIR/artifacts/lora_adapter_v3"
+# Changed: create only the artifact family directory selected for this package.
+# Why: solver.py gives artifacts/merged_model precedence; stale empty artifact dirs should not confuse readiness checks.
+if [ "$ARTIFACT_KIND" = "full_model" ]; then
+    MODEL_ARTIFACT_DIR="$SUBMIT_DIR/artifacts/merged_model"
+else
+    MODEL_ARTIFACT_DIR="$SUBMIT_DIR/artifacts/lora_adapter_v3"
+fi
+mkdir -p "$MODEL_ARTIFACT_DIR"
 echo "  생성 완료"
 echo ""
 
@@ -164,18 +214,17 @@ echo "  __init__.py 복사 완료"
 echo ""
 
 # ============================================================
-# Step 4: adapter 파일 복사
+# Step 4: model artifact 파일 복사
 # ============================================================
-echo "[4/7] LoRA adapter 복사..."
+echo "[4/7] Model artifact 복사..."
 
-# Changed: adapter 파일을 artifacts/lora_adapter_v3/에 복사.
-# Why: solver.py가 v3 > v2 > 기본 순서로 adapter를 탐색.
-#      v3에 넣으면 최우선으로 로드됨.
-cp "$ADAPTER_PATH"/* "$SUBMIT_DIR/artifacts/lora_adapter_v3/"
+# Changed: copy LoRA adapters to artifacts/lora_adapter_v3 and full FT checkpoints to artifacts/merged_model.
+# Why: solver.py loads standalone full models from merged_model first, then legacy LoRA adapters.
+cp -R "$ARTIFACT_PATH"/. "$MODEL_ARTIFACT_DIR/"
 
-# adapter 파일 목록 출력
+# artifact 파일 목록 출력
 echo "  복사된 파일:"
-ls -lh "$SUBMIT_DIR/artifacts/lora_adapter_v3/" | tail -n +2 | awk '{printf "    %-40s %s\n", $NF, $5}'
+ls -lh "$MODEL_ARTIFACT_DIR/" | tail -n +2 | awk '{printf "    %-40s %s\n", $NF, $5}'
 echo ""
 
 # ============================================================
@@ -220,11 +269,25 @@ echo "  [6a] 필수 파일 존재 확인..."
 REQUIRED_FILES=(
     "src/solver.py"
     "src/__init__.py"
-    "artifacts/lora_adapter_v3/adapter_config.json"
-    "artifacts/lora_adapter_v3/adapter_model.safetensors"
     "setup.sh"
     "pyproject.toml"
+    # Changed: require uv.lock in generated submit directories.
+    # Why: project.pdf lists uv.lock as dependency information for the evaluation setup phase.
+    "uv.lock"
 )
+
+# Changed: append required artifact files according to the selected artifact family.
+# Why: full-model packages should require config/weights/tokenizer, not LoRA adapter metadata.
+if [ "$ARTIFACT_KIND" = "full_model" ]; then
+    REQUIRED_FILES+=(
+        "artifacts/merged_model/config.json"
+    )
+else
+    REQUIRED_FILES+=(
+        "artifacts/lora_adapter_v3/adapter_config.json"
+        "artifacts/lora_adapter_v3/adapter_model.safetensors"
+    )
+fi
 
 for f in "${REQUIRED_FILES[@]}"; do
     if [ -f "$SUBMIT_DIR/$f" ]; then
@@ -246,22 +309,23 @@ for f in "${REQUIRED_FILES[@]}"; do
 done
 echo ""
 
-# --- 6b: adapter_config.json 유효성 확인 ---
-echo "  [6b] adapter_config.json 유효성..."
-ADAPTER_CONFIG="$SUBMIT_DIR/artifacts/lora_adapter_v3/adapter_config.json"
-if [ -f "$ADAPTER_CONFIG" ]; then
-    # JSON 파싱 가능한지 확인
-    if python3 -c "import json; json.load(open('$ADAPTER_CONFIG')); print('    OK: JSON 유효')" 2>/dev/null; then
-        # base_model_name_or_path 확인
-        BASE_MODEL=$(python3 -c "
+# --- 6b: artifact config 유효성 확인 ---
+echo "  [6b] artifact config 유효성..."
+if [ "$ARTIFACT_KIND" = "lora_adapter" ]; then
+    ADAPTER_CONFIG="$SUBMIT_DIR/artifacts/lora_adapter_v3/adapter_config.json"
+    if [ -f "$ADAPTER_CONFIG" ]; then
+        # JSON 파싱 가능한지 확인
+        if python3 -c "import json; json.load(open('$ADAPTER_CONFIG')); print('    OK: JSON 유효')" 2>/dev/null; then
+            # base_model_name_or_path 확인
+            BASE_MODEL=$(python3 -c "
 import json
 cfg = json.load(open('$ADAPTER_CONFIG'))
 print(cfg.get('base_model_name_or_path', 'NOT_SET'))
 " 2>/dev/null || echo "PARSE_ERROR")
-        echo "    base_model: $BASE_MODEL"
+            echo "    base_model: $BASE_MODEL"
 
-        # lora rank/alpha 확인
-        python3 -c "
+            # lora rank/alpha 확인
+            python3 -c "
 import json
 cfg = json.load(open('$ADAPTER_CONFIG'))
 r = cfg.get('r', '?')
@@ -270,13 +334,34 @@ modules = cfg.get('target_modules', [])
 print(f'    LoRA rank={r}, alpha={alpha}')
 print(f'    target_modules: {modules}')
 " 2>/dev/null || true
+        else
+            echo "    FAIL: JSON 파싱 실패"
+            ERRORS=$((ERRORS + 1))
+        fi
     else
-        echo "    FAIL: JSON 파싱 실패"
+        echo "    FAIL: adapter_config.json 없음"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "    FAIL: adapter_config.json 없음"
-    ERRORS=$((ERRORS + 1))
+    MERGED_CONFIG="$SUBMIT_DIR/artifacts/merged_model/config.json"
+    if [ -f "$MERGED_CONFIG" ]; then
+        # Changed: parse merged model config and report only non-secret model metadata.
+        # Why: full FT package readiness needs config validity without dumping model internals.
+        if python3 -c "import json; json.load(open('$MERGED_CONFIG')); print('    OK: JSON 유효')" 2>/dev/null; then
+            python3 -c "
+import json
+cfg = json.load(open('$MERGED_CONFIG'))
+print('    model_type: ' + str(cfg.get('model_type', 'NOT_SET')))
+print('    architectures: ' + str(cfg.get('architectures', 'NOT_SET')))
+" 2>/dev/null || true
+        else
+            echo "    FAIL: JSON 파싱 실패"
+            ERRORS=$((ERRORS + 1))
+        fi
+    else
+        echo "    FAIL: merged_model config.json 없음"
+        ERRORS=$((ERRORS + 1))
+    fi
 fi
 echo ""
 
@@ -393,13 +478,13 @@ else
 fi
 echo ""
 
-# --- 6h: adapter 파일 크기 확인 ---
-echo "  [6h] adapter 파일 크기..."
-ADAPTER_DIR_SIZE=$(du -sh "$SUBMIT_DIR/artifacts/lora_adapter_v3" | awk '{print $1}')
-echo "    Adapter 크기: $ADAPTER_DIR_SIZE"
+# --- 6h: model artifact 파일 크기 확인 ---
+echo "  [6h] model artifact 파일 크기..."
+ARTIFACT_DIR_SIZE=$(du -sh "$MODEL_ARTIFACT_DIR" | awk '{print $1}')
+echo "    Artifact 크기: $ARTIFACT_DIR_SIZE"
 
-# safetensors 파일 크기 (너무 작으면 이상)
-SAFETENSORS=$(find "$SUBMIT_DIR/artifacts/lora_adapter_v3" -name "*.safetensors" -o -name "*.bin" 2>/dev/null | head -1)
+# safetensors/bin 파일 크기 (너무 작으면 이상)
+SAFETENSORS=$(find "$MODEL_ARTIFACT_DIR" \( -name "*.safetensors" -o -name "*.bin" \) 2>/dev/null | head -1)
 if [ -n "$SAFETENSORS" ]; then
     SAFETENSORS_SIZE=$(stat -c%s "$SAFETENSORS" 2>/dev/null || stat -f%z "$SAFETENSORS" 2>/dev/null || echo "0")
     SAFETENSORS_MB=$((SAFETENSORS_SIZE / 1024 / 1024))
@@ -461,7 +546,8 @@ echo "SUCCESS: 제출 패키지 준비 완료"
 echo ""
 echo "  디렉토리: $SUBMIT_DIR"
 echo "  총 크기:  $TOTAL_SIZE"
-echo "  Adapter:  $ADAPTER_PATH"
+echo "  Artifact: $ARTIFACT_PATH"
+echo "  Kind:     $ARTIFACT_KIND"
 echo "  Commit:   $COMMIT ($BRANCH)"
 echo ""
 echo "제출 명령어:"

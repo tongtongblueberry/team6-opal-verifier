@@ -1,0 +1,109 @@
+{
+  "command_rows": 6,
+  "empty_method_args": 0,
+  "exact_public_hash_matches": [],
+  "files": [
+    "gen_input.jsonl",
+    "gen_labels.local.jsonl"
+  ],
+  "forbidden": 0,
+  "index_types": {
+    "int": 611
+  },
+  "labels": {
+    "fail": 21,
+    "pass": 16
+  },
+  "method_counts_top": [
+    [
+      "StartSession",
+      232
+    ],
+    [
+      "EndSession",
+      159
+    ],
+    [
+      "Get",
+      127
+    ],
+    [
+      "Set",
+      61
+    ],
+    [
+      "Activate",
+      22
+    ],
+    [
+      "GenKey",
+      4
+    ],
+    [
+      "COMMAND:Read",
+      4
+    ],
+    [
+      "COMMAND:Write",
+      2
+    ]
+  ],
+  "output_method_count": 232,
+  "record_counts": {
+    "1": 2,
+    "2": 3,
+    "7": 3,
+    "9": 2,
+    "10": 3,
+    "11": 4,
+    "21": 12,
+    "26": 3,
+    "27": 2,
+    "28": 1,
+    "39": 2
+  },
+  "report": {
+    "clean_output_dir": true,
+    "effective_limit": 37,
+    "input_path": "data/local/gen/gen_input.jsonl",
+    "label_counts": {
+      "fail": 21,
+      "pass": 16
+    },
+    "label_path": "data/local/gen/gen_labels.local.jsonl",
+    "output_dir": "data/local/gen",
+    "public20_reference_jsonl": "/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst/data/local/public20/public20_input.jsonl",
+    "public_shape_compatible_count": 37,
+    "public_shape_reject_counts": {
+      "exact_public20_input_duplicate": 2,
+      "record_10_unsupported_public20_method": 2,
+      "record_1_unsupported_public20_method": 2,
+      "record_26_unsupported_public20_method": 1,
+      "record_2_unsupported_public20_method": 1,
+      "record_7_unsupported_public20_method": 1
+    },
+    "record_count_counts": {
+      "1": 2,
+      "10": 3,
+      "11": 4,
+      "2": 3,
+      "21": 12,
+      "26": 3,
+      "27": 2,
+      "28": 1,
+      "39": 2,
+      "7": 3,
+      "9": 2
+    },
+    "requested_limit": 0,
+    "require_balanced_labels": false,
+    "row_count": 37,
+    "schema_version": "self_instruct.public_schema_export.v1",
+    "source": "qwen_local_self_instruct_incremental"
+  },
+  "rows": 37,
+  "sample_id_alignment": true,
+  "status_types": {
+    "str": 1210
+  }
+}

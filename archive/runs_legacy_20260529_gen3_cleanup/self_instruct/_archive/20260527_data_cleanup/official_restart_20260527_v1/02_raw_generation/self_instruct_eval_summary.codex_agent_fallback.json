@@ -1,0 +1,164 @@
+{
+  "ablation_status": {
+    "largest_available_gate_a_accepted_count": 11,
+    "reason": "Only 11 Gate A accepted candidates are available, below the smallest required ablation size 200.",
+    "required_sizes": [
+      200,
+      500,
+      1000,
+      2000,
+      4000
+    ],
+    "status": "blocked_by_count"
+  },
+  "blockers": [
+    "Gate B no-go: generated record_count mean differs from public20 reference mean and label distribution is small/imbalanced.",
+    "Manifest validation failed: length_jsd_lte_threshold was not computable without reference and split_label_counts_nonzero_where_possible failed for fail labels in calibration/hidden splits.",
+    "Ablations 200/500/1000/2000/4000 are blocked by accepted count 11.",
+    "Package/runtime/leaderboard Gate D evidence was not produced in this data-gate run."
+  ],
+  "dedup_report": {
+    "near_duplicate_mode": "domain_text",
+    "reject_filter_stage_counts": {},
+    "reject_reason_counts": {},
+    "rouge_l_threshold": 0.7
+  },
+  "diversity_rouge_stats": {
+    "dedup_candidates": {
+      "pairwise_domain_text_rouge_l": {
+        "max": 0.623377,
+        "max_pair": {
+          "rouge_l": 0.623377,
+          "sample_ids": [
+            "codex-agent-fallback-self-instruct-gen-00000-03",
+            "codex-agent-fallback-self-instruct-gen-00001-02"
+          ]
+        },
+        "mean": 0.440282,
+        "median": 0.440339,
+        "min": 0.324675,
+        "pair_count": 66,
+        "pairs_at_or_above_0_7": 0
+      },
+      "unique_final_method_count": 3,
+      "unique_final_status_count": 4,
+      "unique_instruction_count": 1,
+      "unique_method_sequence_count": 7,
+      "unique_spec_rule_ref_sets": 12
+    },
+    "gate_a_accepted": {
+      "pairwise_domain_text_rouge_l": {
+        "max": 0.623377,
+        "max_pair": {
+          "rouge_l": 0.623377,
+          "sample_ids": [
+            "codex-agent-fallback-self-instruct-gen-00000-03",
+            "codex-agent-fallback-self-instruct-gen-00001-02"
+          ]
+        },
+        "mean": 0.434269,
+        "median": 0.436975,
+        "min": 0.324675,
+        "pair_count": 55,
+        "pairs_at_or_above_0_7": 0
+      },
+      "unique_final_method_count": 3,
+      "unique_final_status_count": 4,
+      "unique_instruction_count": 1,
+      "unique_method_sequence_count": 7,
+      "unique_spec_rule_ref_sets": 11
+    }
+  },
+  "filter_rates": {
+    "dedup_accept_rate": 1.0,
+    "gate_a_qualitative_accept_rate": 1.0,
+    "judge_accept_rate": 0.9166666666666666,
+    "parse_accept_rate": 1.0,
+    "raw_candidate_to_gate_a_accept_rate": 0.9166666666666666
+  },
+  "final_status_distribution": {
+    "dedup": {
+      "INVALID_PARAMETER": 5,
+      "NOT_AUTHORIZED": 3,
+      "SP_BUSY": 1,
+      "SUCCESS": 3
+    },
+    "gate_a_accepted": {
+      "INVALID_PARAMETER": 4,
+      "NOT_AUTHORIZED": 3,
+      "SP_BUSY": 1,
+      "SUCCESS": 3
+    }
+  },
+  "gate_status": {
+    "gate_a": {
+      "hard_invariant_fail": 0,
+      "hard_invariant_pass": 11,
+      "qualitative_status": "pass"
+    },
+    "gate_b": {
+      "no_go_warning_codes": [
+        "record_count_mean_difference"
+      ],
+      "status": "no-go"
+    },
+    "gate_c": {
+      "issue_counts": {},
+      "status": "pass"
+    },
+    "judge_filter": {
+      "accepted": 11,
+      "rejected": 1,
+      "status": "pass-with-rejections"
+    },
+    "manifest_validation": {
+      "failed_gate_keys": [
+        "length_jsd_lte_threshold",
+        "split_label_counts_nonzero_where_possible"
+      ],
+      "status": "fail"
+    }
+  },
+  "input_run_dir": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation",
+  "label_distribution": {
+    "dedup": {
+      "fail": 4,
+      "pass": 8
+    },
+    "gate_a_accepted": {
+      "fail": 3,
+      "pass": 8
+    },
+    "judge_accepted": {
+      "fail": 3,
+      "pass": 8
+    },
+    "manifest": {
+      "fail": 3,
+      "pass": 8
+    },
+    "parsed": {
+      "fail": 4,
+      "pass": 8
+    },
+    "public20_local_aggregate_gate_b_only": {
+      "fail": 10,
+      "pass": 10
+    }
+  },
+  "provider_note": "raw outputs are codex_agent_fallback/codex_agent_fallback; judge decisions are offline codex_agent_fallback_judge and not Gemini",
+  "quantity": {
+    "dedup_candidates": 12,
+    "gate_a_qualitative_accepted": 11,
+    "gate_a_qualitative_rejected": 0,
+    "judge_accepted": 11,
+    "judge_decisions": 12,
+    "judge_rejected": 1,
+    "manifest_rows": 11,
+    "parsed_candidates": 12,
+    "raw_output_rows": 4
+  },
+  "sample_md_may_be_created": false,
+  "schema_version": "self_instruct.eval_summary.codex_agent_fallback.v1",
+  "training_eligibility": false
+}

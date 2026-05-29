@@ -1,0 +1,13 @@
+{
+  "created_at_kst": "2026-05-27T05:41:55+09:00",
+  "errors": [],
+  "executed_count": 0,
+  "failed_count": 0,
+  "output_path": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/raw_outputs.jsonl",
+  "provider": "openai",
+  "provider_env_var": "OPENAI_API_KEY",
+  "request_count": 4,
+  "schema_version": "self_instruct.llm_runner_report.v1",
+  "skipped_count": 4,
+  "status": "skipped_missing_env"
+}

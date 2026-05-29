@@ -1,0 +1,310 @@
+{
+  "config": {
+    "manifest": "runs/self_instruct/targeted_schedule_20260527_192440_KST/manifest.codex_agent_fallback.jsonl",
+    "max_length_jsd": 0.08,
+    "max_min_record_count_gap": 1,
+    "max_top_template_share": 0.2,
+    "min_char_mean_ratio": 0.6,
+    "min_char_median_ratio": 0.6,
+    "min_template_entropy": 0.75,
+    "reference": "data/local/public20/public20_input.jsonl",
+    "report_json_out": "runs/self_instruct/targeted_schedule_20260527_192440_KST/manifest_validation.codex_agent_fallback.json",
+    "report_md_out": "runs/self_instruct/targeted_schedule_20260527_192440_KST/manifest_validation.codex_agent_fallback.md"
+  },
+  "counts": {
+    "invalid_label_records": 0,
+    "records": 33,
+    "reference_records": 20,
+    "reference_skipped_files": 0,
+    "reference_skipped_records": 0,
+    "split_counts": {
+      "calibration": 3,
+      "hidden": 7,
+      "train": 23
+    },
+    "unknown_label_records": 0,
+    "valid_label_records": 33
+  },
+  "gate_status": {
+    "artifact_exclusion": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "char_length_mean_ratio_gte_threshold": {
+      "detail": {
+        "manifest_mean_chars": 15203.363636,
+        "message": "manifest/reference input char length mean ratio입니다.",
+        "reference_mean_chars": 6911.3
+      },
+      "passed": true,
+      "threshold": 0.6,
+      "value": 2.199783
+    },
+    "char_length_median_ratio_gte_threshold": {
+      "detail": {
+        "manifest_median_chars": 17532.0,
+        "message": "manifest/reference input char length median ratio입니다.",
+        "reference_median_chars": 6811.5
+      },
+      "passed": true,
+      "threshold": 0.6,
+      "value": 2.573882
+    },
+    "exact_duplicate_content_hash_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "group_leakage_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "labeled_coverage_100pct": {
+      "passed": true,
+      "threshold": 1.0,
+      "value": 1.0
+    },
+    "labels_only_pass_fail": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "length_jsd_lte_threshold": {
+      "passed": true,
+      "threshold": 0.08,
+      "value": 0.074814
+    },
+    "manifest_jsonl_parse_errors_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "manifest_records_gt_0": {
+      "passed": true,
+      "threshold": ">0",
+      "value": 33
+    },
+    "min_record_count_gap_lte_threshold": {
+      "detail": {
+        "manifest_min_record_count": 1,
+        "message": "reference와 manifest의 최단 trajectory record_count 차이를 비교했습니다.",
+        "reference_min_record_count": 1
+      },
+      "passed": true,
+      "threshold": 1,
+      "value": 0
+    },
+    "public_holdout_metadata_absent": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "reference_parse_errors_0": {
+      "detail": {
+        "skipped_auxiliary_files": 0,
+        "skipped_auxiliary_records": 0
+      },
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "reference_records_gt_0": {
+      "passed": true,
+      "threshold": ">0",
+      "value": 20
+    },
+    "required_fields_present": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "rule_context_metadata_or_input_absent": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "rule_context_text_absent": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "split_label_counts_nonzero_where_possible": {
+      "detail": {
+        "missing": [],
+        "possible_labels": [
+          "pass",
+          "fail"
+        ],
+        "split_count": 3
+      },
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "template_entropy_gte_threshold": {
+      "passed": true,
+      "threshold": 0.75,
+      "value": 1.0
+    },
+    "top_template_share_lte_threshold": {
+      "passed": true,
+      "threshold": 0.2,
+      "value": 0.030303
+    },
+    "unknown_label_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    }
+  },
+  "generated_at_kst": "2026-05-27T20:45:04.008649+09:00",
+  "metrics": {
+    "char_length_mean_ratio": 2.199783,
+    "char_length_median_ratio": 2.573882,
+    "char_length_stats": {
+      "count": 33,
+      "max": 30785,
+      "mean": 15203.363636,
+      "median": 17532.0,
+      "min": 1009
+    },
+    "duplicate_content_hash_group_count": 0,
+    "duplicate_content_hash_record_count": 0,
+    "group_leakage_count": 0,
+    "label_counts": {
+      "fail": 16,
+      "pass": 17
+    },
+    "labeled_coverage": 1.0,
+    "length_bins": {
+      "1-32": 2,
+      "129-256": 5,
+      "257-512": 20,
+      "513-1024": 3,
+      "65-128": 3
+    },
+    "length_jsd": 0.074814,
+    "min_record_count_gap": 0,
+    "normalized_template_entropy": 1.0,
+    "record_count_stats": {
+      "count": 33,
+      "max": 28,
+      "mean": 13.757576,
+      "median": 16.0,
+      "min": 1
+    },
+    "reference_char_length_stats": {
+      "count": 20,
+      "max": 15256,
+      "mean": 6911.3,
+      "median": 6811.5,
+      "min": 429
+    },
+    "reference_length_bins": {
+      "1-32": 2,
+      "129-256": 3,
+      "257-512": 10,
+      "33-64": 2,
+      "65-128": 3
+    },
+    "reference_record_count_stats": {
+      "count": 20,
+      "max": 39,
+      "mean": 16.4,
+      "median": 16.0,
+      "min": 1
+    },
+    "reference_token_count_stats": {
+      "count": 20,
+      "max": 458,
+      "mean": 211.3,
+      "median": 211.5,
+      "min": 17
+    },
+    "source_counts": {
+      "self_instruct_output_first": 33
+    },
+    "split_label_counts": {
+      "calibration": {
+        "fail": 1,
+        "pass": 2
+      },
+      "hidden": {
+        "fail": 3,
+        "pass": 4
+      },
+      "train": {
+        "fail": 12,
+        "pass": 11
+      }
+    },
+    "template_counts": {
+      "tmpl_00bbf1a3cd6e": 1,
+      "tmpl_0f4763b758d1": 1,
+      "tmpl_10bc2eddf146": 1,
+      "tmpl_152b9fabc389": 1,
+      "tmpl_17c77ed8b0a6": 1,
+      "tmpl_20c9c343e60d": 1,
+      "tmpl_29ef81ef342f": 1,
+      "tmpl_36d136cac58b": 1,
+      "tmpl_42c8160ff1ac": 1,
+      "tmpl_4773bb6f269d": 1,
+      "tmpl_48613f189cfb": 1,
+      "tmpl_579d13d42f87": 1,
+      "tmpl_587bfbd43b8a": 1,
+      "tmpl_62789806748a": 1,
+      "tmpl_71732bcd75ef": 1,
+      "tmpl_77cc81bdf82c": 1,
+      "tmpl_805602013349": 1,
+      "tmpl_832766888604": 1,
+      "tmpl_9c0abb073d3e": 1,
+      "tmpl_9db0aa807af8": 1,
+      "tmpl_9dc907d01906": 1,
+      "tmpl_a0081a798978": 1,
+      "tmpl_a098651add7e": 1,
+      "tmpl_bb84d983ca1e": 1,
+      "tmpl_cf183884d716": 1,
+      "tmpl_d110d3197850": 1,
+      "tmpl_d5a39f95be4e": 1,
+      "tmpl_d70eea3e5aa6": 1,
+      "tmpl_e443df379d99": 1,
+      "tmpl_f420d4df533e": 1,
+      "tmpl_f4887b5ce2d4": 1,
+      "tmpl_fbf0fc68500a": 1,
+      "tmpl_fc8e92d1dbcf": 1
+    },
+    "token_count_stats": {
+      "count": 33,
+      "max": 653,
+      "mean": 323.757576,
+      "median": 371.0,
+      "min": 24
+    },
+    "top_template_count": 1,
+    "top_template_share": 0.030303
+  },
+  "overall_gate_passed": true,
+  "reference_skipped": {
+    "file_count": 0,
+    "file_examples": [],
+    "file_reason_counts": {},
+    "record_count": 0,
+    "record_examples": [],
+    "record_reason_counts": {}
+  },
+  "violations": {
+    "artifact_hits": [],
+    "duplicate_content_hash_groups": [],
+    "group_leakage": [],
+    "invalid_labels": [],
+    "missing_required": [],
+    "parse_errors": [],
+    "public_holdout_hits": [],
+    "reference_errors": [],
+    "rule_context_hits": [],
+    "rule_context_text_hits": [],
+    "unknown_labels": []
+  }
+}

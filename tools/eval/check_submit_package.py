@@ -59,6 +59,16 @@ LORA_ADAPTER_WEIGHT_FILES = (
     "adapter_model.bin",
 )
 
+# Changed: encode the project.pdf required submission surface as a package gate.
+# Why: server submission rejects packages that omit setup/dependency metadata even if solver.py exists.
+REQUIRED_SUBMISSION_FILES = (
+    Path("setup.sh"),
+    Path("pyproject.toml"),
+    Path("uv.lock"),
+    Path("src") / "solver.py",
+    Path("src") / "__init__.py",
+)
+
 # Changed: scan executable Python tokens for deterministic verifier imports/calls.
 # Why: no-rule policy must ignore explanatory comments while still blocking rule-engine architecture.
 FORBIDDEN_RULE_ENGINE_MARKERS = (
@@ -291,18 +301,28 @@ def _check_no_rule_engine_sources(src_dir: Path) -> list[str]:
     return errors
 
 
+# Changed: validate project.pdf required files before deeper package checks.
+# Why: dependency/setup files are part of the official submit contract, not optional convenience files.
+def _check_required_submission_files(package_dir: Path) -> list[str]:
+    errors: list[str] = []
+    if not (package_dir / "src").is_dir():
+        errors.append("missing src/")
+    for relative_path in REQUIRED_SUBMISSION_FILES:
+        path = package_dir / relative_path
+        if not path.is_file():
+            errors.append(f"missing {relative_path}")
+    return errors
+
+
 # Changed: expose a reusable package check for tests and runtime smoke.
 # Why: both static readiness and runtime smoke should enforce the same gate.
 def check_submit_package(package_dir: Path) -> list[str]:
     package_dir = package_dir.resolve()
     errors: list[str] = []
 
+    errors.extend(_check_required_submission_files(package_dir))
     setup_path = package_dir / "setup.sh"
     solver_path = package_dir / "src" / "solver.py"
-    if not setup_path.exists():
-        errors.append("missing setup.sh")
-    if not solver_path.exists():
-        errors.append("missing src/solver.py")
     if errors:
         return errors
 

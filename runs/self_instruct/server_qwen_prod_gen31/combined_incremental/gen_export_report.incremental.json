@@ -1,0 +1,23 @@
+{
+  "auth_session_row_count": 1,
+  "clean_output_dir": true,
+  "effective_limit": 1,
+  "input_path": "data/local/gen3_pending/gen_input.jsonl",
+  "label_counts": {
+    "pass": 1
+  },
+  "label_path": "data/local/gen3_pending/gen_labels.local.jsonl",
+  "min_auth_row_rate": 0.0,
+  "output_dir": "data/local/gen3_pending",
+  "public20_reference_jsonl": "/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst/data/local/public20/public20_input.jsonl",
+  "public_shape_compatible_count": 1,
+  "public_shape_reject_counts": {},
+  "record_count_counts": {
+    "7": 1
+  },
+  "requested_limit": 0,
+  "require_balanced_labels": false,
+  "row_count": 1,
+  "schema_version": "self_instruct.public_schema_export.v1",
+  "source": "qwen_local_self_instruct_incremental"
+}

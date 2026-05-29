@@ -1,0 +1,299 @@
+{
+  "config": {
+    "manifest": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/manifest.trajectory_signature.record_count_preserved.codex_agent_fallback.jsonl",
+    "max_length_jsd": 0.08,
+    "max_min_record_count_gap": 1,
+    "max_top_template_share": 0.2,
+    "min_char_mean_ratio": 0.6,
+    "min_char_median_ratio": 0.6,
+    "min_template_entropy": 0.75,
+    "reference": "data/local/public20/public20_input.jsonl",
+    "report_json_out": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/manifest_validation.trajectory_signature.record_count_preserved.json",
+    "report_md_out": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/manifest_validation.trajectory_signature.record_count_preserved.md"
+  },
+  "counts": {
+    "invalid_label_records": 0,
+    "records": 25,
+    "reference_records": 20,
+    "reference_skipped_files": 0,
+    "reference_skipped_records": 0,
+    "split_counts": {
+      "calibration": 2,
+      "hidden": 5,
+      "train": 18
+    },
+    "unknown_label_records": 0,
+    "valid_label_records": 25
+  },
+  "gate_status": {
+    "artifact_exclusion": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "char_length_mean_ratio_gte_threshold": {
+      "detail": {
+        "manifest_mean_chars": 7981.36,
+        "message": "manifest/reference input char length mean ratio입니다.",
+        "reference_mean_chars": 6911.3
+      },
+      "passed": true,
+      "threshold": 0.6,
+      "value": 1.154828
+    },
+    "char_length_median_ratio_gte_threshold": {
+      "detail": {
+        "manifest_median_chars": 7375.0,
+        "message": "manifest/reference input char length median ratio입니다.",
+        "reference_median_chars": 6811.5
+      },
+      "passed": true,
+      "threshold": 0.6,
+      "value": 1.082728
+    },
+    "exact_duplicate_content_hash_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "group_leakage_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "labeled_coverage_100pct": {
+      "passed": true,
+      "threshold": 1.0,
+      "value": 1.0
+    },
+    "labels_only_pass_fail": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "length_jsd_lte_threshold": {
+      "passed": false,
+      "threshold": 0.08,
+      "value": 0.4356
+    },
+    "manifest_jsonl_parse_errors_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "manifest_records_gt_0": {
+      "passed": true,
+      "threshold": ">0",
+      "value": 25
+    },
+    "min_record_count_gap_lte_threshold": {
+      "detail": {
+        "manifest_min_record_count": 1,
+        "message": "reference와 manifest의 최단 trajectory record_count 차이를 비교했습니다.",
+        "reference_min_record_count": 1
+      },
+      "passed": true,
+      "threshold": 1,
+      "value": 0
+    },
+    "public_holdout_metadata_absent": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "reference_parse_errors_0": {
+      "detail": {
+        "skipped_auxiliary_files": 0,
+        "skipped_auxiliary_records": 0
+      },
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "reference_records_gt_0": {
+      "passed": true,
+      "threshold": ">0",
+      "value": 20
+    },
+    "required_fields_present": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "rule_context_metadata_or_input_absent": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "rule_context_text_absent": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "split_label_counts_nonzero_where_possible": {
+      "detail": {
+        "missing": [],
+        "possible_labels": [
+          "pass",
+          "fail"
+        ],
+        "split_count": 3
+      },
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    },
+    "template_entropy_gte_threshold": {
+      "passed": true,
+      "threshold": 0.75,
+      "value": 1.0
+    },
+    "top_template_share_lte_threshold": {
+      "passed": true,
+      "threshold": 0.2,
+      "value": 0.04
+    },
+    "unknown_label_0": {
+      "passed": true,
+      "threshold": 0,
+      "value": 0
+    }
+  },
+  "generated_at_kst": "2026-05-27T23:40:45.793919+09:00",
+  "metrics": {
+    "char_length_mean_ratio": 1.154828,
+    "char_length_median_ratio": 1.082728,
+    "char_length_stats": {
+      "count": 25,
+      "max": 20856,
+      "mean": 7981.36,
+      "median": 7375.0,
+      "min": 1705
+    },
+    "duplicate_content_hash_group_count": 0,
+    "duplicate_content_hash_record_count": 0,
+    "group_leakage_count": 0,
+    "label_counts": {
+      "fail": 13,
+      "pass": 12
+    },
+    "labeled_coverage": 1.0,
+    "length_bins": {
+      "1-32": 19,
+      "33-64": 6
+    },
+    "length_jsd": 0.4356,
+    "min_record_count_gap": 0,
+    "normalized_template_entropy": 1.0,
+    "record_count_stats": {
+      "count": 25,
+      "max": 39,
+      "mean": 13.68,
+      "median": 13.0,
+      "min": 1
+    },
+    "reference_char_length_stats": {
+      "count": 20,
+      "max": 15256,
+      "mean": 6911.3,
+      "median": 6811.5,
+      "min": 429
+    },
+    "reference_length_bins": {
+      "1-32": 2,
+      "129-256": 3,
+      "257-512": 10,
+      "33-64": 2,
+      "65-128": 3
+    },
+    "reference_record_count_stats": {
+      "count": 20,
+      "max": 39,
+      "mean": 16.4,
+      "median": 16.0,
+      "min": 1
+    },
+    "reference_token_count_stats": {
+      "count": 20,
+      "max": 458,
+      "mean": 211.3,
+      "median": 211.5,
+      "min": 17
+    },
+    "source_counts": {
+      "self_instruct_output_first_codex_agent_fallback_200plus": 25
+    },
+    "split_label_counts": {
+      "calibration": {
+        "fail": 1,
+        "pass": 1
+      },
+      "hidden": {
+        "fail": 2,
+        "pass": 3
+      },
+      "train": {
+        "fail": 10,
+        "pass": 8
+      }
+    },
+    "template_counts": {
+      "tmpl_02500dc35f25": 1,
+      "tmpl_0bdeae623626": 1,
+      "tmpl_155860cfca94": 1,
+      "tmpl_223ba8b52d70": 1,
+      "tmpl_22c85c7ad2cf": 1,
+      "tmpl_2f0c82e665c4": 1,
+      "tmpl_32c07683cfcd": 1,
+      "tmpl_3a579a66174c": 1,
+      "tmpl_59d384c105aa": 1,
+      "tmpl_5c98662efbe2": 1,
+      "tmpl_64d1145fd9de": 1,
+      "tmpl_6b97566c8e4e": 1,
+      "tmpl_726224a3dbfa": 1,
+      "tmpl_753c81968e45": 1,
+      "tmpl_7a28f0a2bc4a": 1,
+      "tmpl_7bc6895ac59d": 1,
+      "tmpl_8de614b42f4b": 1,
+      "tmpl_8f05ee6fd6e4": 1,
+      "tmpl_af378fbbe683": 1,
+      "tmpl_badd510a3a94": 1,
+      "tmpl_d1d8ecb4c37d": 1,
+      "tmpl_d38b3f6a1e88": 1,
+      "tmpl_d90ae423b2c1": 1,
+      "tmpl_de5e7ce77407": 1,
+      "tmpl_e070f79c7e56": 1
+    },
+    "token_count_stats": {
+      "count": 25,
+      "max": 48,
+      "mean": 29.76,
+      "median": 24.0,
+      "min": 24
+    },
+    "top_template_count": 1,
+    "top_template_share": 0.04
+  },
+  "overall_gate_passed": false,
+  "reference_skipped": {
+    "file_count": 0,
+    "file_examples": [],
+    "file_reason_counts": {},
+    "record_count": 0,
+    "record_examples": [],
+    "record_reason_counts": {}
+  },
+  "violations": {
+    "artifact_hits": [],
+    "duplicate_content_hash_groups": [],
+    "group_leakage": [],
+    "invalid_labels": [],
+    "missing_required": [],
+    "parse_errors": [],
+    "public_holdout_hits": [],
+    "reference_errors": [],
+    "rule_context_hits": [],
+    "rule_context_text_hits": [],
+    "unknown_labels": []
+  }
+}

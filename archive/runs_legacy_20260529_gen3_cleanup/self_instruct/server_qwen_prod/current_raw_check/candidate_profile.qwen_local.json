@@ -1,0 +1,2566 @@
+{
+  "count": 55,
+  "final_status_counts": {
+    "INVALID_PARAMETER": 7,
+    "NOT_AUTHORIZED": 6,
+    "SP_BUSY": 1,
+    "SUCCESS": 41
+  },
+  "input": "runs/self_instruct/server_qwen_prod/current_raw_check/parsed_candidates.qwen_local.jsonl",
+  "label_counts": {
+    "fail": 20,
+    "pass": 35
+  },
+  "profiles": [
+    {
+      "final_method": "Get",
+      "final_return_value_count": 2,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 736,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "Get",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        1,
+        2
+      ],
+      "sample_id": "self-instruct-gen-00000-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00000",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1699,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00002-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00002",
+      "spec_rule_refs": [
+        "RULE 27"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 1,
+      "final_status": "SP_BUSY",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2647,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "StartSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00003-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00003",
+      "spec_rule_refs": [
+        "RULE 04"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SP_BUSY"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 5
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2593,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00004-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00004",
+      "spec_rule_refs": [
+        "RULE 48"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 5
+    },
+    {
+      "final_method": "Properties",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2332,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "StartSession",
+        "Properties",
+        "EndSession",
+        "StartSession",
+        "StartSession",
+        "Properties",
+        "EndSession",
+        "Properties"
+      ],
+      "method_sequence_length": 9,
+      "record_count": 9,
+      "return_value_counts": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00008-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00008",
+      "spec_rule_refs": [
+        "RULE 79"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 8,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Read",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2560,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "Read"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00009-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00009",
+      "spec_rule_refs": [
+        "RULE 79"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1951,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "Set"
+      ],
+      "method_sequence_length": 7,
+      "record_count": 7,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00012-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00012",
+      "spec_rule_refs": [
+        "RULE 02"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 6,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 5276,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "Get"
+      ],
+      "method_sequence_length": 20,
+      "record_count": 20,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00017-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00017",
+      "spec_rule_refs": [
+        "RULE 18",
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 19,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 700,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "Get",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        1,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00020-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00020",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 681,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00021-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00021",
+      "spec_rule_refs": [
+        "RULE 18"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1010,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "StartSession",
+        "Set"
+      ],
+      "method_sequence_length": 3,
+      "record_count": 3,
+      "return_value_counts": [
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00027-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00027",
+      "spec_rule_refs": [
+        "RULE 07"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "INVALID_PARAMETER",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 2,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "GenKey",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1040,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Authenticate",
+        "GenKey"
+      ],
+      "method_sequence_length": 3,
+      "record_count": 3,
+      "return_value_counts": [
+        1,
+        1,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00030-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00030",
+      "spec_rule_refs": [
+        "RULE 31",
+        "RULE 66"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 2,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "GenKey",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 680,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "GenKey"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00031-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00031",
+      "spec_rule_refs": [
+        "RULE 66"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1605,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00032-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00032",
+      "spec_rule_refs": [
+        "RULE 02"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2820,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "Set"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00033-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00033",
+      "spec_rule_refs": [
+        "RULE 22"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER",
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 6,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1293,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "Get",
+        "Get"
+      ],
+      "method_sequence_length": 4,
+      "record_count": 4,
+      "return_value_counts": [
+        0,
+        6,
+        6,
+        6
+      ],
+      "sample_id": "self-instruct-gen-00035-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00035",
+      "spec_rule_refs": [
+        "RULE 62"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 3,
+      "total_return_value_count": 18
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2713,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00038-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00038",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1432,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "Get",
+        "Get"
+      ],
+      "method_sequence_length": 4,
+      "record_count": 4,
+      "return_value_counts": [
+        0,
+        1,
+        1,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00040-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00040",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 3,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 637,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00041-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00041",
+      "spec_rule_refs": [
+        "RULE 18"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 5982,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "Get"
+      ],
+      "method_sequence_length": 20,
+      "record_count": 20,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00047-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00047",
+      "spec_rule_refs": [
+        "RULE 48",
+        "RULE 07"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 19,
+      "total_return_value_count": 6
+    },
+    {
+      "final_method": "Properties",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2780,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "StartSession",
+        "Properties"
+      ],
+      "method_sequence_length": 12,
+      "record_count": 12,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00048-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00048",
+      "spec_rule_refs": [
+        "RULE 79"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 11,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1687,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Set"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00055-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00055",
+      "spec_rule_refs": [
+        "RULE 62"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1644,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "Set",
+        "Get",
+        "Get",
+        "Get"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00057-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00057",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 5
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2713,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00058-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00058",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 2,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 713,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "non-empty Opal method name",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        2
+      ],
+      "sample_id": "self-instruct-gen-00060-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00060",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 5,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 680,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        5
+      ],
+      "sample_id": "self-instruct-gen-00061-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00061",
+      "spec_rule_refs": [
+        "RULE 18"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 5
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1603,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "Set",
+        "Get",
+        "Set",
+        "Set"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00063-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00063",
+      "spec_rule_refs": [
+        "RULE 64",
+        "RULE 02"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1842,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession"
+      ],
+      "method_sequence_length": 7,
+      "record_count": 7,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00066-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00066",
+      "spec_rule_refs": [
+        "RULE 46"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 6,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "SyncSession",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 659,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "SyncSession"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00067-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00067",
+      "spec_rule_refs": [
+        "RULE 07"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2231,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 8,
+      "record_count": 8,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00078-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00078",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 7,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Properties",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 416,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "Properties"
+      ],
+      "method_sequence_length": 1,
+      "record_count": 1,
+      "return_value_counts": [
+        1
+      ],
+      "sample_id": "self-instruct-gen-00080-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00080",
+      "spec_rule_refs": [
+        "RULE 81"
+      ],
+      "status_sequence": [
+        "SUCCESS"
+      ],
+      "target_final_response_index": 0,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 6479,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 21,
+      "record_count": 21,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00087-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00087",
+      "spec_rule_refs": [
+        "RULE 07"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 20,
+      "total_return_value_count": 5
+    },
+    {
+      "final_method": "GenKey",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 753,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "GenKey"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00091-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00091",
+      "spec_rule_refs": [
+        "RULE 66"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1604,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00092-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00092",
+      "spec_rule_refs": [
+        "RULE 02"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2749,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "Set"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00093-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00093",
+      "spec_rule_refs": [
+        "RULE 22"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2816,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00096-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00096",
+      "spec_rule_refs": [
+        "RULE 11",
+        "RULE 07"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 5631,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 21,
+      "record_count": 21,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00097-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00097",
+      "spec_rule_refs": [
+        "RULE 12",
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 20,
+      "total_return_value_count": 5
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2697,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00098-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00098",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 2,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 754,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "non-empty Opal method name",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        2
+      ],
+      "sample_id": "self-instruct-gen-00100-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00100",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 658,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00101-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00101",
+      "spec_rule_refs": [
+        "RULE 18"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Properties",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2555,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "Properties"
+      ],
+      "method_sequence_length": 11,
+      "record_count": 11,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00109-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00109",
+      "spec_rule_refs": [
+        "RULE 79"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 10,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "GenKey",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 691,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "GenKey"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00111-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00111",
+      "spec_rule_refs": [
+        "RULE 66"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1677,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00112-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00112",
+      "spec_rule_refs": [
+        "RULE 27"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2714,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "Get"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00118-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00118",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 707,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00121-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00121",
+      "spec_rule_refs": [
+        "RULE 18"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 1
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 3086,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "Get"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00123-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00123",
+      "spec_rule_refs": [
+        "RULE 38"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 7
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2902,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00124-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00124",
+      "spec_rule_refs": [
+        "RULE 48"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Properties",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2774,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession",
+        "StartSession",
+        "Properties"
+      ],
+      "method_sequence_length": 12,
+      "record_count": 12,
+      "return_value_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00129-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00129",
+      "spec_rule_refs": [
+        "RULE 79"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 11,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "GenKey",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 663,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "GenKey"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00130-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00130",
+      "spec_rule_refs": [
+        "RULE 66"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 721,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "Get",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        1,
+        1
+      ],
+      "sample_id": "self-instruct-gen-00140-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00140",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1722,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00153-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00153",
+      "spec_rule_refs": [
+        "RULE 22"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 2,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 665,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "non-empty Opal method name",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        0,
+        2
+      ],
+      "sample_id": "self-instruct-gen-00160-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00160",
+      "spec_rule_refs": [
+        "RULE 20"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 1663,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession"
+      ],
+      "method_sequence_length": 6,
+      "record_count": 6,
+      "return_value_counts": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00163-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00163",
+      "spec_rule_refs": [
+        "RULE 02"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "NOT_AUTHORIZED",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 5,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2711,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00164-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00164",
+      "spec_rule_refs": [
+        "RULE 79",
+        "RULE 48"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "EndSession",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 2709,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "EndSession",
+        "StartSession",
+        "Set",
+        "EndSession",
+        "StartSession",
+        "Get",
+        "Activate",
+        "EndSession"
+      ],
+      "method_sequence_length": 10,
+      "record_count": 10,
+      "return_value_counts": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "sample_id": "self-instruct-gen-00165-cand-00",
+      "source_instruction_id": "self-instruct-instruction-00165",
+      "spec_rule_refs": [
+        "RULE 49"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "ERROR",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 9,
+      "total_return_value_count": 2
+    }
+  ],
+  "schema_version": "self_instruct.candidate_profile.v1"
+}

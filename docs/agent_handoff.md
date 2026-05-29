@@ -1,248 +1,164 @@
-<!-- Changed: add a stable handoff context that every worker agent must read or receive before doing repository work. -->
-<!-- Why: agents were making isolated local progress without the project discussion context, which caused repeated drift from the LLM-only/data-first objective. -->
-
 # Agent Handoff
 
-- 최종 갱신: 2026-05-26 20:39 KST
-- 목적: 새 agent가 단발 작업만 수행하지 않고, 현재 논의 맥락과 금지사항을 유지한 채 작업하게 한다.
-- 적용 범위: repo 작업, 문서 정리, 데이터 생성/검증, 학습 실행, 서버 SSH 재시도, git push를 맡는 모든 worker agent.
+<!-- Changed: handoff를 gen3.1 stopped state와 cleanup 상태 중심으로 갱신했다. -->
+<!-- Why: 다음 agent가 멈춘 generation/watcher를 active pipeline으로 오해하지 않게 한다. -->
 
-## 절대 원칙
+- Updated: `2026-05-29 14:13:39 KST`.
+- Active local root:
+  `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`.
+- Active server root: `/workspace/sinjeongmin_opal_verifier/repo`.
 
-- 제출/학습 architecture에는 rule engine을 포함하지 않는다.
-<!-- Changed: restate runtime architecture prohibition for handoff agents. Why: prevent rule-engine fallback from entering inference/runtime work. -->
-- runtime rule engine은 금지하며, architecture는 LLM-only로 유지한다.
-- runtime fallback, rule-id prompt, rule-derived label, rulebase verifier 결합은 금지한다.
-- `src/solver.py`와 제출 package는 LLM-only entrypoint 기준으로 유지한다.
-- 데이터 품질 gate용 invariant/state-transition audit는 runtime rule engine이 아니다. `src/solver.py`나 package inference path에서 import하면 안 된다.
-- 사용자가 채팅에 남긴 서버 비밀번호, token, secret은 repo, docs, archive, log, command output에 저장하거나 출력하지 않는다.
-- 기록은 한국어로 작성하고 시간은 KST를 사용한다.
-- active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/current_task.md`, `docs/current_self_instruct_data_plan.md`, `docs/agent_handoff.md`, `docs/samples/README.md`다. 데이터/학습/제출/sample 공개/cleanup 기준을 바꾸면 이 묶음을 함께 점검한다.
-- git push 대상은 `origin/sinjeongmin`이다.
-- destructive git command, 다른 사람 변경 revert, `/workspace/team6` 의존 복구는 금지한다.
-- 현재 로컬 작업 root는 `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`다.
-<!-- Changed: pin the document/git lane to the active local worktree. -->
-<!-- Why: the adjacent team folder is not the current repo and must not be touched by workers. -->
-- `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team` 폴더는 현재 작업 repo가 아니며 파일 수정, 검증, commit, push 대상에서 제외한다.
-- main agent는 직접 web 검색, SSH, 학습 실행, 파일 수정을 기본 작업 방식으로 삼지 않는다.
-  실행/검색/수정/학습은 worker agent가 맡고, main agent는 결과 종합과 최종 판단을 맡는다.
+## 먼저 읽을 것
 
-## 현재 결정사항
+<!-- Changed: handoff 시작 시 읽어야 할 파일을 현재 권위 순서로 정리했다. -->
+<!-- Why: gen3 전환 근거를 archive에서 먼저 확인해야 current 설정을 오해하지 않는다. -->
 
-<!-- Changed: add completed epoch5/external probe/batch_v2 Gate v2 status to handoff. -->
-<!-- Why: next worker agents must not wait on epoch5 or treat conditional batch_v2 as accepted data. -->
-<!-- Changed: update current official-model evidence to the official TRL full FT 3-seed archive lane. -->
-<!-- Why: handoff must keep high-variance public20 val evidence separate from leaderboard/package decisions. -->
-- official TRL full FT seed11/29/47 서버 결과를 archive lane evidence로 둔다.
-  - seed11: acc `0.5`, macro-F1 `0.6667`, fail recall `1.0`, pass recall `0.0`, confusion `TP=2 TN=0 FP=2 FN=0 INVALID=0`
-  - seed29: acc `1.0`, macro-F1 `1.0`, fail recall `1.0`, pass recall `1.0`, confusion `TP=2 TN=2 FP=0 FN=0 INVALID=0`
-  - seed47: acc `0.75`, macro-F1 `0.7333`, fail recall `0.5`, pass recall `1.0`, confusion `TP=1 TN=2 FP=0 FN=1 INVALID=0`
-  - full trainable check all seeds: trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled.
-- public20 `val`은 split별 4개라 variance가 높다. seed29 `1.0`은 중요한 근거지만 leaderboard 제출 근거로는 아직 부족하다.
-- LoRA seed11/29/47는 lower/unstable 보조 비교 evidence로 유지한다. full FT 3-seed 결과는 LoRA/selective 계열을
-  완전히 대체하지 않고, leaderboard 제출 근거도 아니다.
-- `external_llm_probe`는 judge accepted `1`, Gate A `pass`, Gate B `insufficient`, Gate C `no_go`다. `sample.md` 생성은 no-go다.
-- `gemini_batch_v2`는 raw `12`, parser accepted/rejected `9/3`, dedup accepted/rejected `9/0`, judge accepted/rejected `9/0`,
-  label `pass=6/fail=3`, record_count min/mean/max `8/13.0/18`이다. Gate v2 결과는 Gate A `pass`, Gate B `conditional pass`,
-  Gate C `pass`, final `conditional`이다. strict full-pass 기준에서는 `sample.md` 생성 no-go이며 larger/balanced batch v3가 필요하다.
-  raw run 산출물은 commit하지 않고 경로와 counts만 기록한다.
-- 프로젝트 목표는 LLM-only Opal verifier다. Opal command-response trajectory에서 마지막 response가 명세와 현재 상태에 맞는지 `pass`/`fail`로 판정한다.
-- 현재 병목은 모델보다 데이터다. 검증 대상은 우리가 새로 생성한 synthetic data만이다.
-  public20은 이미 주어진 기준 입력이므로 "public20 자체를 검증"하지 않는다.
-  새 synthetic 데이터는 양적 dimension뿐 아니라 질적으로 pass/fail이 맞는지 검증해야 한다.
-- v4/v4.1 생성 데이터는 학습 금지 및 폐기 상태다.
-  - 재현 근거: fail sample에서 중간 `Set FAIL` 뒤 마지막 `EndSession SUCCESS`인데 label이 `fail`이었다.
-  - 원천 fail 538개 중 440개가 final `EndSession SUCCESS`로 끝나는 문제가 archive에 기록되어 있다.
-  - 원인은 fail case 뒤에 `_endsession()`을 붙여 final-response label target이 중간 event로 밀린 생성 패턴이다.
-- active `tools/datagen/`에는 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다.
-  - v4/v4.1 generator와 spec/gap synthetic generator는 active datagen에서 제거했다.
-  - 정리 근거는 `docs/archive/legacy_datagen/README.md`와 v4/v4.1 폐기 archive에 둔다.
-- ad-hoc fixture/smoke generated data is not accepted synthetic data.
-  임의 deterministic fixture/smoke 산출물은 논문 기반 생성 데이터나 검증된 코드 기반 synthetic data가 아니므로 active surface에 두지 않는다.
-- 새 데이터 생성은 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다.
-  - output-first classification generation을 사용한다.
-  <!-- Changed: require spec-rule source spans in Self-Instruct generation requests. -->
-  <!-- Why: ungrounded generator text is draft-only and cannot be accepted synthetic data. -->
-  - generation request는 `docs/legacy_spec_rules.md`에서 읽은 rule card/source-span을 payload에 넣어야 한다.
-  - raw candidate는 `spec_grounding` source span 없이는 parser/judge accepted synthetic 후보가 아니다.
-  - LLM-only judge filtering을 사용한다.
-  - judge payload는 final-response targeting, required spec grounding, source-span support,
-    state-transition consistency, manifest-loader compatibility를 JSON boolean으로 요구한다.
-  - 논문식 quality audit, evaluation, data-size/data-quality ablation을 구현 대상으로 둔다.
-  - 공식 코드 기준은 `https://github.com/yizhongw/self-instruct`이고 license는 Apache-2.0이다.
-  - 공식 출처와 차용 범위는 `third_party/self_instruct/README.md`와
-    `docs/archive/research/self_instruct_implementation_plan_2026-05-26_kst.md`에 둔다.
-  - 공식 Self-Instruct 절차 없는 ad-hoc generator는 active tools에 추가하지 않는다.
-- public20 seed schema는 input-only다. `label`, `gold_label`, `expected_label`, `answer`
-  계열 필드는 default에서 reject하고 output에도 쓰지 않는다.
-- public20 local reference는 확보되어 있다.
-  - input-only: `data/local/public20/public20_input.jsonl`
-  - label reference: `data/local/public20/public20_labels.local.jsonl`
-  - rows `20`, labels `20`, record_count min/mean/max `1/16.4/39`, label 분포 `fail=10`, `pass=10`
-  - label 파일은 synthetic generation prompt, judge prompt, generated synthetic manifest 입력에 넣지 않는다.
-  - public20-only 모델 검증 artifact에서는 public20 label을 train target과 `val` metric으로만 쓸 수 있다.
-  <!-- Changed: clarify public20/test split authority. Why: prevent local public20 test creation that would conflict with hidden leaderboard evaluation. -->
-  - public20은 `train`/`val` 기준이며 public20 `test` split은 금지한다. hidden leaderboard가 `test`다.
-- synthetic 데이터 검증 완료 후 저장 partition은 반드시 `train`, `val`, `test`,
-  `public20_reference`로 분리한다.
-  - `train`, `val`, `test`는 Gate A/B/C를 통과한 generated Self-Instruct 데이터에서만 만든다.
-  - `public20_reference`는 shape/profile/reference 비교와 public20-only 모델 검증용 local reference다.
-  - public20-only 모델 후보 검증을 할 때는 public20 20개를 `train`/`val`로만 나눈다.
-    public20 `test` split은 만들지 않는다. test는 leaderboard hidden 평가다.
-    기본 split은 stratified `16 train / 4 val`이고 val은 `pass 2 / fail 2`를 목표로 한다.
-- label-bearing generated row는 `tools/datagen/self_instruct_candidate_schema.py`의
-  candidate schema로만 다루며, final-response invariant는 candidate에만 적용한다.
-- leaderboard 제출은 Gate A-D와 package/runtime/secret/no-rule gate가 모두 통과한 뒤에만 검토한다.
-<!-- Changed: make sample publication depend on Gate A/B/C/D for synthetic data. Why: samples must not be treated as accepted before the complete gate sequence. -->
-- Self-Instruct synthetic data만 생성 데이터 검증 대상이며 Gate A/B/C/D를 통과한 뒤에만 `docs/samples/self_instruct_sample.md`에 raw trajectory 전체를 "합격 데이터" sample로 공개한다. 그 전에는 sample을 검수 대상 또는 실패/대기 데이터로만 표기한다.
-  - sample 문서는 generated raw trajectory 전체와 public20 raw sample 1개 전체를 모두 생략 없이 포함해야 한다.
-- 12GB 제출 한계를 고려해 LoRA 3MB만 고집하지 않는다.
-  - 0.8B/0.9B급 full fine-tuning은 후보로 유지한다.
-  - 4B는 selective fine-tuning, LoRA/DoRA/QLoRA, last-n-layers 계열을 비교한다.
-  - 27B는 full fine-tuning보다 특정 layer/adapter/quantized selective 계열만 현실 후보로 본다.
-- 모델 방법론 검증은 public20-only `train`/`val` split으로 병렬 진행할 수 있다.
-  다만 전체 자원을 모델 검증에 몰아주지 않고, synthetic 데이터 생성의 질적/정량 검증을 계속 병렬 진행한다.
-  RAG/FT 후보 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
-  이때 `val`은 후보 선택/튜닝/early stopping용 내부 검증이고, `test`는 leaderboard hidden 평가다.
-- 모델 학습 후보 5개는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA다.
-- public20-only 검증은 public20 train 16개로 실제 학습을 진행하는 검증이다.
-<!-- Changed: remove prompt-only/no-training baseline from active plan. Why: it was an outdated misunderstanding, not a current validation candidate. -->
-- active plan에서 prompt-only/no-training baseline은 제거된 오해다. public20 모델 검증은 실제 학습 후보만 사용한다.
-- pure RAG 문제는 아니지만 rulebook/spec retrieval과 trajectory reasoning이 함께 필요하므로 retrieval + fine-tuning/RAFT-style 학습을 최종 유력 방향으로 둔다.
-- Full/selective FT standalone checkpoint의 `val` 평가는 `tools/eval/eval_manifest_full_model.py`로 수행한다.
-  이 도구는 LoRA adapter evaluator가 아니며, `train_manifest_full.build_messages` prompt contract와 full model path 직접 로드를 사용한다.
-  metric은 accuracy, macro-F1, fail recall, pass recall, confusion matrix, per-sample prediction/logprob이다.
-- 다음 결정 기준은 official TRL full FT logprob evaluator 결과 확인, retrieved-context seed11 비교,
-  필요 시 seed29 artifact inspect/calibration, package/runtime gate다.
-- val macro-F1 상승이 멈추고 loss만 좋아지거나 fail recall이 떨어지면 no-go 또는 early stopping한다.
-  leaderboard는 내부 val 개선, qualitative error 감소, 제출물 차별점이 명확할 때만 1회 사용한다.
+1. `docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`
+2. `docs/archive/cycles/2026-05-29_gen3_zero_accept_gen31_restart.md`
+3. `README.md`
+4. `PROGRESS.md`
+5. `docs/current_task.md`
+6. `docs/agent_handoff.md`
+7. `tools/datagen/run_qwen_local_200_pipeline.sh`
+8. `tools/datagen/watch_qwen_incremental_pull.sh`
+9. `tools/analysis/adversarial_rulebook_quality_gate.py`
 
-## 데이터 Gate 순서
+## 현재 목표
 
-1. Gate A: qualitative sampling state-transition audit
-   - generated accepted pool 일부를 사람이 sampling한다.
-   - records를 처음부터 끝까지 읽고 session state를 직접 전이해 본다.
-   - final response가 generated label과 질적으로 맞는지 확인한다.
-   - 중간 failure 뒤 final success인데 label `fail`인 sample은 reject한다.
+<!-- Changed: active objective를 stopped pipeline 기록과 문서 정리로 고정했다. -->
+<!-- Why: old fallback/model-validation/training lanes뿐 아니라 gen3.1 rerun도 자동 재개하면 안 된다. -->
 
-2. Gate B: public20 reference dimension/schema/pass-fail distribution comparison
-   - Gate A를 통과한 generated synthetic data를 public20 reference와 비교한다.
-   - public20 자체를 검증하는 단계가 아니다.
-   - schema, 평균 dimension vector, pass/fail 분포가 기준 입력과 비슷한지 확인한다.
-   - 현재 public20 기준 facts: rows `20`, record_count min/mean/max `1/16.4/39`, label 분포 `fail=10`, `pass=10`.
-   - 최소 dimension vector: `record_count`, method sequence length, final method/status, input char/token count, return value count.
-   - public20 label은 synthetic training row로 복사하지 않고 aggregate 비교와 public20-only `val` metric 계산에만 쓴다.
-   - active 도구는 `tools/analysis/compare_public20_dimensions.py`다.
-   - public20 label은 row-level 입력이 아니라 local aggregate JSON으로만 report에 넣는다.
+현재 목표는 gen3.1 Self-Instruct/Qwen generation 중단 상태를 보존하면서 다음을 끝내는 것이다.
 
-3. Gate C: manifest/model input path equivalence check
-   - manifest validation을 통과한 동일 파일이 training loader와 model first-forward에서 같은 schema, sample id/hash, label mapping, dimension summary로 처리되는지 확인한다.
-   - loader가 row를 조용히 drop/resample/relabel하거나 deprecated source를 섞으면 fail이다.
+- gen3.1 server generation과 local watcher를 재시작하지 않는다.
+- stopped evidence mirror인 `runs/self_instruct/server_qwen_prod_gen31`을 보존한다.
+- `data/local/gen3_pending` 1 row는 monitoring artifact로만 둔다.
+- `data/local/gen3` 0 rows 상태를 유지한다.
+- legacy run artifacts는 `archive/runs_legacy_20260529_gen3_cleanup/`로 이동한다.
 
-4. Gate D: leaderboard submission decision
-   - Gate A-C, package `<12GB`, offline first-forward smoke, no-rule/secret gate가 모두 통과해야 go다.
-   - 제출 전후에는 Korean archive record를 남긴다.
-   - 하루 leaderboard 기회는 기존 결과와 무엇이 달라졌는지 설명할 수 있을 때만 사용한다.
+## Self-Instruct mapping
 
-## Agent가 반드시 읽어야 할 파일
+<!-- Changed: Notion-derived six-point mapping을 현재 구현 기준으로 남겼다. -->
+<!-- Why: 원본 Self-Instruct를 verbatim 적용하지 않는 이유가 다음 작업 판단의 기준이다. -->
 
-- [docs/current_task.md](current_task.md): 현재 cycle 상태, 서버 상태, 다음 실행 순서.
-- [docs/current_self_instruct_data_plan.md](current_self_instruct_data_plan.md): Self-Instruct 데이터 생성/검증 active spec.
-<!-- Changed: restore server_access as the authoritative server access document. Why: server workers must read the authority source before any server work. -->
-- [docs/archive/legacy/server_access.md](archive/legacy/server_access.md): 서버 접근 권위 문서. 서버 작업 agent는 반드시 이 문서를 먼저 읽는다.
-- [docs/server_operations_current.md](server_operations_current.md): 서버 접속, sync, 제출 판단 절차의 active 운영 문서. 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)다.
-- [docs/README.md](README.md): active/archive/delete 문서 정리 기준.
-- [docs/samples/README.md](samples/README.md): raw sample 공개 정책.
-- [../third_party/self_instruct/README.md](../third_party/self_instruct/README.md): Self-Instruct 공식 출처, license, 차용 범위, 금지사항.
-- [archive/research/self_instruct_implementation_plan_2026-05-26_kst.md](archive/research/self_instruct_implementation_plan_2026-05-26_kst.md): 공식 Self-Instruct 구현 계획 archive.
-- [../README.md](../README.md): 현재 repo 운영 원칙과 도구 목록.
-- [../PROGRESS.md](../PROGRESS.md): 현재 진행 상황 요약.
-- [archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md](archive/cycles/2026-05-26/cycle_2026-05-26_kst_141324_v4_v41_data_invalidation.md): v4/v4.1 폐기 근거.
-- [../tools/analysis/self_instruct_invariants.py](../tools/analysis/self_instruct_invariants.py): final-response invariant checker. 데이터 품질 gate 전용이다.
-- [../tools/analysis/compare_public20_dimensions.py](../tools/analysis/compare_public20_dimensions.py): Gate B public20/generated profile 비교 도구.
-- [../tools/analysis/check_manifest_model_input_equivalence.py](../tools/analysis/check_manifest_model_input_equivalence.py): Gate C candidate/manifest/trainer-loader 입력 동등성 검증 도구.
-- [../tools/analysis/build_public20_train_val_split.py](../tools/analysis/build_public20_train_val_split.py): public20-only 모델 후보 검증용 deterministic `train`/`val` split 생성 도구. public20 `test` split은 만들지 않는다.
-- [../tools/eval/eval_manifest_full_model.py](../tools/eval/eval_manifest_full_model.py): full/selective FT standalone model path를 직접 로드해 public20/generated `val` manifest를 평가하는 도구. LoRA adapter 전용 evaluator가 아니다.
-- [../tools/datagen/run_self_instruct_generation.py](../tools/datagen/run_self_instruct_generation.py): Self-Instruct output-first generation request dry-run payload/metadata writer. 자체 candidate 생성과 API 호출은 하지 않는다.
-- [../tools/datagen/parse_self_instruct_outputs.py](../tools/datagen/parse_self_instruct_outputs.py): raw LLM output을 candidate schema로 파싱/정규화하는 도구. 자체 synthetic 생성은 금지다.
-- [../tools/analysis/dedup_self_instruct_candidates.py](../tools/analysis/dedup_self_instruct_candidates.py): Self-Instruct ROUGE-L/exact/conflict/public20 duplicate filter.
-- [../tools/analysis/filter_self_instruct_judge.py](../tools/analysis/filter_self_instruct_judge.py): LLM-only judge request dry-run payload writer와 외부 judge result parser.
-- [../tests/test_self_instruct_final_response_invariant.py](../tests/test_self_instruct_final_response_invariant.py): v4/v4.1 실패 모드 회귀 테스트.
+Notion page가 지적한 원본 Self-Instruct 대비 우리 적용/비적용 포인트:
 
-## Agent 생성 시 붙일 짧은 Context Block
+1. Instruction generation: fixed Opal final-response instruction으로 대체.
+2. Input null: trajectory input 필수라 금지.
+3. Input-first vs output-first: output-first only.
+4. Few-shot type matching: 단일 task type이라 생략.
+5. Similarity filtering: instruction text 대신 trajectory/domain/source-span 기준으로 adaptation.
+6. Fine-tuning: full FT 고정이 아니라 resource에 따라 TRL SFT full FT/LoRA/QLoRA.
+
+현재 코드 대응:
+
+- `run_self_instruct_generation.py`: fixed instruction, provenance, output-first schema, candidate target schedule.
+- `self_instruct_invariants.py`: `records[-1].output` final-response target 검증.
+- `dedup_self_instruct_candidates.py`: fixed instruction collapse를 피하고 domain/trajectory similarity 사용.
+- `filter_self_instruct_judge.py`: final target/source span/state transition judge payload.
+- `adversarial_rulebook_quality_gate.py`: export 전 source span, target schedule, auth, required domain 검증.
+
+## gen3 restart 기준
+
+<!-- Changed: current run 설정의 근거를 gen2 no-go archive로 명확히 연결했다. -->
+<!-- Why: Notion의 이전 실행 스냅샷과 현재 gen3 실행값은 gen2 no-go 전후의 서로 다른 기준이다. -->
+
+`docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`에 따르면:
+
+- gen2는 raw `208/1000`까지 갔지만 final-pair parser 기준으로 `accepted_count=0`, `rejected_count=200`.
+- reject reason은 `instruction_not_fixed=200`.
+- gen2 usable export 41 rows는 auth-session row rate `0.122`로 public20 `0.8` 대비 낮았다.
+- missing coverage는 record counts `1,21,26,27,39`, `Write`, `Locking`, `MBRControl`, `LockingInfo`.
+- gen3는 `opal_final_response_spec_grounded_output_first.v2`, exact rule-book `source_text`, required domains, auth-session evidence, long trajectory counts를 강제한다.
+
+따라서 current server run의 `1000 / batch4 / max_new_tokens=8192 / pass:fail=1:1`은 gen2 no-go 이후의 active restart 설정이다.
+
+gen3.1 restart 기준:
+
+- `docs/archive/cycles/2026-05-29_gen3_zero_accept_gen31_restart.md`에 따르면 gen3는 raw `76/1000`에서 stopped.
+- gen3 local mirror는 parsed `8`, accepted `0`, rejected `8`.
+- 반복 reject는 `required_auth_session_missing_hostchallenge_or_authority=8`.
+- gen3.1은 `opal_final_response_spec_grounded_output_first.v3`, delexicalized public20 auth skeleton, state-transition self-check, warm-up curriculum을 사용한다.
+
+## live pipeline
+
+<!-- Changed: stopped generation/export path를 기록했다. -->
+<!-- Why: archived gen2/smoke/fallback/model-validation outputs와 gen3.1 pending row를 current training data로 쓰면 안 된다. -->
 
 ```text
-공통 맥락:
-- 목표는 LLM-only Opal verifier이며 architecture에 rule engine은 절대 넣지 않는다.
-- runtime rule engine은 금지하며 architecture는 LLM-only다.
-- 현재 병목은 데이터다. 검증 대상은 우리가 생성한 synthetic 데이터이며, 평균 dimension뿐 아니라 pass/fail이 final response 기준으로 질적으로 맞는지 sampling state-transition audit로 확인해야 한다.
-- public20은 이미 주어진 기준 입력이다. public20 자체를 검증하지 말고, synthetic 데이터와 비교할 reference structure/profile 및 public20-only 모델 `train`/`val` 검증 소스로만 사용한다.
-- public20-only 모델 검증 기본 split은 stratified 16 train / 4 val이며, val은 후보 선택/튜닝/early stopping용 내부 검증이다. public20 `test` split은 금지하고 hidden leaderboard가 test다.
-- v4/v4.1 생성 데이터는 폐기/학습 금지다. 중간 Set FAIL 뒤 final EndSession SUCCESS인데 label fail인 문제가 archive되어 있다.
-- active datagen은 Self-Instruct seed/candidate schema, dry-run generation request wrapper, raw output parser만 남긴다. v4/v4.1, spec/gap synthetic generator, ad-hoc fixture/smoke generator는 active tools에서 제거됐다.
-- 새 데이터는 Wang et al. 2023 Self-Instruct 하나를 제대로 따른다: output-first classification generation, LLM-only judge filtering, quality audit/eval/ablation.
-- generation request는 docs/legacy_spec_rules.md rule card/source-span 기반이어야 하며, spec_grounding 없는 Gemini/Codex text는 synthetic 후보가 아니라 draft/reject 대상이다.
-- Self-Instruct 공식 code source는 yizhongw/self-instruct이고 Apache-2.0이다. 현재는 vendor code 없이 문서 기준만 둔다.
-- LLM 호출 없는 parse_self_instruct_outputs, ROUGE-L/exact/conflict dedup/filter, Gate C manifest/model input equivalence, dry-run generation request wrapper, dry-run judge wrapper를 먼저 둔다. 이후 외부 LLM runner raw output을 Gate A/B/C로 연결한다.
-- Gate A/B/C/D가 모두 통과하기 전에는 raw synthetic sample을 합격 데이터로 제시하지 않는다. 통과 후 `docs/samples/self_instruct_sample.md`에 trajectory 전체와 Gate A/B/C/D 요약을 기록한다.
-- ad-hoc fixture/smoke generated data is not accepted synthetic data. sample.md는 Gate A/B/C를 통과한 Self-Instruct synthetic data에만 생성한다.
-- synthetic 데이터 검증 완료 뒤 dataset은 train/val/test/public20_reference로 분리한다. public20-only 모델 후보 검증은 train/val만 쓰고, test는 leaderboard hidden 평가다.
-- active docs update set은 README.md, PROGRESS.md, docs/README.md, docs/current_task.md, docs/current_self_instruct_data_plan.md, docs/agent_handoff.md, docs/samples/README.md 이다.
-- Gate 순서: A synthetic 질적 state-transition audit, B public20 reference dimension/schema/pass-fail 분포 비교, C manifest/model input path equivalence, D leaderboard 제출 판단.
-- 모델 후보 조사는 데이터 검증 이후 또는 병렬 보조로만 진행한다. public20 모델 검증은 실제 학습 후보만 사용하며 prompt-only/no-training baseline은 active plan에서 제거된 오해다. RAG/FT 구현은 관련 논문과 검증된 라이브러리/코드를 따른다.
-- 모델 학습 후보 5개는 0.9B full FT `5/10/20` epoch patience `2`, 0.9B full FT + retrieved rulebook/spec context `5/10/20` epoch patience `2`, 4B LoRA/QLoRA selective FT `3/5/10` epoch patience `1-2`, 4B LoRA/QLoRA + retrieved context `3/5/10` epoch patience `1-2`, RAFT-style retrieval-augmented SFT/QLoRA public20-only `1/3/5` smoke/overfit check다.
-- RAFT-style 후보는 synthetic Gate A/B/C 통과 데이터가 생기면 `3/5/10` epoch으로 확장한다.
-- invariant checker/state-transition audit는 데이터 품질 gate이지 runtime rule engine이 아니다.
-- 작업 root는 /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst 이고 서버 기준 root는 /workspace/sinjeongmin_opal_verifier 이다.
-- /Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team 폴더는 현재 작업 repo가 아니므로 수정/검증/commit/push하지 않는다.
-- push 대상은 origin/sinjeongmin 이다.
-- 기록은 한국어, 시간은 KST, secret/password 출력/저장 금지.
-<!-- Changed: restore server_access as the server access authority. Why: the prior setup doc is no longer the server access source. -->
-- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)이며, 서버 작업 agent는 서버 작업 전에 반드시 먼저 읽는다.
-- 서버 접속은 필요 시 최소 10회 재시도 원칙으로 수행하고, 비밀번호/시크릿을 문서나 로그에 복사/출력하지 않는다.
-- 다른 사람 변경을 되돌리지 말고 destructive git command를 쓰지 않는다.
+public20 input-only seed
+  -> gen3.1 target schedule with auth warm-up curriculum
+  -> Qwen2.5-7B-Instruct local generation on server [stopped at 72 raw]
+  -> local incremental watcher [stopped]
+  -> parser
+  -> invariant gate
+  -> dedup
+  -> adversarial judge payload
+  -> adversarial rule-book gate
+  -> data/local/gen3_pending export for monitoring
+  -> server canonical gen_export after full server pipeline
+  -> data/local/gen3 only after canonical sync
 ```
 
-## Git/검증 기준
+Stopped paths:
 
-- 작업 전 `git status --short --branch`로 현재 변경을 확인한다.
-- 관련 파일을 읽고 active/archive/delete 기준에 맞는지 먼저 판단한다.
-- 코드나 문서를 수정하면 이유가 드러나도록 Changed/Why comment 또는 archive record를 남긴다.
-- 최소 검증:
-  - secret scan은 원문 출력 없이 수행한다.
-  - `git diff --check`
-  - 변경 관련 단위 테스트
-  - `python3 -m unittest discover -s tests -v`
-- push 전 `origin/sinjeongmin`에 올릴 commit 범위를 확인한다.
-- push 후 local HEAD와 `origin/sinjeongmin`의 commit hash 일치를 확인한다.
+- Server run:
+  `runs/self_instruct/qwen_local_200_auth_statecheck_gen31_batch4_20260529_132800_KST`
+- Local mirror:
+  `runs/self_instruct/server_qwen_prod_gen31`
+- Export:
+  pending local monitor `data/local/gen3_pending`; canonical final `data/local/gen3`
+- Watcher:
+  screen `qwen_incremental_watch_gen31`, stopped
 
-## 이번 cycle의 다음 우선순위
+Last checked state:
 
-<!-- Changed: put the completed conditional Gate v2 verdict ahead of older generic generation steps. -->
-<!-- Why: batch_v2 now needs archive/sample no-go handling and a larger follow-up batch, not pending-result waiting. -->
-- Gate v2 결과는 `gemini_batch_v2` final `conditional`로 기록됐다. Gate A/C는 pass지만 Gate B가 conditional이므로 accepted-data `sample.md` 생성은 no-go다.
-- larger/balanced batch v3로 Gate B full pass를 목표로 한다.
-- `runs/self_instruct/gemini_batch_v2/` raw run 산출물은 원문과 큰 파일을 포함할 수 있으므로 commit하지 않는다. 문서에는 경로와 counts만 남긴다.
-- official TRL full FT 3-seed 결과는 기록됐지만 public20 `val` 4개 기준이라 leaderboard no-go를 유지한다.
-- 다음 모델 판단은 logprob evaluator 결과 확인, retrieved-context seed11 비교, 필요 시 seed29 artifact inspect/calibration,
-  package/runtime gate 순서로 진행한다.
-- 새 Self-Instruct pipeline 구현 전에 Gate A-D를 실행 가능한 도구와 문서로 고정한다.
-- public20 input-only와 local label reference는 확보됐다. 다음 agent는 public20을 synthetic 데이터 검증의 대상처럼 다루지 말고 dimension/schema/distribution reference로만 써야 한다. public20-only 모델 후보 검증에서는 `train`/`val`만 사용한다.
-- public20-only 모델 검증 split은 `tools/analysis/build_public20_train_val_split.py`로 만들며, 현재 seed `11`, `29`, `47` 산출물이 `runs/model_validation/public20_splits/`에 있다. 각 split은 `16 train / 4 val`, val `pass=2/fail=2`, public20 test `0`이다.
-- public20 reference structure/profile audit pack은 `runs/self_instruct/public20_baseline/gate_a/public20_reference_audit_pack.md`에 있다. 이것은 public20 검증 결과가 아니라 reference 구조 확인용 pack이다. sample별 label은 노출하지 않았고 local label은 aggregate report에만 있다.
-- 생성 candidate가 만들어지면 일부 sample을 직접 state-transition audit한 뒤에 `compare_public20_dimensions.py`로 public20 dimension 비교 report를 만든다.
-- generated manifest 후보가 만들어지면 `check_manifest_model_input_equivalence.py`로 raw/normalized candidate, manifest, trainer loader가 같은 전체 trajectory 단위를 보는지 확인한다.
-- 현재 Gate A/B/C를 통과한 generated candidate는 없다. 다음 단계는 real LLM output-first generation과 judge filtering을 논문 protocol에 맞게 구현하는 것이다.
-- 단, LLM 호출 없는 공식-output parser, ROUGE-L/exact/conflict dedup/filter,
-  Gate C manifest/model input equivalence, dry-run generation request wrapper,
-  dry-run judge wrapper를 먼저 둔 뒤 외부 LLM runner와 연결한다.
-- dry-run generation request wrapper는 `docs/legacy_spec_rules.md` rule card/source-span을 payload에 포함해야 하며,
-  judge wrapper는 required spec grounding/source-span support/state-transition consistency/manifest-loader compatibility를 확인해야 한다.
-- public20-only 모델 검증은 병렬 보조로 진행하되, 위 5개 실제 학습 후보를 기준으로 train/val 결과를 비교한다.
-- Full FT 후보는 epoch별 final/checkpoint를 `tools/eval/eval_manifest_full_model.py --split val`로 평가해 val macro-F1, fail recall, pass recall, confusion matrix를 기록한다.
-<!-- Changed: align server handoff with server_access authority and retry/secret rules. Why: server workers need one authoritative source and explicit retry/secret constraints. -->
-- 서버 SSH는 main이 직접 치지 말고 agent가 필요 시 최소 10회 재시도 원칙으로 수행한다.
-- 서버 접근 권위 문서는 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)다. 서버 작업 agent는 서버 작업 전에 반드시 [docs/archive/legacy/server_access.md](archive/legacy/server_access.md)를 먼저 읽는다.
-  현재 active 서버 운영 문서는 `docs/server_operations_current.md`이고, legacy setup 기록은 `docs/archive/legacy/`에 있다.
-  서버 작업 worker는 비밀번호/시크릿을 문서나 로그에 복사/출력하지 않는다.
-- 서버가 회복되면 `/workspace/sinjeongmin_opal_verifier/repo`를 `origin/sinjeongmin` HEAD로 sync하고 기존 4B LoRA baseline 상태를 확인한다.
+- Server raw: `72 / 1000`.
+- Server former PIDs `120144` and `120148`: stopped.
+- Server GPU after stop: `0 %, 0 MiB / 46068 MiB`.
+- Local raw: `72`.
+- Parse rejects: `51`.
+- Parsed candidates: `21`.
+- Rule-book accepted: `1`.
+- Rule-book rejected: `20`.
+- Pending exported rows: `1`.
+- Canonical `data/local/gen3` rows: `0`.
+- Canonical exported rows: `0`.
+
+## interpretation
+
+<!-- Changed: stopped low-yield 상태를 future worker가 gate bypass로 처리하지 않도록 설명했다. -->
+<!-- Why: gen2/gen3 실패 원인이 quality gate 약화와 prompt contract 부족이었기 때문이다. -->
+
+gen3.1 produced one accepted pending-export row from 72 raw rows. That is not enough for
+training or sample publication. Remaining rejects include target-schedule mismatch,
+required-domain missing, label/final-status mismatch, and auth-session evidence missing.
+
+For any future restart:
+
+- Do not weaken `adversarial_rulebook_quality_gate.py`.
+- Inspect raw/parse rejects.
+- First build reject taxonomy/gate audit or deterministic OPAL skeleton/value generation.
+
+## runs policy
+
+<!-- Changed: cleanup 후 active/archive boundary를 handoff에 남겼다. -->
+<!-- Why: 사용자가 runs/에 현재 pipeline artifacts만 남기라고 요청했다. -->
+
+- Keep as stopped evidence: `runs/self_instruct/server_qwen_prod_gen31`.
+- Move legacy to: `archive/runs_legacy_20260529_gen3_cleanup/`.
+- Legacy includes old figures, model-validation data, public20 baseline run artifacts,
+  prior Qwen partial/prod/gen2/smoke outputs, targeted schedules, and old self-instruct archives.
+
+## hard rules
+
+<!-- Changed: runtime and data eligibility rules를 유지했다. -->
+<!-- Why: cleanup이 solver architecture나 training eligibility를 바꾸면 안 된다. -->
+
+- Runtime solver remains LLM-only.
+- Offline rule-book gates are data validation, not runtime inference.
+- Do not use public20 labels in generation, judge prompts, or generated targets.
+- Do not train on `data/local/gen3_pending`.
+- Do not train on `data/local/gen3` until server canonical export is synced and follow-up gates pass.
+- Do not store secrets in repo files, docs, command lines, logs, or archives.
+- Do not revert user changes or run destructive git commands.

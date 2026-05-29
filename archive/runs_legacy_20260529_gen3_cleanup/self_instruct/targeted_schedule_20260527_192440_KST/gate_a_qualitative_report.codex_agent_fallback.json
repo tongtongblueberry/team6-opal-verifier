@@ -1,0 +1,29 @@
+{
+  "accepted_count": 40,
+  "audit_model": "codex_agent_fallback_qualitative_audit",
+  "audit_provenance_note": "Offline codex-agent fallback qualitative audit; not a human audit and not an external provider result.",
+  "audit_provider": "codex_agent_fallback_qualitative_audit",
+  "hard_invariant_input": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_a_invariant.codex_agent_fallback.jsonl",
+  "input": "runs/self_instruct/targeted_schedule_20260527_192440_KST/judge_accepted.codex_agent_fallback.jsonl",
+  "label_distribution": {
+    "fail": 20,
+    "pass": 20
+  },
+  "notes": [
+    "Every reviewed candidate keeps primary evidence on records[-1].output.",
+    "Every reviewed candidate contains non-empty docs/legacy_spec_rules.md source-span grounding.",
+    "No public20 row-level labels or gold outputs were used."
+  ],
+  "qualitative_review_jsonl": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_a_qualitative_review.codex_agent_fallback.jsonl",
+  "record_count_stats": {
+    "max": 39,
+    "mean": 16.4,
+    "min": 1
+  },
+  "rejected_count": 0,
+  "reviewed_count": 40,
+  "sample_md_policy": "not allowed unless Gate A/B/C/D and required quality/ablation gates all pass",
+  "schema_version": "self_instruct.gate_a_qualitative_report.codex_agent_fallback.v1",
+  "status": "pass",
+  "training_use": "not training eligible from fallback smoke alone"
+}

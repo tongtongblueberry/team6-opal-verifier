@@ -23,7 +23,9 @@ Json = Dict[str, Any]
 SPLIT_SCHEMA_VERSION = "public20_train_val_split.v1"
 DEFAULT_SEEDS = (11, 29, 47)
 EXPECTED_PUBLIC20_ROWS = 20
-DEFAULT_VAL_PER_LABEL = 2
+# Changed: make the active public20 model-validation split 10 train / 10 val.
+# Why: the prior 16/4 split is archive-only, and the current criterion requires 5 val rows per label.
+DEFAULT_VAL_PER_LABEL = 5
 
 
 class Public20SplitError(ValueError):
@@ -119,7 +121,9 @@ def load_public20(input_path: Path, labels_path: Path) -> Tuple[Dict[str, Json],
 
 
 # Changed: select validation rows by label with a deterministic seed.
-# Why: each split needs pass=2/fail=2 validation rows and no public20 test split.
+# Why: each split needs pass=5/fail=5 validation rows and no public20 test split.
+# Changed: build split rows with only input and labels on disk.
+# Why: public20-derived model-validation artifacts must keep the same two-column shape.
 def build_split(
     inputs: Mapping[str, Json],
     labels: Mapping[str, str],
@@ -144,27 +148,42 @@ def build_split(
     train_ids = sorted(sample_id for sample_id in inputs if sample_id not in val_set)
     val_ids_sorted = sorted(val_ids)
 
-    def make_row(sample_id: str, split: str) -> Json:
+    def make_row(sample_id: str) -> Json:
         return {
-            "sample_id": sample_id,
             "input": inputs[sample_id]["input"],
-            "label": labels[sample_id],
-            "split": split,
+            "labels": labels[sample_id],
         }
 
-    train_rows = [make_row(sample_id, "train") for sample_id in train_ids]
-    val_rows = [make_row(sample_id, "val") for sample_id in val_ids_sorted]
-    report = build_report(seed=seed, train_rows=train_rows, val_rows=val_rows, labels=labels)
+    train_rows = [make_row(sample_id) for sample_id in train_ids]
+    val_rows = [make_row(sample_id) for sample_id in val_ids_sorted]
+    report = build_report(
+        seed=seed,
+        train_rows=train_rows,
+        val_rows=val_rows,
+        labels=labels,
+        train_ids=train_ids,
+        val_ids=val_ids_sorted,
+    )
     return {"train_rows": train_rows, "val_rows": val_rows, "report": report}
 
 
 def _label_counts(rows: Iterable[Mapping[str, Any]]) -> Json:
-    counts = Counter(str(row.get("label", "")).lower() for row in rows)
+    counts = Counter(str(row.get("labels", "")).lower() for row in rows)
     return {label: counts[label] for label in sorted(counts)}
 
 
-def build_report(*, seed: int, train_rows: Sequence[Mapping[str, Any]], val_rows: Sequence[Mapping[str, Any]], labels: Mapping[str, str]) -> Json:
-    sample_ids = [str(row["sample_id"]) for row in [*train_rows, *val_rows]]
+def build_report(
+    *,
+    seed: int,
+    train_rows: Sequence[Mapping[str, Any]],
+    val_rows: Sequence[Mapping[str, Any]],
+    labels: Mapping[str, str],
+    train_ids: Sequence[str],
+    val_ids: Sequence[str],
+) -> Json:
+    # Changed: keep sample IDs in reports only, not JSONL rows.
+    # Why: users compare the data files to public20 input/labels columns.
+    sample_ids = [*train_ids, *val_ids]
     return {
         "schema_version": SPLIT_SCHEMA_VERSION,
         "seed": seed,
@@ -187,8 +206,8 @@ def build_report(*, seed: int, train_rows: Sequence[Mapping[str, Any]], val_rows
             "val": _label_counts(val_rows),
         },
         "sample_ids": {
-            "train": [str(row["sample_id"]) for row in train_rows],
-            "val": [str(row["sample_id"]) for row in val_rows],
+            "train": [str(sample_id) for sample_id in train_ids],
+            "val": [str(sample_id) for sample_id in val_ids],
             "test": [],
         },
         "input_label_sample_id_match": True,
@@ -267,7 +286,9 @@ def render_root_readme(seeds: Sequence[int]) -> str:
             "- public20 labels는 local model-validation reference로만 사용한다.",
             "- synthetic generation prompt, synthetic judge prompt, generated synthetic manifest target으로 사용하지 않는다.",
             "- public20 `test` split은 만들지 않는다. test는 leaderboard hidden 평가다.",
-            "- 기본 split은 각 seed마다 `16 train / 4 val`이며 val은 `pass 2 / fail 2`다.",
+            # Changed: document the active 10/10 split contract in generated run README files.
+            # Why: consumers must not use the old public20_splits 16/4 artifacts as active validation inputs.
+            "- 기본 split은 각 seed마다 `10 train / 10 val`이며 train과 val은 각각 `pass 5 / fail 5`다.",
             "",
             f"- generated seeds: `{', '.join(str(seed) for seed in seeds)}`",
             "",
@@ -279,7 +300,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-jsonl", type=Path, default=Path("data/local/public20/public20_input.jsonl"))
     parser.add_argument("--labels-jsonl", type=Path, default=Path("data/local/public20/public20_labels.local.jsonl"))
-    parser.add_argument("--output-root", type=Path, default=Path("runs/model_validation/public20_splits"))
+    # Changed: write active split artifacts under public20_10_10_splits by default.
+    # Why: runs/model_validation/public20_splits contains archive-only 16/4 artifacts.
+    parser.add_argument("--output-root", type=Path, default=Path("runs/model_validation/public20_10_10_splits"))
     parser.add_argument("--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS))
     parser.add_argument("--val-per-label", type=int, default=DEFAULT_VAL_PER_LABEL)
     return parser
@@ -291,8 +314,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         inputs, labels = load_public20(args.input_jsonl, args.labels_jsonl)
+        # Changed: keep the CLI flag explicit but guard public20 runs to the active 5-per-label criterion.
+        # Why: public20 has 20 rows total and the current validation contract is exactly 10 train / 10 val.
         if args.val_per_label != DEFAULT_VAL_PER_LABEL:
-            raise Public20SplitError("val_per_label_must_remain_2_for_public20_default_gate")
+            raise Public20SplitError("val_per_label_must_remain_5_for_public20_10_10_gate")
         generated: List[str] = []
         for seed in args.seeds:
             split = build_split(inputs, labels, seed=seed, val_per_label=args.val_per_label)

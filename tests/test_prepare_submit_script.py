@@ -59,6 +59,46 @@ class PrepareSubmitScriptTest(unittest.TestCase):
             self.assertTrue((submit_dir / "src" / "solver.py").is_file())
             self.assertFalse((submit_dir / "src" / "lora_solver.py").exists())
 
+    def test_prepare_submit_packages_full_model_to_merged_model(self) -> None:
+        # Changed: cover full fine-tuning package layout in prepare_submit.sh.
+        # Why: leaderboard submission packages standalone full-model checkpoints under artifacts/merged_model.
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as runtime_dir, tempfile.TemporaryDirectory() as model_dir:
+            model_path = Path(model_dir) / "plain_seed11_e30"
+            model_path.mkdir()
+            (model_path / "config.json").write_text(
+                json.dumps({"model_type": "qwen3", "architectures": ["Qwen3ForCausalLM"]}),
+                encoding="utf-8",
+            )
+            (model_path / "model.safetensors").write_bytes(b"fake")
+            (model_path / "tokenizer_config.json").write_text("{}", encoding="utf-8")
+
+            env = os.environ.copy()
+            env["OPAL_RUNTIME_ROOT"] = runtime_dir
+            env["OPAL_REPO"] = str(root)
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(root / "tools" / "eval" / "prepare_submit.sh"),
+                    str(model_path),
+                    "--full-model",
+                ],
+                cwd=root,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+
+            submit_dir = Path(runtime_dir) / "submissions" / "submit-plain_seed11_e30"
+            self.assertEqual(0, result.returncode, result.stdout)
+            self.assertIn("Kind:       full_model", result.stdout)
+            self.assertIn("OK: check_submit_package.py 통과", result.stdout)
+            self.assertTrue((submit_dir / "artifacts" / "merged_model" / "config.json").is_file())
+            self.assertTrue((submit_dir / "artifacts" / "merged_model" / "model.safetensors").is_file())
+            self.assertFalse((submit_dir / "artifacts" / "lora_adapter_v3").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

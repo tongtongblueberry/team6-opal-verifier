@@ -1,0 +1,125 @@
+{
+  "artifacts": {
+    "candidate_preparation": {
+      "official_counterpart": "prepare_for_finetuning.py outputs",
+      "path": null,
+      "status": "handled_by_parse_self_instruct_outputs_and_candidate_schema_after_raw_llm_output"
+    },
+    "classification_detection": {
+      "official_counterpart": "is_clf_or_not_<engine>_<template>.jsonl",
+      "path": "runs/self_instruct/official_restart_20260527_v1/01_generation_requests/is_clf_or_not_audited_noop.jsonl",
+      "schema_version": "self_instruct.is_clf_or_not.audited_noop.v1",
+      "status": "audited_noop_true_for_pass_fail_domain"
+    },
+    "instance_generation": {
+      "official_counterpart": "machine_generated_instances.jsonl",
+      "path": null,
+      "schema_version": "self_instruct.generation_request.v1",
+      "status": "dry_run_request_only_no_llm_call"
+    },
+    "instruction_generation": {
+      "official_counterpart": "machine_generated_instructions.jsonl",
+      "path": "runs/self_instruct/official_restart_20260527_v1/01_generation_requests/machine_generated_instructions.dry_run.jsonl",
+      "schema_version": "self_instruct.machine_generated_instructions.dry_run.v1",
+      "status": "dry_run_request_only_not_machine_generated_instruction"
+    }
+  },
+  "classification_detection_ids": [
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00001",
+    "self-instruct-clf-00002",
+    "self-instruct-clf-00003"
+  ],
+  "execute": false,
+  "execute_requested": true,
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "request payloads contain input-only seed profiles, not public20 labels",
+    "request payloads contain spec rule cards with source spans from docs/legacy_spec_rules.md",
+    "instruction and classification artifacts are dry-run provenance, not accepted synthetic data",
+    "raw candidates without spec_grounding/source_span must be rejected before manifest creation",
+    "raw candidates without source_instruction_id or generation_provenance.source_instruction_id must be migrated before normalization",
+    "raw LLM outputs must be parsed by tools/datagen/parse_self_instruct_outputs.py"
+  ],
+  "official_pipeline_stage_map": {
+    "candidate_preparation": "prepare_for_finetuning.py outputs",
+    "classification_detection": "is_clf_or_not_<engine>_<template>.jsonl",
+    "instance_generation": "machine_generated_instances.jsonl",
+    "instruction_generation": "machine_generated_instructions.jsonl"
+  },
+  "official_source": {
+    "license": "Apache-2.0",
+    "official_code": "https://github.com/yizhongw/self-instruct",
+    "paper": "Wang et al. 2023 Self-Instruct"
+  },
+  "payload_sha256": {
+    "self-instruct-gen-00000": "c79aa750376bed5b05acde1b7f13520e889efe23a25fa403fed29171a86235bf",
+    "self-instruct-gen-00001": "bb9fabb7ebb9bc9dd03c6ca06d38d4831e1626fe4d1c9ddf2b9218b4f5059c13",
+    "self-instruct-gen-00002": "f02193aba3b6d9abd7c9504146925270f0f1dbea55a0383966236b97416d575c",
+    "self-instruct-gen-00003": "bf9dd97398793cec53be27389bc0bd38274ff7d6f8bb0575ea779a101705d7bd"
+  },
+  "prompt_contract_version": "opal_final_response_spec_grounded_output_first.v1",
+  "request_count": 4,
+  "request_ids": [
+    "self-instruct-gen-00000",
+    "self-instruct-gen-00001",
+    "self-instruct-gen-00002",
+    "self-instruct-gen-00003"
+  ],
+  "runner": {
+    "executed_count": 0,
+    "failed_count": 0,
+    "output_path": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/raw_outputs.jsonl",
+    "provider": "openai",
+    "provider_env_var": "OPENAI_API_KEY",
+    "report_path": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/runner_report.json",
+    "request_count": 4,
+    "schema_version": "self_instruct.llm_runner_report.v1",
+    "skipped_count": 4,
+    "status": "skipped_missing_env"
+  },
+  "schema_version": "self_instruct.generation_metadata.v1",
+  "seed_input": "data/local/public20/public20_input.jsonl",
+  "source_instruction_ids": [
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00001",
+    "self-instruct-instruction-00002",
+    "self-instruct-instruction-00003"
+  ],
+  "source_spec_rule_refs": {
+    "self-instruct-gen-00000": [
+      "RULE 01",
+      "RULE 02",
+      "RULE 03",
+      "RULE 04",
+      "RULE 05",
+      "RULE 06"
+    ],
+    "self-instruct-gen-00001": [
+      "RULE 07",
+      "RULE 08",
+      "RULE 09",
+      "RULE 10",
+      "RULE 11",
+      "RULE 12"
+    ],
+    "self-instruct-gen-00002": [
+      "RULE 13",
+      "RULE 14",
+      "RULE 15",
+      "RULE 16",
+      "RULE 17",
+      "RULE 18"
+    ],
+    "self-instruct-gen-00003": [
+      "RULE 19",
+      "RULE 20",
+      "RULE 21",
+      "RULE 22",
+      "RULE 23",
+      "RULE 24"
+    ]
+  },
+  "spec_rule_count": 86,
+  "spec_rules_input": "docs/legacy_spec_rules.md"
+}

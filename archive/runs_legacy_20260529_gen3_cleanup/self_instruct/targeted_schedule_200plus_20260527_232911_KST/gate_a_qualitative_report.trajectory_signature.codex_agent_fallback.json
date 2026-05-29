@@ -1,0 +1,22 @@
+{
+  "accepted_count": 25,
+  "accepted_output": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/gate_a_accepted.trajectory_signature.codex_agent_fallback.jsonl",
+  "audit_model": "codex_agent_fallback_qualitative_audit",
+  "audit_provider": "codex_agent_fallback_qualitative_audit",
+  "blocker": "not provider-backed; structural fallback smoke only",
+  "created_at_kst": "2026-05-27T23:39:44+09:00",
+  "hard_invariant_input": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/gate_a_invariant.trajectory_signature.codex_agent_fallback.jsonl",
+  "input": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/judge_accepted.trajectory_signature.codex_agent_fallback.jsonl",
+  "label_counts": {
+    "fail": 13,
+    "pass": 12
+  },
+  "provider_backed": false,
+  "qualitative_review_jsonl": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/gate_a_qualitative_review.trajectory_signature.codex_agent_fallback.jsonl",
+  "rejected_count": 0,
+  "sample_eligibility": false,
+  "schema_version": "self_instruct.gate_a_qualitative_report.codex_agent_fallback.v1",
+  "status": "codex_agent_fallback_smoke_pass",
+  "total_reviewed": 25,
+  "training_eligibility": false
+}

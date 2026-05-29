@@ -1,0 +1,69 @@
+{
+  "candidates_input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/dedup_candidates.qwen_local.jsonl",
+  "classification_detection_ids": [
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00003",
+    "self-instruct-clf-00004",
+    "self-instruct-clf-00005",
+    "self-instruct-clf-00006",
+    "self-instruct-clf-00007",
+    "self-instruct-clf-00010",
+    "self-instruct-clf-00011",
+    "self-instruct-clf-00012",
+    null,
+    "self-instruct-clf-00014",
+    "self-instruct-clf-00016"
+  ],
+  "execute": false,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "judge prompt uses generated candidate fields only, not public20 labels",
+    "judge prompt includes generated instruction provenance and audited no-op classification detection provenance",
+    "accepted judge results still require Gate A state-transition audit"
+  ],
+  "payload_sha256": {
+    "self-instruct-judge-self-instruct-gen-00000-cand-00": "0a570b2c91e3c8f44cca0db105c464eafa65261d9ed1a65d2edbaff3a3ecd1c5",
+    "self-instruct-judge-self-instruct-gen-00003-cand-00": "17f2d4f0bda0e931d70e8426b6eb54f414f75a6f948c3e7fbdc09f28a79e786c",
+    "self-instruct-judge-self-instruct-gen-00004-cand-00": "f2a1522f95399dfc8fd4925bca7fa2d2ec98f3f290357d0fc51548185169804c",
+    "self-instruct-judge-self-instruct-gen-00005-cand-00": "0360c3320910edb2d80c835d9b4c99b2a20363f5fc9dc667455a7d217ffee837",
+    "self-instruct-judge-self-instruct-gen-00006-cand-00": "1c413c198d1e37b1b4e095560beb1067ce1490f741c2cec65ccc2c639455c2bd",
+    "self-instruct-judge-self-instruct-gen-00007-cand-00": "4785694b3d53821816d5a9cb345e1dd458143aa01d5285b468844171334a5e9b",
+    "self-instruct-judge-self-instruct-gen-00010-cand-00": "3c55be8a29e42d0dca30c817b5b736b45a470d4ecfec97fa8827930d199774f3",
+    "self-instruct-judge-self-instruct-gen-00011-cand-00": "70aa781d9bd86763a964567015f595c09afcc2743ef95b32e17c00cef73084be",
+    "self-instruct-judge-self-instruct-gen-00012-cand-00": "659b728481eee302b57d4373f435e98a4310b33d041bca0d4eb30dadb8557870",
+    "self-instruct-judge-self-instruct-gen-00013-cand-00": "f907716bfee971fd26750bb85c159714b7740156b0995657438df7adc3ecb955",
+    "self-instruct-judge-self-instruct-gen-00014-cand-00": "14c074a511b0f9682b2bdc960847ff91ebb2baec6e8083e53f54c0100f0d6e4c",
+    "self-instruct-judge-self-instruct-gen-00016-cand-00": "0a5d7a619f39ef5c6ac1863c92d944f8f892002186f8b42c018a6c693e34e57d"
+  },
+  "request_count": 12,
+  "request_ids": [
+    "self-instruct-judge-self-instruct-gen-00000-cand-00",
+    "self-instruct-judge-self-instruct-gen-00003-cand-00",
+    "self-instruct-judge-self-instruct-gen-00004-cand-00",
+    "self-instruct-judge-self-instruct-gen-00005-cand-00",
+    "self-instruct-judge-self-instruct-gen-00006-cand-00",
+    "self-instruct-judge-self-instruct-gen-00007-cand-00",
+    "self-instruct-judge-self-instruct-gen-00010-cand-00",
+    "self-instruct-judge-self-instruct-gen-00011-cand-00",
+    "self-instruct-judge-self-instruct-gen-00012-cand-00",
+    "self-instruct-judge-self-instruct-gen-00013-cand-00",
+    "self-instruct-judge-self-instruct-gen-00014-cand-00",
+    "self-instruct-judge-self-instruct-gen-00016-cand-00"
+  ],
+  "schema_version": "self_instruct.judge_filter_report.v1",
+  "source_instruction_ids": [
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00003",
+    "self-instruct-instruction-00004",
+    "self-instruct-instruction-00005",
+    "self-instruct-instruction-00006",
+    "self-instruct-instruction-00007",
+    "self-instruct-instruction-00010",
+    "self-instruct-instruction-00011",
+    "self-instruct-instruction-00012",
+    "self-instruct-instruction-00013",
+    "self-instruct-instruction-00014",
+    "self-instruct-instruction-00016"
+  ]
+}

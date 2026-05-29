@@ -1,0 +1,263 @@
+{
+  "artifacts": {
+    "candidate_preparation": {
+      "official_counterpart": "prepare_for_finetuning.py outputs",
+      "path": null,
+      "status": "handled_by_parse_self_instruct_outputs_and_candidate_schema_after_raw_llm_output"
+    },
+    "classification_detection": {
+      "official_counterpart": "is_clf_or_not_<engine>_<template>.jsonl",
+      "path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/is_clf_or_not_audited_noop.jsonl",
+      "schema_version": "self_instruct.is_clf_or_not.audited_noop.v1",
+      "status": "audited_noop_true_for_pass_fail_domain"
+    },
+    "instance_generation": {
+      "official_counterpart": "machine_generated_instances.jsonl",
+      "path": null,
+      "schema_version": "self_instruct.generation_request.v1",
+      "status": "dry_run_request_only_no_llm_call"
+    },
+    "instruction_generation": {
+      "official_counterpart": "machine_generated_instructions.jsonl",
+      "path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/machine_generated_instructions.dry_run.jsonl",
+      "schema_version": "self_instruct.machine_generated_instructions.dry_run.v1",
+      "status": "dry_run_request_only_not_machine_generated_instruction"
+    }
+  },
+  "classification_detection_ids": [
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00001",
+    "self-instruct-clf-00002",
+    "self-instruct-clf-00003",
+    "self-instruct-clf-00004",
+    "self-instruct-clf-00005",
+    "self-instruct-clf-00006",
+    "self-instruct-clf-00007",
+    "self-instruct-clf-00008",
+    "self-instruct-clf-00009",
+    "self-instruct-clf-00010",
+    "self-instruct-clf-00011",
+    "self-instruct-clf-00012",
+    "self-instruct-clf-00013",
+    "self-instruct-clf-00014",
+    "self-instruct-clf-00015",
+    "self-instruct-clf-00016",
+    "self-instruct-clf-00017",
+    "self-instruct-clf-00018",
+    "self-instruct-clf-00019"
+  ],
+  "execute": true,
+  "execute_requested": true,
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "request payloads contain input-only seed profiles, not public20 labels",
+    "request payloads contain spec rule cards with source spans from docs/legacy_spec_rules.md",
+    "instruction and classification artifacts are dry-run provenance, not accepted synthetic data",
+    "raw candidates without spec_grounding/source_span must be rejected before manifest creation",
+    "raw candidates without source_instruction_id or generation_provenance.source_instruction_id must be migrated before normalization",
+    "raw LLM outputs must be parsed by tools/datagen/parse_self_instruct_outputs.py",
+    "target schedule contains request-only candidate targets, not accepted synthetic labels"
+  ],
+  "official_pipeline_stage_map": {
+    "candidate_preparation": "prepare_for_finetuning.py outputs",
+    "classification_detection": "is_clf_or_not_<engine>_<template>.jsonl",
+    "instance_generation": "machine_generated_instances.jsonl",
+    "instruction_generation": "machine_generated_instructions.jsonl"
+  },
+  "official_source": {
+    "license": "Apache-2.0",
+    "official_code": "https://github.com/yizhongw/self-instruct",
+    "paper": "Wang et al. 2023 Self-Instruct"
+  },
+  "payload_sha256": {
+    "self-instruct-gen-00000": "b8aa5a0223a95866bb784df55407a2975a7f228c715b1e04dcf3ec7b4264753a",
+    "self-instruct-gen-00001": "4d9dea7c1f747c72bbde62ba3dcb783109d3e591686026fed74d03e4b06d6a06",
+    "self-instruct-gen-00002": "fba8af1594b3232fe603e57b04477bd210b9a1a7cb4eb61cfa3d49a799a18e61",
+    "self-instruct-gen-00003": "78624267db2fb155d339e01aa901c4c93459c3d85875ae6eedd7d594ce92eb76",
+    "self-instruct-gen-00004": "e0a05121bcad018e903598be08dcea8351fa12484e161c8f152f8d4af33ddc7b",
+    "self-instruct-gen-00005": "04c24792609806fc332ea6d2e56310dfb57c7a27cbc0fbf726961c452f888413",
+    "self-instruct-gen-00006": "f84389c16d98afcb365025c998bce1ac26bb29fba37c59fe5dd276c9f54ed3c3",
+    "self-instruct-gen-00007": "30e6b55591f40c8c075db87a919bc4dd2d3a78a03faabcba657fad293c74dfec",
+    "self-instruct-gen-00008": "68a34ce3faf7380db16c6a8d7572cf50c4c62d678140768cb9886c49e0121944",
+    "self-instruct-gen-00009": "ac16579d7ecdc447c3c8481b978a1db6c05ae4ec2a4d0d2636e2f66d3d6e0c5e",
+    "self-instruct-gen-00010": "3bc03efda69b686674a5e2e5e40a92ba4e4db73fc25e4d51a3eef91d3de625ff",
+    "self-instruct-gen-00011": "fb4482c3924be22d4378f5373c376d79fd49e40b87e1b9795c84d75cedfd6226",
+    "self-instruct-gen-00012": "5d5efc878966e9981c0d49a377ddaf66022562cf9071186e28dbc8b45c8aa607",
+    "self-instruct-gen-00013": "cdd95dd0ec66a283dc1ea3cb2491b58ac80dec67fa22f010f00981a7c7613444",
+    "self-instruct-gen-00014": "0e8ffd9450b24be0c3c0fdd3a364f26ba3e9b7e7868a9c2e5ffe37839fccec32",
+    "self-instruct-gen-00015": "f5a22e3c3182a25845bc432e6278d46ad4439e17df245dcd7cbbbedbba809195",
+    "self-instruct-gen-00016": "5e15d71774a157e53096776db0dc38037eb9d2c64fc6eb3d52f008bd4fddbb42",
+    "self-instruct-gen-00017": "a55deea89da74df6bfbf46f617a91c2c93618ecb765a35bccc540cc2b36cf781",
+    "self-instruct-gen-00018": "416c83666c5f691287be0c17962cc2131dca53c762bfb38d0aa2ef90fb3e4d6d",
+    "self-instruct-gen-00019": "fb551df75a641675df86c6b9cd9be1152bee3f1e0bbf4213b7a071e57b5acd0d"
+  },
+  "prompt_contract_version": "opal_final_response_spec_grounded_output_first.v1",
+  "prompt_modes": [
+    "full"
+  ],
+  "request_count": 20,
+  "request_ids": [
+    "self-instruct-gen-00000",
+    "self-instruct-gen-00001",
+    "self-instruct-gen-00002",
+    "self-instruct-gen-00003",
+    "self-instruct-gen-00004",
+    "self-instruct-gen-00005",
+    "self-instruct-gen-00006",
+    "self-instruct-gen-00007",
+    "self-instruct-gen-00008",
+    "self-instruct-gen-00009",
+    "self-instruct-gen-00010",
+    "self-instruct-gen-00011",
+    "self-instruct-gen-00012",
+    "self-instruct-gen-00013",
+    "self-instruct-gen-00014",
+    "self-instruct-gen-00015",
+    "self-instruct-gen-00016",
+    "self-instruct-gen-00017",
+    "self-instruct-gen-00018",
+    "self-instruct-gen-00019"
+  ],
+  "runner": {
+    "executed_count": 20,
+    "failed_count": 0,
+    "output_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/raw_outputs.qwen_local.jsonl",
+    "provider": "hf_local",
+    "provider_env_var": null,
+    "report_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/runner_report.qwen_local.json",
+    "request_count": 20,
+    "schema_version": "self_instruct.llm_runner_report.v1",
+    "skipped_count": 0,
+    "status": "completed"
+  },
+  "schema_version": "self_instruct.generation_metadata.v1",
+  "seed_input": "data/local/public20/public20_input.jsonl",
+  "source_instruction_ids": [
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00001",
+    "self-instruct-instruction-00002",
+    "self-instruct-instruction-00003",
+    "self-instruct-instruction-00004",
+    "self-instruct-instruction-00005",
+    "self-instruct-instruction-00006",
+    "self-instruct-instruction-00007",
+    "self-instruct-instruction-00008",
+    "self-instruct-instruction-00009",
+    "self-instruct-instruction-00010",
+    "self-instruct-instruction-00011",
+    "self-instruct-instruction-00012",
+    "self-instruct-instruction-00013",
+    "self-instruct-instruction-00014",
+    "self-instruct-instruction-00015",
+    "self-instruct-instruction-00016",
+    "self-instruct-instruction-00017",
+    "self-instruct-instruction-00018",
+    "self-instruct-instruction-00019"
+  ],
+  "source_spec_rule_refs": {
+    "self-instruct-gen-00000": [
+      "RULE 01"
+    ],
+    "self-instruct-gen-00001": [
+      "RULE 02"
+    ],
+    "self-instruct-gen-00002": [
+      "RULE 03",
+      "RULE 18"
+    ],
+    "self-instruct-gen-00003": [
+      "RULE 04",
+      "RULE 07"
+    ],
+    "self-instruct-gen-00004": [
+      "RULE 05",
+      "RULE 20"
+    ],
+    "self-instruct-gen-00005": [
+      "RULE 06",
+      "RULE 08"
+    ],
+    "self-instruct-gen-00006": [
+      "RULE 07",
+      "RULE 27"
+    ],
+    "self-instruct-gen-00007": [
+      "RULE 08",
+      "RULE 15"
+    ],
+    "self-instruct-gen-00008": [
+      "RULE 09",
+      "RULE 31"
+    ],
+    "self-instruct-gen-00009": [
+      "RULE 10",
+      "RULE 21"
+    ],
+    "self-instruct-gen-00010": [
+      "RULE 11",
+      "RULE 35"
+    ],
+    "self-instruct-gen-00011": [
+      "RULE 12",
+      "RULE 22"
+    ],
+    "self-instruct-gen-00012": [
+      "RULE 13",
+      "RULE 48"
+    ],
+    "self-instruct-gen-00013": [
+      "RULE 14",
+      "RULE 29"
+    ],
+    "self-instruct-gen-00014": [
+      "RULE 15",
+      "RULE 50"
+    ],
+    "self-instruct-gen-00015": [
+      "RULE 16",
+      "RULE 30"
+    ],
+    "self-instruct-gen-00016": [
+      "RULE 17",
+      "RULE 63"
+    ],
+    "self-instruct-gen-00017": [
+      "RULE 18",
+      "RULE 43"
+    ],
+    "self-instruct-gen-00018": [
+      "RULE 19",
+      "RULE 86"
+    ],
+    "self-instruct-gen-00019": [
+      "RULE 20",
+      "RULE 49"
+    ]
+  },
+  "spec_rule_count": 86,
+  "spec_rules_input": "/workspace/sinjeongmin_opal_verifier/repo/docs/legacy_spec_rules.md",
+  "target_schedule": {
+    "path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/target_schedule.json",
+    "scope": "request_only_generation_guidance_not_label_source",
+    "sha256": "a3b91d8aa1c41d820ba3166766753b6bfa71d32e272ac18d22b72f5fe0b41d8b",
+    "summary": {
+      "label_counts": {
+        "fail": 10,
+        "pass": 10
+      },
+      "record_count_counts": {
+        "1": 2,
+        "10": 2,
+        "11": 1,
+        "2": 2,
+        "21": 4,
+        "26": 2,
+        "27": 2,
+        "39": 2,
+        "7": 2,
+        "9": 1
+      },
+      "target_count": 20
+    }
+  }
+}

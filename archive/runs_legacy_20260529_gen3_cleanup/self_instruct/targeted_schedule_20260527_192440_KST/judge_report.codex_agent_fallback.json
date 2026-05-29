@@ -1,0 +1,10 @@
+{
+  "accepted_count": 40,
+  "candidates_input": "runs/self_instruct/targeted_schedule_20260527_192440_KST/dedup_candidates.codex_agent_fallback.jsonl",
+  "decision_count": 40,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "reject_reason_counts": {},
+  "rejected_count": 0,
+  "request_count": 40,
+  "schema_version": "self_instruct.judge_filter_report.v1"
+}

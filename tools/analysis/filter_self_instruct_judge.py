@@ -15,6 +15,7 @@ import json
 import re
 import sys
 from datetime import datetime, timezone, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -35,6 +36,7 @@ JUDGE_REQUEST_SCHEMA_VERSION = "self_instruct.judge_request.v1"
 JUDGE_REPORT_SCHEMA_VERSION = "self_instruct.judge_filter_report.v1"
 JUDGE_CONTRACT_VERSION = "opal_final_response_judge.v1"
 RAW_JUDGE_TEXT_KEYS = ("judge_output", "raw_output", "llm_output", "response", "text", "content")
+LEGACY_SPEC_RULES_PATH = ROOT / "docs" / "legacy_spec_rules.md"
 # Changed: require source-span and loader-compatibility booleans in judge output.
 # Why: judge accept must reject unsupported generated text before Gate A/B/C.
 REQUIRED_BOOL_FIELDS = (
@@ -116,6 +118,8 @@ def _extract_json_from_text(text: str) -> Any:
 def _candidate_for_judge(candidate: Mapping[str, Any]) -> Json:
     return {
         "sample_id": candidate.get("sample_id"),
+        "source_instruction_id": candidate.get("source_instruction_id"),
+        "generation_provenance": candidate.get("generation_provenance"),
         "instruction": candidate.get("instruction"),
         "records": candidate.get("records"),
         "generated_label": candidate.get("label"),
@@ -126,30 +130,117 @@ def _candidate_for_judge(candidate: Mapping[str, Any]) -> Json:
     }
 
 
+@lru_cache(maxsize=1)
+def _legacy_spec_lines() -> Tuple[str, ...]:
+    return tuple(LEGACY_SPEC_RULES_PATH.read_text(encoding="utf-8").splitlines())
+
+
+def _resolve_legacy_source_span(grounding: Mapping[str, Any]) -> Json:
+    # Changed: include exact docs/legacy_spec_rules.md span text in judge payloads.
+    # Why: an adversarial qualitative judge must verify generated claims against the cited document, not against generator-copied summaries.
+    source_span = str(grounding.get("source_span") or "")
+    match = re.fullmatch(r"docs/legacy_spec_rules\.md:(\d+)-(\d+)", source_span.strip())
+    resolved: Json = {
+        "rule_ref": grounding.get("rule_ref"),
+        "source_span": source_span,
+        "resolved": False,
+    }
+    if match is None:
+        resolved["resolution_error"] = "source_span_not_docs_legacy_spec_rules_line_range"
+        return resolved
+    start_line = int(match.group(1))
+    end_line = int(match.group(2))
+    lines = _legacy_spec_lines()
+    if start_line < 1 or end_line < start_line or end_line > len(lines):
+        resolved["resolution_error"] = "source_span_out_of_range"
+        resolved["source_start_line"] = start_line
+        resolved["source_end_line"] = end_line
+        return resolved
+    resolved.update(
+        {
+            "resolved": True,
+            "source_path": "docs/legacy_spec_rules.md",
+            "source_start_line": start_line,
+            "source_end_line": end_line,
+            "source_text": "\n".join(f"{line_number}: {lines[line_number - 1]}" for line_number in range(start_line, end_line + 1)),
+        }
+    )
+    return resolved
+
+
+def _resolved_spec_source_spans(candidate: Mapping[str, Any]) -> List[Json]:
+    groundings = candidate.get("spec_grounding")
+    if not isinstance(groundings, Sequence) or isinstance(groundings, (bytes, bytearray, str)):
+        return []
+    resolved_spans: List[Json] = []
+    for grounding in groundings:
+        if isinstance(grounding, Mapping):
+            resolved_spans.append(_resolve_legacy_source_span(grounding))
+    return resolved_spans
+
+
 def _judge_system_prompt() -> str:
     return (
-        "You are an offline data-quality judge for Self-Instruct Opal verifier candidates. "
+        "You are an adversarial offline data-quality judge for Self-Instruct Opal verifier candidates. "
+        "Default to reject unless the cited docs/legacy_spec_rules.md source text directly supports the final-response label. "
         "You are not a runtime solver and you must not use rule-engine outputs or public labels."
     )
 
 
 def _judge_user_prompt(candidate: Mapping[str, Any]) -> str:
+    generation_provenance = candidate.get("generation_provenance") if isinstance(candidate.get("generation_provenance"), Mapping) else {}
     prompt_spec = {
         "task": "Judge whether this generated candidate should be accepted for later Gate A state-transition audit.",
+        # Changed: include official generation and classification provenance in every judge request.
+        # Why: judge decisions must audit the candidate against generated-instruction lineage and the no-op classification artifact.
+        "official_pipeline_provenance": {
+            "source_instruction_id": candidate.get("source_instruction_id"),
+            "classification_detection_id": generation_provenance.get("classification_detection_id"),
+            "official_instruction_artifact": generation_provenance.get("official_instruction_artifact"),
+            "official_classification_artifact": generation_provenance.get("official_classification_artifact"),
+            "official_instance_artifact": generation_provenance.get("official_instance_artifact"),
+        },
+        "adversarial_qualitative_policy": {
+            "default": "reject when the cited source text is missing, ambiguous, too broad, or does not directly entail the final response",
+            "source_of_truth": "resolved_spec_source_spans.source_text copied from docs/legacy_spec_rules.md",
+            "do_not_trust": "generator rationale, copied condition/expected_status fields, final protocol status alone, row length, or public20-like shape",
+            "must_trace": "records from first to last, including session open/close, Write mode, authentication authority, lifecycle state, ACL/object state, and final output",
+        },
+        "resolved_spec_source_spans": _resolved_spec_source_spans(candidate),
         "candidate": _candidate_for_judge(candidate),
+        # Changed: disambiguate Opal protocol statuses from public20 row labels.
+        # Why: Qwen judge was rejecting valid candidates by treating SUCCESS/INVALID_PARAMETER status values as leaked public labels.
+        "leakage_policy": {
+            "allowed_protocol_status_values": [
+                "SUCCESS",
+                "NOT_AUTHORIZED",
+                "INVALID_PARAMETER",
+                "FAIL",
+                "SP_BUSY",
+                "SP_FROZEN",
+                "AUTHORITY_LOCKED_OUT",
+                "NO_SESSIONS_AVAILABLE",
+            ],
+            "not_public_label": "Protocol status strings inside records, target, expected_status, or rationale are allowed evidence, not public20 row labels.",
+            "public_label_leakage": "Only leaked row-level answers such as public20 pass/fail labels, gold_label, expected_answer, hidden labels, rule-engine verdict text, or archived verifier outputs count as public/rule leakage.",
+        },
         "judge_questions": {
             "is_final_response_targeted": "Is the label evidence tied to records[-1].output rather than an intermediate response?",
-            "has_required_spec_grounding": "Does spec_grounding contain at least one docs/legacy_spec_rules.md source_span with rule_ref, condition, and expected_status?",
-            "is_source_span_supported": "Does the cited source_span support the final-response pass/fail rationale without relying on unstated Opal facts?",
-            "is_state_transition_consistent": "Are session/auth/lifecycle/object state transitions in records consistent with the cited condition and final response?",
+            "has_required_spec_grounding": "Does spec_grounding contain at least one docs/legacy_spec_rules.md source_span with rule_ref, condition, and expected_status, and is that source_span resolved in resolved_spec_source_spans?",
+            "is_source_span_supported": "Does the resolved source_text support the final-response pass/fail rationale without relying on unstated Opal facts or generator-copied summaries?",
+            "is_state_transition_consistent": "After adversarially tracing session/auth/lifecycle/object state through all records, are the transitions consistent with the resolved source_text and final response?",
             "is_manifest_loader_compatible": "Can the candidate become a manifest row whose model input is exactly stable JSON {'records': records}, with grounding kept as metadata only?",
             "is_label_plausible": "Is the generated pass/fail label plausible from the final response and trajectory state?",
             "has_intermediate_label_leak": "Does the rationale rely on an intermediate success/failure as the main label evidence?",
-            "has_public_or_rule_leakage": "Does the candidate include public labels, runtime rule-engine text, rule-derived labels, or archived verifier outputs?",
+            "has_public_or_rule_leakage": "Does the candidate include public20 row labels, runtime rule-engine verdict text, rule-derived pass/fail labels, or archived verifier outputs? Do not count Opal status codes as leakage.",
             "decision": "accept or reject",
         },
         "accept_condition": [
-            'decision == "accept"',
+            "source_instruction_id is present",
+            "classification_detection_id is present when the request came from the audited no-op classification stage",
+            "at least one resolved_spec_source_spans entry has resolved == true and source_text directly supports the verdict",
+            'decision == "accept" when the boolean quality contract below is satisfied',
+            "generated_label may be pass or fail; a plausible fail label is still an accepted data-quality decision",
             "is_final_response_targeted == true",
             "has_required_spec_grounding == true",
             "is_source_span_supported == true",
@@ -191,10 +282,13 @@ def build_judge_request(candidate: Mapping[str, Any], *, model: str, created_at_
         "response_format": {"type": "json_object"},
         "judge_contract_version": JUDGE_CONTRACT_VERSION,
     }
+    generation_provenance = candidate.get("generation_provenance") if isinstance(candidate.get("generation_provenance"), Mapping) else {}
     return {
         "schema_version": JUDGE_REQUEST_SCHEMA_VERSION,
         "request_id": request_id,
         "sample_id": sample_id,
+        "source_instruction_id": candidate.get("source_instruction_id"),
+        "classification_detection_id": generation_provenance.get("classification_detection_id"),
         "created_at_kst": created_at_kst,
         "execute": False,
         "judge_contract_version": JUDGE_CONTRACT_VERSION,
@@ -222,6 +316,14 @@ def _judge_payload_from_row(row: Mapping[str, Any]) -> Mapping[str, Any]:
 def _as_bool(value: Any, field: str) -> bool:
     if isinstance(value, bool):
         return value
+    # Changed: accept lowercase string booleans from local Qwen judge outputs.
+    # Why: cached-model JSON generation may quote true/false while preserving the intended judge decision.
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized == "true":
+            return True
+        if normalized == "false":
+            return False
     raise SelfInstructJudgeError(f"{field}_not_boolean")
 
 
@@ -252,9 +354,10 @@ def normalize_judge_decision(row: Mapping[str, Any]) -> Json:
 
 
 def judge_decision_accepts(decision: Mapping[str, Any]) -> bool:
+    # Changed: gate on the explicit boolean quality contract instead of the free-form decision token.
+    # Why: local Qwen sometimes writes decision=reject for valid fail-labeled candidates while all audit booleans pass.
     return (
-        decision.get("decision") == "accept"
-        and decision.get("is_final_response_targeted") is True
+        decision.get("is_final_response_targeted") is True
         and decision.get("has_required_spec_grounding") is True
         and decision.get("is_source_span_supported") is True
         and decision.get("is_state_transition_consistent") is True
@@ -266,8 +369,6 @@ def judge_decision_accepts(decision: Mapping[str, Any]) -> bool:
 
 
 def _reject_reason(decision: Mapping[str, Any]) -> str:
-    if decision.get("decision") != "accept":
-        return "judge_decision_reject"
     if decision.get("is_final_response_targeted") is not True:
         return "not_final_response_targeted"
     if decision.get("has_required_spec_grounding") is not True:
@@ -284,6 +385,8 @@ def _reject_reason(decision: Mapping[str, Any]) -> str:
         return "intermediate_label_leak"
     if decision.get("has_public_or_rule_leakage") is not False:
         return "public_or_rule_leakage"
+    if decision.get("decision") != "accept":
+        return "judge_decision_reject_with_passing_boolean_contract"
     return "unknown_reject"
 
 
@@ -372,10 +475,13 @@ def build_metadata(candidates_path: Path, requests: Sequence[Mapping[str, Any]])
         "execute": False,
         "judge_contract_version": JUDGE_CONTRACT_VERSION,
         "request_ids": [request.get("request_id") for request in requests],
+        "source_instruction_ids": [request.get("source_instruction_id") for request in requests],
+        "classification_detection_ids": [request.get("classification_detection_id") for request in requests],
         "payload_sha256": {str(request.get("request_id")): request.get("payload_sha256") for request in requests},
         "notes": [
             "dry-run only: no LLM/API call was made",
             "judge prompt uses generated candidate fields only, not public20 labels",
+            "judge prompt includes generated instruction provenance and audited no-op classification detection provenance",
             "accepted judge results still require Gate A state-transition audit",
         ],
     }

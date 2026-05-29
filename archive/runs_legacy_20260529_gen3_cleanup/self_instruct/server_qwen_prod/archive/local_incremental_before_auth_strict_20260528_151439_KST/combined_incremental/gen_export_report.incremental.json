@@ -1,0 +1,40 @@
+{
+  "clean_output_dir": true,
+  "effective_limit": 47,
+  "input_path": "data/local/gen/gen_input.jsonl",
+  "label_counts": {
+    "fail": 31,
+    "pass": 16
+  },
+  "label_path": "data/local/gen/gen_labels.local.jsonl",
+  "output_dir": "data/local/gen",
+  "public20_reference_jsonl": "/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst/data/local/public20/public20_input.jsonl",
+  "public_shape_compatible_count": 47,
+  "public_shape_reject_counts": {
+    "duplicate_export_input": 8,
+    "exact_public20_input_duplicate": 13,
+    "public20_sequence_skeleton_duplicate": 29,
+    "record_10_unsupported_public20_method": 3,
+    "record_1_unsupported_public20_method": 14,
+    "record_21_unsupported_public20_method": 4,
+    "record_2_unsupported_public20_method": 13,
+    "record_3_unsupported_public20_method": 1,
+    "record_5_unsupported_public20_method": 2,
+    "record_6_unsupported_public20_method": 1
+  },
+  "record_count_counts": {
+    "1": 2,
+    "10": 10,
+    "11": 2,
+    "2": 7,
+    "21": 16,
+    "26": 2,
+    "7": 7,
+    "9": 1
+  },
+  "requested_limit": 0,
+  "require_balanced_labels": false,
+  "row_count": 47,
+  "schema_version": "self_instruct.public_schema_export.v1",
+  "source": "qwen_local_self_instruct_incremental"
+}

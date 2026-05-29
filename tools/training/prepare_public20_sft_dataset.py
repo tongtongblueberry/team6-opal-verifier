@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert public20 train/val splits to TRL prompt-completion SFT JSONL."""
+"""Convert public20 train/val splits to input/labels SFT JSONL."""
 
 from __future__ import annotations
 
@@ -14,9 +14,10 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-# Changed: define a public20-to-TRL data contract independent of custom trainers.
-# Why: TRL SFTTrainer should receive prompt/completion rows and own the loss path.
+# Changed: define a public20-shaped persisted data contract independent of custom trainers.
+# Why: JSONL artifacts should expose only input/labels while loaders adapt them for TRL in memory.
 VALID_LABELS = {"pass", "fail"}
+OUTPUT_COLUMNS = ("input", "labels")
 DEFAULT_INPUT_TRAIN_NAME = "train.jsonl"
 DEFAULT_INPUT_VAL_NAME = "val.jsonl"
 DEFAULT_OUTPUT_TRAIN_NAME = "train.jsonl"
@@ -92,7 +93,7 @@ def fail(message: str, exit_code: int = 2) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare public20 train/val splits for TRL SFTTrainer prompt-completion SFT."
+        description="Prepare public20 train/val splits as input/labels JSONL for TRL SFTTrainer."
     )
     parser.add_argument(
         "--split-dir",
@@ -107,13 +108,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--prompt-suffix",
         default=DEFAULT_PROMPT_SUFFIX,
-        help="Suffix appended after the full trajectory prompt before the completion.",
+        help="Suffix appended after the full trajectory input before the label.",
     )
     parser.add_argument(
         "--retrieved-spec-rules-md",
         default=None,
         help=(
-            "Optional legacy spec rules markdown for prompt-only retrieval context. "
+            "Optional legacy spec rules markdown for input-only retrieval context. "
             "Defaults to docs/legacy_spec_rules.md when --retrieved-spec-top-k is positive."
         ),
     )
@@ -121,13 +122,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--retrieved-spec-top-k",
         type=int,
         default=0,
-        help="Number of lexical spec snippets to append to each prompt. Zero disables retrieval context.",
+        help="Number of lexical spec snippets to append to each input. Zero disables retrieval context.",
     )
     parser.add_argument(
         "--retrieved-spec-max-context-chars",
         type=int,
         default=DEFAULT_RETRIEVED_SPEC_MAX_CONTEXT_CHARS,
-        help="Maximum characters for the Retrieved spec context section in each prompt.",
+        help="Maximum characters for the Retrieved spec context section in each input.",
     )
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing converted files.")
     return parser.parse_args(argv)
@@ -246,7 +247,11 @@ def normalize_label(value: Any, path: Path, line_number: int) -> str:
     return label
 
 
-def normalize_split(value: Any, path: Path, line_number: int) -> str:
+def normalize_split(value: Any, path: Path, line_number: int, fallback: str | None = None) -> str:
+    # Changed: allow file-name implied splits for two-column public20-shaped inputs.
+    # Why: source JSONL rows may no longer carry a split metadata field.
+    if value is None and fallback is not None:
+        return fallback
     if not isinstance(value, str) or not value.strip():
         fail(f"Row {path}:{line_number} has missing split")
     split = value.strip().lower()
@@ -265,7 +270,11 @@ def normalize_input(value: Any, path: Path, line_number: int) -> str:
     return value
 
 
-def normalize_sample_id(value: Any, path: Path, line_number: int) -> str:
+def normalize_sample_id(value: Any, path: Path, line_number: int, fallback: str | None = None) -> str:
+    # Changed: allow line-number fallback IDs for duplicate checks only.
+    # Why: persisted rows should not need sample_id metadata.
+    if value is None and fallback is not None:
+        return fallback
     if not isinstance(value, str) or not value.strip():
         fail(f"Row {path}:{line_number} has missing sample_id")
     return value.strip()
@@ -406,12 +415,13 @@ def convert_public20_row(
     retrieved_spec_top_k: int = 0,
     retrieved_spec_max_context_chars: int = DEFAULT_RETRIEVED_SPEC_MAX_CONTEXT_CHARS,
 ) -> dict[str, Any]:
-    # Changed: keep the trajectory and answer in separate fields.
-    # Why: TRL prompt-completion processing can mask prompt tokens for completion-only loss.
+    # Changed: keep only input and labels in the persisted row.
+    # Why: TRL prompt/completion names and provenance stay out of the public20-shaped JSONL.
     input_text = normalize_input(row.get("input"), path, line_number)
-    label = normalize_label(row.get("label"), path, line_number)
-    sample_id = normalize_sample_id(row.get("sample_id"), path, line_number)
-    source_split = normalize_split(row.get("split"), path, line_number)
+    # Changed: accept labels from either source split form while writing only labels.
+    # Why: old split inputs used label; corrected public20-shaped splits use labels.
+    label = normalize_label(row.get("labels", row.get("label")), path, line_number)
+    source_split = normalize_split(row.get("split"), path, line_number, fallback=expected_source_split)
     if source_split != expected_source_split:
         fail(
             f"Row {path}:{line_number} has split {source_split!r}; expected {expected_source_split!r}"
@@ -427,18 +437,12 @@ def convert_public20_row(
             retrieved_spec_top_k,
             retrieved_spec_max_context_chars,
         )
-    converted = {
-        "prompt": f"{prompt_text}{prompt_suffix}",
-        "completion": label,
-        "sample_id": sample_id,
-        "source_split": source_split,
-        "source_line": line_number,
+    del retrieved_metadata, retrieved_context_truncated
+    return {
+        "input": f"{prompt_text}{prompt_suffix}",
+        "labels": label,
+        "_retrieved_spec_context_char_count": retrieved_context_char_count,
     }
-    if retrieved_spec_top_k:
-        converted["retrieved_spec_context"] = retrieved_metadata
-        converted["retrieved_spec_context_char_count"] = retrieved_context_char_count
-        converted["retrieved_spec_context_truncated"] = retrieved_context_truncated
-    return converted
 
 
 def convert_split_file(
@@ -457,6 +461,14 @@ def convert_split_file(
     retrieved_context_char_counts: list[int] = []
 
     for line_number, row in read_jsonl(source_path):
+        # Changed: validate duplicate IDs from source only, then drop them from output rows.
+        # Why: the written training JSONL must contain exactly input and labels.
+        sample_id = normalize_sample_id(
+            row.get("sample_id"),
+            source_path,
+            line_number,
+            fallback=f"{source_split}:{line_number}",
+        )
         converted = convert_public20_row(
             row,
             source_path,
@@ -467,14 +479,13 @@ def convert_split_file(
             retrieved_spec_top_k,
             retrieved_spec_max_context_chars,
         )
-        sample_id = converted["sample_id"]
         if sample_id in seen_sample_ids:
             fail(f"Duplicate sample_id {sample_id!r} in {source_path}")
         seen_sample_ids.add(sample_id)
-        label_counts[converted["completion"]] += 1
+        label_counts[converted["labels"]] += 1
         if retrieved_spec_top_k:
-            retrieved_context_char_counts.append(int(converted["retrieved_spec_context_char_count"]))
-        rows.append(converted)
+            retrieved_context_char_counts.append(int(converted["_retrieved_spec_context_char_count"]))
+        rows.append({key: converted[key] for key in OUTPUT_COLUMNS})
 
     if not rows:
         fail(f"No rows found in {source_path}")
@@ -506,14 +517,17 @@ def build_report(
 ) -> dict[str, Any]:
     return {
         "created_at": datetime.now(KST).isoformat(),
-        "adapter": "public20_trl_sft_prompt_completion",
+        # Changed: report persisted and trainer-facing schemas separately.
+        # Why: files stay public20-shaped; only the loader maps them for TRL.
+        "adapter": "public20_trl_sft_input_labels",
         "training_core": "trl.SFTTrainer",
         "custom_training_loop": False,
-        "dataset_format": "standard_prompt_completion",
+        "dataset_format": "public20_input_labels",
         "completion_only_loss_intent": {
             "trl_sft_config": {"completion_only_loss": True},
-            "reason": "prompt/completion columns let TRL mask prompt tokens and train on completion tokens.",
+            "reason": "loader maps input/labels to prompt/completion in memory so TRL can mask prompt tokens.",
         },
+        "output_columns": list(OUTPUT_COLUMNS),
         "split_dir": str(split_dir),
         "output_dir": str(output_dir),
         "prompt_suffix": prompt_suffix,
@@ -528,7 +542,7 @@ def markdown_report_lines(report: dict[str, Any]) -> list[str]:
         "# public20 TRL SFT 데이터셋 변환 리포트",
         "",
         "- 학습 core: `trl.SFTTrainer`",
-        "- 데이터 형식: standard prompt-completion JSONL",
+        "- 데이터 형식: public20 input/labels JSONL",
         "- loss 의도: `SFTConfig(completion_only_loss=True)`",
         "- custom training loop 사용: `false`",
         "- public20 test split 생성: `false`",
@@ -580,7 +594,7 @@ def build_retrieval_inputs(args: argparse.Namespace) -> tuple[list[SpecRuleCard]
         "rule_card_count": len(cards),
         "label_used_for_retrieval": False,
         "runtime_rule_engine": False,
-        "retrieval_method": "deterministic lexical overlap over prompt input text only",
+        "retrieval_method": "deterministic lexical overlap over input text only",
     }
 
 

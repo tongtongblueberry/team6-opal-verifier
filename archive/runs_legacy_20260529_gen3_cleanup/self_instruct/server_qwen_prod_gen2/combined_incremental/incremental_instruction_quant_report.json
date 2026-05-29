@@ -1,0 +1,161 @@
+{
+  "combined_auth_session_summary": {
+    "auth_row_rate": 0.0984,
+    "auth_rows": 6,
+    "auth_start_session_rate": 0.0758,
+    "auth_start_sessions": 10,
+    "rows": 61,
+    "start_sessions": 132
+  },
+  "combined_candidates": 61,
+  "combined_label_counts": {
+    "fail": 23,
+    "pass": 38
+  },
+  "combined_record_count_counts": {
+    "1": 1,
+    "2": 21,
+    "3": 2,
+    "4": 2,
+    "6": 9,
+    "7": 3,
+    "8": 1,
+    "9": 2,
+    "10": 12,
+    "11": 2,
+    "12": 2,
+    "20": 2,
+    "21": 2
+  },
+  "export_arg_leaf_avg": 1.7797,
+  "export_auth_session_summary": {
+    "auth_row_rate": 0.122,
+    "auth_rows": 5,
+    "auth_start_session_rate": 0.0938,
+    "auth_start_sessions": 9,
+    "rows": 41,
+    "start_sessions": 96
+  },
+  "export_files": [
+    "gen_input.jsonl",
+    "gen_labels.local.jsonl"
+  ],
+  "export_final_status_rule_hits": 29,
+  "export_final_status_rule_rate": 0.7073,
+  "export_final_status_rule_total": 41,
+  "export_input_rows": 41,
+  "export_label_counts": {
+    "fail": 17,
+    "pass": 24
+  },
+  "export_label_rows": 41,
+  "export_method_counts": {
+    "Activate": 10,
+    "EndSession": 71,
+    "GenKey": 7,
+    "Get": 63,
+    "Properties": 11,
+    "Read": 1,
+    "Set": 38,
+    "StartSession": 96
+  },
+  "export_method_sequence_public20_match_count": 0,
+  "export_method_sequence_public20_matches": [],
+  "export_missing_public_method_counts": {},
+  "export_output_method_counts": {
+    "SyncSession": 96
+  },
+  "export_record_count_counts": {
+    "10": 12,
+    "11": 2,
+    "12": 1,
+    "2": 10,
+    "20": 2,
+    "3": 1,
+    "4": 2,
+    "6": 8,
+    "7": 1,
+    "8": 1,
+    "9": 1
+  },
+  "export_record_count_label_rule_hits": 29,
+  "export_record_count_label_rule_rate": 0.7073,
+  "export_record_count_label_rule_total": 41,
+  "export_sequence_skeleton_public20_match_count": 0,
+  "export_sequence_skeleton_public20_matches": [],
+  "export_status_codes_type_counts": {
+    "NoneType": 1,
+    "str": 296
+  },
+  "forbidden_key_occurrences": 0,
+  "instruction_mismatch_count": 0,
+  "instruction_mismatch_sample_ids": [],
+  "parse_reject_reason_counts": {
+    "instruction_not_fixed": 22,
+    "primary_evidence_not_final_response": 10,
+    "record_10_method_args_not_required_optional": 1,
+    "record_1_method_args_not_required_optional": 13,
+    "record_2_method_args_not_required_optional": 10,
+    "record_5_method_args_not_required_optional": 1,
+    "record_6_method_args_not_required_optional": 1,
+    "target_index_not_last_record": 49,
+    "target_response_not_last_record_output": 21
+  },
+  "parsed_auth_session_summary": {
+    "auth_row_rate": 0.1094,
+    "auth_rows": 7,
+    "auth_start_session_rate": 0.0851,
+    "auth_start_sessions": 12,
+    "rows": 64,
+    "start_sessions": 141
+  },
+  "parsed_bad_method_args_count": 0,
+  "parsed_bad_method_args_examples": [],
+  "parsed_input_null_count": 0,
+  "parsed_input_null_examples": [],
+  "public20_arg_leaf_avg": 2.1031,
+  "public20_auth_session_summary": {
+    "auth_row_rate": 0.8,
+    "auth_rows": 16,
+    "auth_start_session_rate": 0.7431,
+    "auth_start_sessions": 81,
+    "rows": 20,
+    "start_sessions": 109
+  },
+  "public20_exact_export_match_count": 0,
+  "public20_exact_export_matches": [],
+  "public20_final_status_rule_hits": 17,
+  "public20_final_status_rule_rate": 0.85,
+  "public20_final_status_rule_total": 20,
+  "public20_method_counts": {
+    "Activate": 12,
+    "EndSession": 93,
+    "GenKey": 4,
+    "Get": 68,
+    "Properties": 2,
+    "Read": 4,
+    "Set": 34,
+    "StartSession": 109,
+    "Write": 2
+  },
+  "public20_record_count_counts": {
+    "1": 2,
+    "10": 2,
+    "11": 1,
+    "2": 2,
+    "21": 4,
+    "26": 2,
+    "27": 2,
+    "39": 2,
+    "7": 2,
+    "9": 1
+  },
+  "qualitative_warnings": [
+    "export_rows_below_200:41",
+    "missing_public_record_counts:1,21,26,27,39",
+    "missing_public_methods:Write",
+    "args_richness_lower_than_public20:1.7797<2.1031",
+    "auth_session_row_rate_lower_than_public20:0.122<0.8"
+  ],
+  "sample_id_alignment": true
+}

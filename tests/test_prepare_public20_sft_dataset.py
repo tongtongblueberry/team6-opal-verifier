@@ -1,5 +1,5 @@
-# Changed: cover public20 to TRL prompt-completion dataset conversion.
-# Why: SFTTrainer must see separated prompt and completion fields without importing TRL.
+# Changed: cover public20 input/labels dataset conversion.
+# Why: persisted SFT files must match public20 while TRL mapping happens in memory.
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class PreparePublic20SftDatasetTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_converts_train_val_to_prompt_completion_jsonl(self) -> None:
+    def test_converts_train_val_to_input_labels_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
             temp_dir = Path(temp_name)
             split_dir = temp_dir / "split_seed_11"
@@ -98,13 +98,15 @@ class PreparePublic20SftDatasetTests(unittest.TestCase):
                 for line in (output_dir / "validation.jsonl").read_text(encoding="utf-8").splitlines()
             ]
 
-        self.assertEqual("public20_trl_sft_prompt_completion", report["adapter"])
+        self.assertEqual("public20_trl_sft_input_labels", report["adapter"])
         self.assertFalse(report["custom_training_loop"])
         self.assertFalse(report["public20_test_split_created"])
-        self.assertEqual(train_input + "\n", train_rows[0]["prompt"])
-        self.assertEqual("pass", train_rows[0]["completion"])
-        self.assertEqual(val_input + "\n", validation_rows[0]["prompt"])
-        self.assertEqual("fail", validation_rows[0]["completion"])
+        self.assertEqual({"input", "labels"}, set(train_rows[0]))
+        self.assertEqual(train_input + "\n", train_rows[0]["input"])
+        self.assertEqual("pass", train_rows[0]["labels"])
+        self.assertEqual({"input", "labels"}, set(validation_rows[0]))
+        self.assertEqual(val_input + "\n", validation_rows[0]["input"])
+        self.assertEqual("fail", validation_rows[0]["labels"])
         self.assertNotIn("label", train_rows[0])
 
     def test_retrieved_spec_context_preserves_schema_and_source_spans(self) -> None:
@@ -160,17 +162,14 @@ class PreparePublic20SftDatasetTests(unittest.TestCase):
             )
             train_row = json.loads((output_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()[0])
 
-        self.assertEqual("public20_trl_sft_prompt_completion", report["adapter"])
+        self.assertEqual("public20_trl_sft_input_labels", report["adapter"])
         self.assertTrue(report["retrieved_spec_context"]["enabled"])
-        self.assertIn("prompt", train_row)
-        self.assertIn("completion", train_row)
-        self.assertIn("Retrieved spec context:", train_row["prompt"])
-        self.assertIn("RULE 22", train_row["prompt"])
-        self.assertIn(str(spec_path), train_row["prompt"])
-        self.assertEqual("pass", train_row["completion"])
+        self.assertEqual({"input", "labels"}, set(train_row))
+        self.assertIn("Retrieved spec context:", train_row["input"])
+        self.assertIn("RULE 22", train_row["input"])
+        self.assertIn(str(spec_path), train_row["input"])
+        self.assertEqual("pass", train_row["labels"])
         self.assertNotIn("label", train_row)
-        self.assertEqual("RULE 22", train_row["retrieved_spec_context"][0]["rule_ref"])
-        self.assertLessEqual(train_row["retrieved_spec_context_char_count"], 900)
 
     def test_retrieved_spec_context_does_not_depend_on_label(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
@@ -206,10 +205,9 @@ class PreparePublic20SftDatasetTests(unittest.TestCase):
                 900,
             )
 
-        self.assertEqual(converted_pass["prompt"], converted_fail["prompt"])
-        self.assertEqual(converted_pass["retrieved_spec_context"], converted_fail["retrieved_spec_context"])
-        self.assertEqual("pass", converted_pass["completion"])
-        self.assertEqual("fail", converted_fail["completion"])
+        self.assertEqual(converted_pass["input"], converted_fail["input"])
+        self.assertEqual("pass", converted_pass["labels"])
+        self.assertEqual("fail", converted_fail["labels"])
 
     def test_retrieved_spec_context_respects_max_context_chars(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
@@ -234,9 +232,8 @@ class PreparePublic20SftDatasetTests(unittest.TestCase):
                 260,
             )
 
-        self.assertIn("Retrieved spec context:", converted["prompt"])
-        self.assertLessEqual(converted["retrieved_spec_context_char_count"], 260)
-        self.assertTrue(converted["retrieved_spec_context"])
+        self.assertIn("Retrieved spec context:", converted["input"])
+        self.assertLessEqual(converted["_retrieved_spec_context_char_count"], 260)
 
     def test_rejects_public20_test_split(self) -> None:
         row = {

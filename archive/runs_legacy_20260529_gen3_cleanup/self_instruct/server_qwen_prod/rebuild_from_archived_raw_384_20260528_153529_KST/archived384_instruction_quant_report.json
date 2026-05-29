@@ -1,0 +1,146 @@
+{
+  "dedup_auth_session_summary": {
+    "auth_row_rate": 0.0,
+    "auth_rows": 0,
+    "auth_start_session_rate": 0.0,
+    "auth_start_sessions": 0,
+    "rows": 135,
+    "start_sessions": 413
+  },
+  "dedup_candidates": 135,
+  "dedup_reject_reason_counts": {
+    "exact_duplicate": 12,
+    "near_duplicate_domain_text": 1
+  },
+  "dedup_rejects": 13,
+  "duplicate_export_input_count": 0,
+  "export_arg_leaf_avg": 1.7651,
+  "export_auth_session_summary": {
+    "auth_row_rate": 0.0,
+    "auth_rows": 0,
+    "auth_start_session_rate": 0.0,
+    "auth_start_sessions": 0,
+    "rows": 55,
+    "start_sessions": 201
+  },
+  "export_files": [
+    "gen_input.jsonl",
+    "gen_labels.local.jsonl"
+  ],
+  "export_final_status_rule_hits": 49,
+  "export_final_status_rule_rate": 0.8909,
+  "export_final_status_rule_total": 55,
+  "export_input_rows": 55,
+  "export_label_counts": {
+    "fail": 36,
+    "pass": 19
+  },
+  "export_label_rows": 55,
+  "export_method_counts": {
+    "Activate": 30,
+    "EndSession": 157,
+    "Get": 177,
+    "Read": 1,
+    "Set": 82,
+    "StartSession": 201
+  },
+  "export_method_sequence_public20_match_count": 12,
+  "export_record_count_counts": {
+    "1": 2,
+    "10": 10,
+    "11": 2,
+    "2": 11,
+    "21": 18,
+    "26": 2,
+    "7": 9,
+    "9": 1
+  },
+  "export_record_count_label_rule_hits": 52,
+  "export_record_count_label_rule_rate": 0.9455,
+  "export_record_count_label_rule_total": 55,
+  "export_sequence_skeleton_public20_match_count": 0,
+  "export_status_codes_type_counts": {
+    "NoneType": 1,
+    "str": 647
+  },
+  "instruction_mismatch_count": 0,
+  "missing_public_methods": [
+    "GenKey",
+    "Properties",
+    "Write"
+  ],
+  "missing_public_record_counts": [
+    "27",
+    "39"
+  ],
+  "parse_reject_reason_counts": {
+    "instruction_not_fixed": 112,
+    "primary_evidence_not_final_response": 7,
+    "record_1_method_args_not_required_optional": 3,
+    "record_21_method_args_not_required_optional": 1,
+    "record_2_method_args_not_required_optional": 31,
+    "record_3_method_args_not_required_optional": 1,
+    "record_9_method_args_not_required_optional": 1,
+    "target_index_not_last_record": 50,
+    "target_response_not_last_record_output": 30
+  },
+  "parse_rejects": 236,
+  "parsed_auth_session_summary": {
+    "auth_row_rate": 0.0,
+    "auth_rows": 0,
+    "auth_start_session_rate": 0.0,
+    "auth_start_sessions": 0,
+    "rows": 148,
+    "start_sessions": 427
+  },
+  "parsed_bad_method_args_count": 0,
+  "parsed_candidates": 148,
+  "parsed_input_null_count": 0,
+  "public20_arg_leaf_avg": 2.1031,
+  "public20_auth_session_summary": {
+    "auth_row_rate": 0.8,
+    "auth_rows": 16,
+    "auth_start_session_rate": 0.7431,
+    "auth_start_sessions": 81,
+    "rows": 20,
+    "start_sessions": 109
+  },
+  "public20_exact_export_match_count": 0,
+  "public20_final_status_rule_rate": 0.85,
+  "public20_method_counts": {
+    "Activate": 12,
+    "EndSession": 93,
+    "GenKey": 4,
+    "Get": 68,
+    "Properties": 2,
+    "Read": 4,
+    "Set": 34,
+    "StartSession": 109,
+    "Write": 2
+  },
+  "public20_record_count_counts": {
+    "1": 2,
+    "10": 2,
+    "11": 1,
+    "2": 2,
+    "21": 4,
+    "26": 2,
+    "27": 2,
+    "39": 2,
+    "7": 2,
+    "9": 1
+  },
+  "qualitative_warnings": [
+    "export_rows_below_200:55",
+    "missing_public_methods:GenKey,Properties,Write",
+    "missing_public_record_counts:27,39",
+    "auth_session_row_rate_lower_than_public20:0.0<0.8",
+    "dedup_candidates_auth_session_rows_zero",
+    "record_count_label_shortcut_high:0.9455",
+    "final_status_rule_more_predictive_than_public20:0.8909>0.85",
+    "args_richness_lower_than_public20:1.7651<2.1031"
+  ],
+  "raw_rows": 384,
+  "rebuild_dir": "runs/self_instruct/server_qwen_prod/rebuild_from_archived_raw_384_20260528_153529_KST",
+  "sample_id_alignment": true
+}

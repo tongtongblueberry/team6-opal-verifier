@@ -36,6 +36,9 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
     final_index = len(records) - 1
     return {
         "sample_id": sample_id,
+        # Changed: test candidates carry official instruction-stage provenance.
+        # Why: normalized candidates must trace back to machine_generated_instructions and classification detection artifacts.
+        "source_instruction_id": "self-instruct-instruction-00000",
         "instruction": "Judge only the final response.",
         "records": records,
         "label": label,
@@ -49,6 +52,13 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "reason": "The final response determines the label.",
         },
         "spec_grounding": _spec_grounding(),
+        "generation_provenance": {
+            "source_instruction_id": "self-instruct-instruction-00000",
+            "classification_detection_id": "self-instruct-clf-00000",
+            "official_instruction_artifact": "machine_generated_instructions.jsonl",
+            "official_classification_artifact": "is_clf_or_not_audited_noop.jsonl",
+            "official_instance_artifact": "machine_generated_instances.jsonl",
+        },
         "source": "self_instruct_candidate",
     }
 
@@ -71,7 +81,8 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
         self.assertEqual("pass", normalized["label"])
         self.assertEqual("final_response", normalized["label_target"])
         self.assertEqual(1, normalized["target"]["final_response_index"])
-        self.assertEqual(candidate["records"][1]["output"], normalized["target"]["final_response"])
+        self.assertEqual({"status_codes": ["SUCCESS"], "return_values": [{"3": "value"}]}, normalized["target"]["final_response"])
+        self.assertEqual(["SUCCESS"], normalized["records"][1]["output"]["status_codes"])
         self.assertEqual(1, normalized["primary_evidence"]["record_index"])
         self.assertEqual("RULE 01", normalized["spec_grounding"][0]["rule_ref"])
 
@@ -83,6 +94,7 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
         final_response = records[-1]["output"]
         candidate = {
             "candidate_id": "candidate-fail",
+            "source_instruction_id": "self-instruct-instruction-00000",
             "instruction": "Judge the last response only.",
             "trajectory": {"records": records},
             "label": "Fail",
@@ -93,13 +105,18 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
             },
             "primary_evidence": {"record_index": 1, "reason": "The final Set response fails."},
             "spec_grounding": _spec_grounding(),
+            "generation_provenance": {
+                "source_instruction_id": "self-instruct-instruction-00000",
+                "classification_detection_id": "self-instruct-clf-00000",
+            },
         }
 
         normalized = schema.normalize_candidate(candidate)
 
         self.assertEqual("candidate-fail", normalized["sample_id"])
         self.assertEqual("fail", normalized["label"])
-        self.assertEqual(final_response, normalized["target"]["final_response"])
+        self.assertEqual({"status_codes": ["FAIL"], "return_values": []}, normalized["target"]["final_response"])
+        self.assertEqual(["FAIL"], normalized["records"][-1]["output"]["status_codes"])
         self.assertEqual("The final Set response fails.", normalized["primary_evidence"]["reason"])
 
     def test_rejects_bad_final_label(self) -> None:
@@ -127,6 +144,14 @@ class SelfInstructCandidateSchemaTests(unittest.TestCase):
         candidate.pop("spec_grounding")
 
         with self.assertRaisesRegex(schema.CandidateSchemaError, "spec_grounding_missing"):
+            schema.normalize_candidate(candidate)
+
+    def test_rejects_missing_source_instruction_id_with_migration_message(self) -> None:
+        candidate = _candidate("missing-source-instruction", "pass", [_record("Get", "SUCCESS")])
+        candidate.pop("source_instruction_id")
+        candidate.pop("generation_provenance")
+
+        with self.assertRaisesRegex(schema.CandidateSchemaError, "source_instruction_id_missing"):
             schema.normalize_candidate(candidate)
 
     def test_cli_writes_normalized_jsonl_and_profile_json(self) -> None:

@@ -1,0 +1,3706 @@
+{
+  "accepted_label_distribution": {
+    "fail": 20,
+    "pass": 20
+  },
+  "artifact_note": "이 입력은 generated synthetic candidate pool이며 state-transition audit decision을 채워야 한다.",
+  "audit_targets": [
+    {
+      "final_method": "StartSession",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 28,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "StartSession",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 20,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00027"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 39,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 27,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 28,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 29,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 30,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 31,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 32,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 33,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 34,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 35,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 36,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 37,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 38,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 39,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00038"
+    },
+    {
+      "final_method": "Activate",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 19,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Activate",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 16,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00018"
+    },
+    {
+      "final_method": "Activate",
+      "final_status": "FAIL",
+      "label": "fail",
+      "line_number": 30,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Activate",
+          "status": "FAIL"
+        }
+      ],
+      "record_count": 20,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00029"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 5,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00004"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 22,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 17,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00021"
+    },
+    {
+      "final_method": "Revert",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 21,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "Revert",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 17,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00020"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_FROZEN",
+      "label": "fail",
+      "line_number": 8,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SP_FROZEN"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00007"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 35,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "Properties",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 25,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00034"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 24,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 18,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00023"
+    },
+    {
+      "final_method": "Next",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 37,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 27,
+          "method": "Next",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 28,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00036"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 16,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 15,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00015"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 15,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 15,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00014"
+    },
+    {
+      "final_method": "Random",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 38,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 27,
+          "method": "Random",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 28,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00037"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 31,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Properties",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 22,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00030"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 14,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 13,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00013"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 33,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Properties",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 24,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00032"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 40,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 27,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 28,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 29,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 30,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 31,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 32,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 33,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 34,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 35,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 36,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 37,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 38,
+          "method": "Get",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 39,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00039"
+    },
+    {
+      "final_method": "Authenticate",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 13,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 13,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00012"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "fail",
+      "line_number": 4,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 3,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00003"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 27,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 20,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00026"
+    },
+    {
+      "final_method": "Activate",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "fail",
+      "line_number": 32,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Activate",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 22,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00031"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 25,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 19,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00024"
+    },
+    {
+      "final_method": "RevertSP",
+      "final_status": "FAIL",
+      "label": "fail",
+      "line_number": 34,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "RevertSP",
+          "status": "FAIL"
+        }
+      ],
+      "record_count": 24,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00033"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 29,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 20,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00028"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "fail",
+      "line_number": 18,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 16,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00017"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 7,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00006"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 36,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 25,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00035"
+    },
+    {
+      "final_method": "Authenticate",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 11,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 11,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00010"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NO_SESSIONS_AVAILABLE",
+      "label": "fail",
+      "line_number": 10,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "NO_SESSIONS_AVAILABLE"
+        }
+      ],
+      "record_count": 9,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00009"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 23,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 18,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00022"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_BUSY",
+      "label": "fail",
+      "line_number": 6,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SP_BUSY"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00005"
+    },
+    {
+      "final_method": "Activate",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 17,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Activate",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 16,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00016"
+    },
+    {
+      "final_method": "Authenticate",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 26,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "Authenticate",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 19,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00025"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 9,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Set",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 9,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00008"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "fail",
+      "line_number": 2,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Set",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 1,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00001"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 3,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 3,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00002"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 20,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 16,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00019"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 1,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Properties",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 1,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00000"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 12,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "StartSession",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 11,
+      "sample_id": "codex-agent-fallback-targeted-schedule-00011"
+    }
+  ],
+  "generated_at_kst": "2026-05-27T20:43:10+09:00",
+  "hard_invariant_fail_count": 0,
+  "hard_invariant_pass_count": 40,
+  "input": "runs/self_instruct/targeted_schedule_20260527_192440_KST/judge_accepted.codex_agent_fallback.jsonl",
+  "invariant_failures": [],
+  "sample_label_distribution": {
+    "fail": 20,
+    "pass": 20
+  },
+  "sample_md_policy": "create-only-after-gate-a-b-c-pass",
+  "sample_size_actual": 40,
+  "sample_size_requested": 200,
+  "schema_version": "self_instruct.gate_a_quality_audit.v1",
+  "seed": 20260527,
+  "status": "pending-qualitative-state-transition-audit",
+  "total_candidates": 40,
+  "training_use": "pending-gate-a-human-or-llm-judge-review"
+}

@@ -1,0 +1,18 @@
+{
+  "accepted_count": 52,
+  "input": "runs/self_instruct/server_qwen_prod/current_raw_check/parsed_candidates.qwen_local.jsonl",
+  "near_duplicate_mode": "domain_text",
+  "near_duplicate_mode_default": "domain_text",
+  "public20_reference": "data/local/public20/public20_input.jsonl",
+  "reject_filter_stage_counts": {
+    "domain_adapted_rouge_l": 2,
+    "trajectory_level_duplicate": 1
+  },
+  "reject_reason_counts": {
+    "exact_duplicate": 1,
+    "near_duplicate_domain_text": 2
+  },
+  "rejected_count": 3,
+  "rouge_l_threshold": 0.7,
+  "schema_version": "self_instruct.candidate_dedup.v1"
+}

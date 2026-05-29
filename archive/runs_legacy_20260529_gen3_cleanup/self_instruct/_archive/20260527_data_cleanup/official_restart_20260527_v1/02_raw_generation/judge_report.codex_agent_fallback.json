@@ -1,0 +1,12 @@
+{
+  "accepted_count": 11,
+  "candidates_input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/dedup_candidates.codex_agent_fallback.jsonl",
+  "decision_count": 12,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "reject_reason_counts": {
+    "judge_decision_reject": 1
+  },
+  "rejected_count": 1,
+  "request_count": 12,
+  "schema_version": "self_instruct.judge_filter_report.v1"
+}

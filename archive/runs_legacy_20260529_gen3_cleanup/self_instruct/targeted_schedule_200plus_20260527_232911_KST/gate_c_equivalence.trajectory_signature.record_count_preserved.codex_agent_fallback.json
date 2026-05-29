@@ -1,0 +1,955 @@
+{
+  "candidate_count": 25,
+  "candidates_jsonl": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/gate_a_accepted.normalized.trajectory_signature.codex_agent_fallback.jsonl",
+  "issue_counts": {},
+  "issues": [],
+  "manifest_count": 25,
+  "manifest_jsonl": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/manifest.trajectory_signature.record_count_preserved.codex_agent_fallback.jsonl",
+  "matched_count": 25,
+  "normalized_candidate_count": 25,
+  "overall_pass": true,
+  "row_reports": [
+    {
+      "candidate_record_count": 1,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "6be807cab142c6094931f4b18c1d6a25ec6cc1a50c6a2c4b3bb0c4fd45cce036",
+        "input_hash_no_label": "53d273fc989a8cfad84de1698b9dd54fba56b9f60def5db6cb89cc110b116963",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 1705,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "6be807cab142c6094931f4b18c1d6a25ec6cc1a50c6a2c4b3bb0c4fd45cce036",
+        "input_hash_no_label": "53d273fc989a8cfad84de1698b9dd54fba56b9f60def5db6cb89cc110b116963",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00000",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 1,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "696bb7de7ea53a3656296cb799e3fb1d19bde8724de61be14503bf0f7d99c55f",
+        "input_hash_no_label": "e7670af67af68b68129ce4de4f47b683335841b38fcb55e23b8f902bc304f7d7",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 1707,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "696bb7de7ea53a3656296cb799e3fb1d19bde8724de61be14503bf0f7d99c55f",
+        "input_hash_no_label": "e7670af67af68b68129ce4de4f47b683335841b38fcb55e23b8f902bc304f7d7",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00001",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 3,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "9b4db6a841e6f0d3310a13874640830afa41e07ebc6c3b98b5cd7ef0f16d4700",
+        "input_hash_no_label": "632d868cfeb80198ad2e6fc7ffdc5714484ec496a24ecbf0dc2f8aecb1662055",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 2628,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "9b4db6a841e6f0d3310a13874640830afa41e07ebc6c3b98b5cd7ef0f16d4700",
+        "input_hash_no_label": "632d868cfeb80198ad2e6fc7ffdc5714484ec496a24ecbf0dc2f8aecb1662055",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00002",
+      "split": "hidden",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 3,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "cfad6ea404fc7a01a2d16da87c5013dc2879b8d5f130680bd969c5a944646dc6",
+        "input_hash_no_label": "f9cb6d0ea062a294d19fa4ec3fa0f40986b77ee4da4543e586bbf71fb08a6c55",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 2681,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "cfad6ea404fc7a01a2d16da87c5013dc2879b8d5f130680bd969c5a944646dc6",
+        "input_hash_no_label": "f9cb6d0ea062a294d19fa4ec3fa0f40986b77ee4da4543e586bbf71fb08a6c55",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00003",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 5,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "88af63df3d1f5166c84324e808efa0687b9696918813f7f3f98441b7f3c2a489",
+        "input_hash_no_label": "c1125ca507652b105b76ed5467a92052981598e55f646c13d5188f74c36a7b31",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 3569,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "88af63df3d1f5166c84324e808efa0687b9696918813f7f3f98441b7f3c2a489",
+        "input_hash_no_label": "c1125ca507652b105b76ed5467a92052981598e55f646c13d5188f74c36a7b31",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00004",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 5,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "cdf5337702bb541a00f6d7aa6efb04b2d55e7d3b9248116788d05faa7eac3638",
+        "input_hash_no_label": "b4bc408e6a4854199bfa3620348e7053da797e53fc6d1d70960ebbc07c50cf36",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 3588,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "cdf5337702bb541a00f6d7aa6efb04b2d55e7d3b9248116788d05faa7eac3638",
+        "input_hash_no_label": "b4bc408e6a4854199bfa3620348e7053da797e53fc6d1d70960ebbc07c50cf36",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00005",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 7,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "004c5e26114c81962611306b48e3976fb28dabd36896f95cd50b473e19c58a6b",
+        "input_hash_no_label": "79e1d681586fdb59e370f87e938e608e1c172945920e5c2f99c36b3f1ea624c3",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 4523,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "004c5e26114c81962611306b48e3976fb28dabd36896f95cd50b473e19c58a6b",
+        "input_hash_no_label": "79e1d681586fdb59e370f87e938e608e1c172945920e5c2f99c36b3f1ea624c3",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00006",
+      "split": "hidden",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 7,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "99f567b2debd1609b735dbafa8b37aded4a6541459c79820d5d9cb36c0871576",
+        "input_hash_no_label": "4cb5579934b57cb6802e53b2c5da327e54508ae3db27cd7956d09a6dbdc3917a",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 4542,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "99f567b2debd1609b735dbafa8b37aded4a6541459c79820d5d9cb36c0871576",
+        "input_hash_no_label": "4cb5579934b57cb6802e53b2c5da327e54508ae3db27cd7956d09a6dbdc3917a",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00007",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 9,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "a90947f2a327035f94d945c02cd7501ed436f36fe1133dc8c9edf20adfc6e8ae",
+        "input_hash_no_label": "9557dd8bdd8a9cb7716670f90fd030cebffbff6a0b6e8e281f6e4b0c23320688",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 5485,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "a90947f2a327035f94d945c02cd7501ed436f36fe1133dc8c9edf20adfc6e8ae",
+        "input_hash_no_label": "9557dd8bdd8a9cb7716670f90fd030cebffbff6a0b6e8e281f6e4b0c23320688",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00008",
+      "split": "hidden",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 9,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "04fbf9ad2cda6a383b77b2d981a93728e11f819f8d21b8fcbca493f12e9b3427",
+        "input_hash_no_label": "094551f67fb57fc5cc18023fde9d881858897dda4578187586e35b9b1cecf123",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 5516,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "04fbf9ad2cda6a383b77b2d981a93728e11f819f8d21b8fcbca493f12e9b3427",
+        "input_hash_no_label": "094551f67fb57fc5cc18023fde9d881858897dda4578187586e35b9b1cecf123",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00009",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 11,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "192cf241a2e9834e9d1184d4db5ada0355d95a1d5419fdc7d91826b6863cb8d2",
+        "input_hash_no_label": "c5e121b094dda82718537819996b491abd5cf36d2ed92d161a5439dfa3ac4252",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 6433,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "192cf241a2e9834e9d1184d4db5ada0355d95a1d5419fdc7d91826b6863cb8d2",
+        "input_hash_no_label": "c5e121b094dda82718537819996b491abd5cf36d2ed92d161a5439dfa3ac4252",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00010",
+      "split": "calibration",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 11,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "e34f8ef9bf467ff6b27b66edfd3909f717192c1fce470bd78ad690736a7baa51",
+        "input_hash_no_label": "e62abdbcdd8dc706f6e8a88f5f23ab031d31d0dd108c5057362614770c9143b4",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 6454,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "e34f8ef9bf467ff6b27b66edfd3909f717192c1fce470bd78ad690736a7baa51",
+        "input_hash_no_label": "e62abdbcdd8dc706f6e8a88f5f23ab031d31d0dd108c5057362614770c9143b4",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00011",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 13,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "2e4977d4e615807202413cf72e78482b504cf30bb786ea062cd93a246d3509cb",
+        "input_hash_no_label": "24a76c9fb9d9830b427fbe08fd0685027ed0c3f96848ed87e830f27070f8bd71",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 7375,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "2e4977d4e615807202413cf72e78482b504cf30bb786ea062cd93a246d3509cb",
+        "input_hash_no_label": "24a76c9fb9d9830b427fbe08fd0685027ed0c3f96848ed87e830f27070f8bd71",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00012",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 13,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "3def2f6578b563a4131c3b641be742e9984adf33491968a4b8d9a09b95154aff",
+        "input_hash_no_label": "24d13fef5da08117a0c24b6e48abc89b8c87382b181eb8e1417a486a2131572b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 7398,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "3def2f6578b563a4131c3b641be742e9984adf33491968a4b8d9a09b95154aff",
+        "input_hash_no_label": "24d13fef5da08117a0c24b6e48abc89b8c87382b181eb8e1417a486a2131572b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00013",
+      "split": "calibration",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 15,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "f0438b16f9fd39347f8dd528684ad6b96ca89a05e633e59ee8068fd98ccc13d6",
+        "input_hash_no_label": "051101730a323dd7b0d9a0139e6deb94f22fc372fade01fe55912ed05001777e",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 8317,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "f0438b16f9fd39347f8dd528684ad6b96ca89a05e633e59ee8068fd98ccc13d6",
+        "input_hash_no_label": "051101730a323dd7b0d9a0139e6deb94f22fc372fade01fe55912ed05001777e",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00014",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 15,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "3c212a7c9e147817c9e30efe7098079e8c55053076d39a2a93969ced1b116af5",
+        "input_hash_no_label": "99b445df66f35eec0e3c4ddc65f23470c406a11816bb892743ea2d42d55be8f1",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 8320,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "3c212a7c9e147817c9e30efe7098079e8c55053076d39a2a93969ced1b116af5",
+        "input_hash_no_label": "99b445df66f35eec0e3c4ddc65f23470c406a11816bb892743ea2d42d55be8f1",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00015",
+      "split": "hidden",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 16,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "ed9e727fff9be5832e63248aeb045190d66a75e780d9eefc39ca62854b0b4de2",
+        "input_hash_no_label": "12deadbbe72459947b406d7134d65c5e6019f601da2fda4c25f3dd37544804ab",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 8802,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "ed9e727fff9be5832e63248aeb045190d66a75e780d9eefc39ca62854b0b4de2",
+        "input_hash_no_label": "12deadbbe72459947b406d7134d65c5e6019f601da2fda4c25f3dd37544804ab",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00016",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 16,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "383fa01abea3e645457910a91cd14e22a29e49e08629dd7b8bc113e717863bf7",
+        "input_hash_no_label": "a40e5f308303e5737b51cfaf965373e30697c9bc928308c4a6d2ce95f48bc73b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 8797,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "383fa01abea3e645457910a91cd14e22a29e49e08629dd7b8bc113e717863bf7",
+        "input_hash_no_label": "a40e5f308303e5737b51cfaf965373e30697c9bc928308c4a6d2ce95f48bc73b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00017",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 16,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "1078afc44f1d844e237f7edb91e9f9f02fbbe32a68a63cac9ac83d175940cb48",
+        "input_hash_no_label": "acc02a9ed167cd398ad9fce450fc6bf6d1e9c20361c38c938e436db6800d4e7b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 8819,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "1078afc44f1d844e237f7edb91e9f9f02fbbe32a68a63cac9ac83d175940cb48",
+        "input_hash_no_label": "acc02a9ed167cd398ad9fce450fc6bf6d1e9c20361c38c938e436db6800d4e7b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00019",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 20,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "5f1dafb444983ddb44fa33ea31dc20f404ad69730f03c6a8c1747177e940819e",
+        "input_hash_no_label": "e604a5aad557dee98111e47d4893a0ddd5d53382410941ab1553efe5e3c9e5cd",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 11840,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "5f1dafb444983ddb44fa33ea31dc20f404ad69730f03c6a8c1747177e940819e",
+        "input_hash_no_label": "e604a5aad557dee98111e47d4893a0ddd5d53382410941ab1553efe5e3c9e5cd",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00028",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 22,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "f7fc9f49e89dee5a8a3fee64aade9884a328caad41bea6246d7fdcd33142c171",
+        "input_hash_no_label": "2bf9f05f5f16bb555a1596d4d99ac29dbcb02a63b8fe1109ffae8b7dd35b929e",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 12802,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "f7fc9f49e89dee5a8a3fee64aade9884a328caad41bea6246d7fdcd33142c171",
+        "input_hash_no_label": "2bf9f05f5f16bb555a1596d4d99ac29dbcb02a63b8fe1109ffae8b7dd35b929e",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00030",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 22,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "f88bb115c5f5ca94dc8ff3d3c5ef7940d81aa04fe41030afb88f2a9c0ae748f3",
+        "input_hash_no_label": "ea1aaf3b8e3e18e353409c5eff5dbf462aa4657041017292a3006641f979861b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 12795,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "f88bb115c5f5ca94dc8ff3d3c5ef7940d81aa04fe41030afb88f2a9c0ae748f3",
+        "input_hash_no_label": "ea1aaf3b8e3e18e353409c5eff5dbf462aa4657041017292a3006641f979861b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00031",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 24,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "8119762c743eaa6135d204edb0be33f0ae00a01bc7d2b9ff39809ae781baba48",
+        "input_hash_no_label": "c3c5ea1c57f5b58372b0c44430233e282119149fc8a10a43a4018d8dd42756cd",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 13731,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "8119762c743eaa6135d204edb0be33f0ae00a01bc7d2b9ff39809ae781baba48",
+        "input_hash_no_label": "c3c5ea1c57f5b58372b0c44430233e282119149fc8a10a43a4018d8dd42756cd",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00033",
+      "split": "hidden",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 39,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "4fa2bb74620adadbf631f3bcfc15360dbfb677acb818538386eafed5eb18734a",
+        "input_hash_no_label": "fa6b2a2b93e39df6d6589722e08c873aca7d4037d9fb61c0edae8d4730a6b545",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 20851,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "4fa2bb74620adadbf631f3bcfc15360dbfb677acb818538386eafed5eb18734a",
+        "input_hash_no_label": "fa6b2a2b93e39df6d6589722e08c873aca7d4037d9fb61c0edae8d4730a6b545",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00038",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 39,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "ea066f19c6f9fa0aa91c9c374c70cd8d4186445cc3b0c9505c86ab0fa8a44300",
+        "input_hash_no_label": "559097f71778b3fdbeb722c2f8a22f70059365f92df6165a8183206e488077b2",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 20856,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "ea066f19c6f9fa0aa91c9c374c70cd8d4186445cc3b0c9505c86ab0fa8a44300",
+        "input_hash_no_label": "559097f71778b3fdbeb722c2f8a22f70059365f92df6165a8183206e488077b2",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00039",
+      "split": "train",
+      "warnings": []
+    }
+  ],
+  "schema_version": "gate_c_manifest_model_input_equivalence.v1",
+  "trainer_loader": {
+    "loaded": true,
+    "loader": "tools.training.train_manifest_lora.load_manifest",
+    "loader_sample_ids": [
+      "codex-agent-fallback-targeted-schedule-200plus-00000",
+      "codex-agent-fallback-targeted-schedule-200plus-00001",
+      "codex-agent-fallback-targeted-schedule-200plus-00003",
+      "codex-agent-fallback-targeted-schedule-200plus-00004",
+      "codex-agent-fallback-targeted-schedule-200plus-00005",
+      "codex-agent-fallback-targeted-schedule-200plus-00007",
+      "codex-agent-fallback-targeted-schedule-200plus-00009",
+      "codex-agent-fallback-targeted-schedule-200plus-00011",
+      "codex-agent-fallback-targeted-schedule-200plus-00012",
+      "codex-agent-fallback-targeted-schedule-200plus-00014",
+      "codex-agent-fallback-targeted-schedule-200plus-00016",
+      "codex-agent-fallback-targeted-schedule-200plus-00017",
+      "codex-agent-fallback-targeted-schedule-200plus-00019",
+      "codex-agent-fallback-targeted-schedule-200plus-00028",
+      "codex-agent-fallback-targeted-schedule-200plus-00030",
+      "codex-agent-fallback-targeted-schedule-200plus-00031",
+      "codex-agent-fallback-targeted-schedule-200plus-00038",
+      "codex-agent-fallback-targeted-schedule-200plus-00039"
+    ],
+    "row_count_match": true,
+    "rows": [
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 1,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00000"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 2,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00001"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 4,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00003"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 5,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00004"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 6,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00005"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 8,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00007"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 10,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00009"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 12,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00011"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 13,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00012"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 15,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00014"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 17,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00016"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 18,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00017"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 19,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00019"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 20,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00028"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 21,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00030"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 22,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00031"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 24,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00038"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 25,
+        "sample_id": "codex-agent-fallback-targeted-schedule-200plus-00039"
+      }
+    ],
+    "sample_id_set_match": true,
+    "summary": {
+      "label_counts": {
+        "fail": 13,
+        "pass": 12
+      },
+      "manifest_path": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/manifest.trajectory_signature.record_count_preserved.codex_agent_fallback.jsonl",
+      "skipped_non_train_rows": 7,
+      "source_counts_top20": {
+        "self_instruct_output_first_codex_agent_fallback_200plus": 25
+      },
+      "split_counts": {
+        "calibration": 2,
+        "hidden": 5,
+        "train": 18
+      },
+      "total_rows": 25,
+      "train_label_counts": {
+        "fail": 10,
+        "pass": 8
+      },
+      "train_rows": 18
+    },
+    "train_manifest_sample_ids": [
+      "codex-agent-fallback-targeted-schedule-200plus-00000",
+      "codex-agent-fallback-targeted-schedule-200plus-00001",
+      "codex-agent-fallback-targeted-schedule-200plus-00003",
+      "codex-agent-fallback-targeted-schedule-200plus-00004",
+      "codex-agent-fallback-targeted-schedule-200plus-00005",
+      "codex-agent-fallback-targeted-schedule-200plus-00007",
+      "codex-agent-fallback-targeted-schedule-200plus-00009",
+      "codex-agent-fallback-targeted-schedule-200plus-00011",
+      "codex-agent-fallback-targeted-schedule-200plus-00012",
+      "codex-agent-fallback-targeted-schedule-200plus-00014",
+      "codex-agent-fallback-targeted-schedule-200plus-00016",
+      "codex-agent-fallback-targeted-schedule-200plus-00017",
+      "codex-agent-fallback-targeted-schedule-200plus-00019",
+      "codex-agent-fallback-targeted-schedule-200plus-00028",
+      "codex-agent-fallback-targeted-schedule-200plus-00030",
+      "codex-agent-fallback-targeted-schedule-200plus-00031",
+      "codex-agent-fallback-targeted-schedule-200plus-00038",
+      "codex-agent-fallback-targeted-schedule-200plus-00039"
+    ],
+    "warnings": [
+      {
+        "detail": "Gate C checks trainer build_messages only. eval/submission solver prompt renderers are not imported here.",
+        "reason": "prompt_renderer_scope"
+      },
+      {
+        "detail": "No tokenizer/model is loaded in this tool; heavy first-forward smoke belongs to package/runtime gates.",
+        "reason": "first_forward_not_executed"
+      }
+    ]
+  },
+  "warnings": [
+    {
+      "detail": "trainer/eval manifest paths should use raw manifest input; submission solver prompt format must be audited separately without importing runtime solver here.",
+      "reason": "eval_solver_prompt_mismatch_possible"
+    }
+  ]
+}

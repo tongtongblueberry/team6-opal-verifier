@@ -1,0 +1,12 @@
+{
+  "accepted_count": 0,
+  "input": "runs/self_instruct/server_qwen_prod_gen2/current_raw_check/raw_outputs.qwen_local.jsonl",
+  "official_counterpart": "prepare_for_finetuning.py outputs",
+  "official_stage": "candidate_preparation",
+  "prepared_candidate_artifact_schema_version": "self_instruct.prepare_for_finetuning_candidate.v1",
+  "reject_reason_counts": {
+    "instruction_not_fixed": 200
+  },
+  "rejected_count": 200,
+  "schema_version": "self_instruct.raw_output_parser.v1"
+}

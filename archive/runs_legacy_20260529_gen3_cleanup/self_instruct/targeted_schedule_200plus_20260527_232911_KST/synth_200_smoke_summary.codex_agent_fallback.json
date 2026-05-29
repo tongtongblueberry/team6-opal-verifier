@@ -1,0 +1,113 @@
+{
+  "blockers": [
+    "provider-backed generation missing env key; no provider raw output exists",
+    "dedup collapsed 200 fallback candidates to 25 due near_duplicate_trajectory_signature",
+    "Gate B has record_count_mean_difference after dedup: generated mean 13.68 vs public20 16.4",
+    "manifest validation failed length_jsd 0.4356 > 0.08",
+    "Gate D/package/training not run because upstream gates failed and provenance is fallback-only"
+  ],
+  "changed": "Summarize SYNTH-200 target-controlled request artifacts and codex_agent_fallback 200-row smoke gate wiring.",
+  "counts": {
+    "dedup_accepted": 25,
+    "dedup_mode": "trajectory_signature",
+    "dedup_rejected": 175,
+    "fallback_generated_candidates": 200,
+    "fallback_raw_wrapper_rows": 50,
+    "gate_a_accepted": 25,
+    "gate_a_rejected": 0,
+    "gate_c_matched": 25,
+    "generation_requests": 50,
+    "judge_accepted": 25,
+    "judge_rejected": 0,
+    "manifest_rows": 25,
+    "parsed_accepted": 200,
+    "parsed_rejected": 0,
+    "provider_raw_wrapper_rows": 0,
+    "targets": 200
+  },
+  "created_at_kst": "2026-05-27T23:42:20+09:00",
+  "distributions": {
+    "fallback_raw_label_counts": {
+      "fail": 100,
+      "pass": 100
+    },
+    "gate_a_label_counts": {
+      "fail": 13,
+      "pass": 12
+    },
+    "manifest_label_counts": {
+      "fail": 13,
+      "pass": 12
+    },
+    "manifest_length_bins": {
+      "1-32": 19,
+      "33-64": 6
+    },
+    "manifest_record_count_stats": {
+      "count": 25,
+      "max": 39,
+      "mean": 13.68,
+      "median": 13.0,
+      "min": 1
+    },
+    "manifest_split_counts": {
+      "calibration": 2,
+      "hidden": 5,
+      "train": 18
+    },
+    "target_label_counts": {
+      "fail": 100,
+      "pass": 100
+    }
+  },
+  "final_manifest": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/manifest.trajectory_signature.record_count_preserved.codex_agent_fallback.jsonl",
+  "final_manifest_usable_for_training": false,
+  "gate_status": {
+    "gate_b_no_go_warnings": [
+      {
+        "code": "record_count_mean_difference",
+        "details": {
+          "absolute_difference": 2.719999999999999,
+          "generated_mean": 13.68,
+          "generated_minus_public": -2.719999999999999,
+          "public_mean": 16.4
+        },
+        "message": "public20와 generated의 평균 record_count가 다르므로 Gate B에서 질적 검토가 필요하다.",
+        "severity": "no_go_warning"
+      }
+    ],
+    "gate_c_overall_pass": true,
+    "gate_d_package_training_status": "no_go_not_run",
+    "manifest_build_failed_gate": "length_balance_jsd_lte_target",
+    "manifest_build_overall_gate_passed": false,
+    "manifest_validation_failed_gate": "length_jsd_lte_threshold",
+    "manifest_validation_overall_gate_passed": false
+  },
+  "package_eligible": false,
+  "provider_status": {
+    "blocker": "GEMINI_API_KEY missing; GOOGLE_API_KEY/OPENAI_API_KEY also absent in local env check",
+    "executed_count": 0,
+    "failed_count": 0,
+    "provider_requested": "gemini",
+    "request_count": 50,
+    "skipped_count": 50,
+    "status": "skipped_missing_env"
+  },
+  "run_root": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST",
+  "sample_eligible": false,
+  "schema_version": "self_instruct.synth_200_smoke_summary.v1",
+  "shrinkage_explanation": {
+    "dedup_accepted": 25,
+    "dedup_reject_reason_counts": {
+      "near_duplicate_trajectory_signature": 175
+    },
+    "length_balance_reason": "target_not_reached_within_constraints",
+    "length_jsd": 0.4356,
+    "length_target_jsd": 0.08,
+    "raw_candidates": 200,
+    "record_count_mean_after_dedup": 13.68,
+    "record_count_preservation_reason": "no_length_valid_record_count_candidate",
+    "reference_record_count_mean": 16.4
+  },
+  "why": "Provider-backed generation is blocked by missing env keys; fallback smoke can verify pipeline wiring but cannot establish accepted synthetic data eligibility."
+}

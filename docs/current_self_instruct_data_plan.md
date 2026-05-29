@@ -3,6 +3,22 @@
 
 # Current Self-Instruct Data Plan
 
+<!-- Changed: record the latest gen3.1 execution outcome before the design spec. -->
+<!-- Why: this plan is no longer just dry-run design; the latest real Qwen run was stopped with low accepted yield and no canonical training data. -->
+
+Current execution status as of `2026-05-29 14:13:39 KST`:
+
+- gen3.1 Qwen Self-Instruct server run
+  `runs/self_instruct/qwen_local_200_auth_statecheck_gen31_batch4_20260529_132800_KST`
+  was stopped at server raw `72/1000`.
+- Former server PIDs `120144` and `120148` are stopped; GPU after stop was `0 %, 0 MiB / 46068 MiB`.
+- Local watcher `qwen_incremental_watch_gen31` is stopped.
+- Local mirror counts: raw `72`, parse rejects `51`, parsed candidates `21`,
+  rule-book accepted `1`, rule-book rejected `20`.
+- `data/local/gen3_pending` has `1` monitoring row.
+- `data/local/gen3` has `0` canonical rows and must not be used for training.
+- Next data-generation attempt should not restart this pipeline unchanged. First separate model failures from gate/target failures through reject taxonomy/gate audit, or move OPAL record construction into deterministic skeleton/value generation.
+
 ## 목적과 비범위
 
 <!-- Changed: define the active replacement scope before code implementation. -->
@@ -918,20 +934,25 @@ leaderboard 제출은 다음이 모두 참일 때만 go다.
     manifest-loader compatibility를 JSON boolean으로 요구한다.
 15. `tools/eval/eval_manifest_full_model.py`로 full/selective FT standalone checkpoint를 `val` manifest에서 평가하는 도구를 구현했다. LoRA adapter evaluator를 사용하지 않고 full model path를 직접 로드한다.
 16. `tests/fixtures/self_instruct_gate_wiring/` mock raw/judge fixture와 `tests/test_self_instruct_gate_wiring_contract.py`를 추가해 raw→parser→judge와 Gate A/B/C command wiring을 검증한다. 이 fixture는 accepted synthetic data가 아니며 Gate pass 근거가 아니다.
+17. `tools/datagen/run_qwen_local_200_pipeline.sh`, `tools/datagen/watch_qwen_incremental_pull.sh`,
+    `tools/analysis/adversarial_rulebook_quality_gate.py`, and
+    `tools/datagen/export_self_instruct_gen_public_schema.py` were wired into the gen3/gen3.1 Qwen local run.
+    <!-- Changed: record the real gen3/gen3.1 run outcome. -->
+    <!-- Why: future work must not treat the stopped pending row as accepted training data. -->
+    gen3 stopped at raw `76/1000` with `0` accepted rows; gen3.1 stopped at raw `72/1000` with local pending accepted `1` row and canonical `data/local/gen3` `0` rows.
 
 <!-- Changed: make sample.md creation contingent on real Gate A/B/C/D pass archive. -->
 <!-- Why: mock fixture wiring tests must not publish synthetic accepted samples. -->
 
 다음 구현 순서:
 
-1. 외부 LLM runner가 `run_self_instruct_generation.py` request payload를 실행해 raw output JSONL을 만든다. API key/secret은 repo에 저장하지 않는다.
-   source-span 없는 raw output은 synthetic 후보가 아니라 reject 대상이다.
-2. `parse_self_instruct_outputs.py`, `dedup_self_instruct_candidates.py`, `filter_self_instruct_judge.py`를 순서대로 적용해 accepted candidate 후보를 만든다.
-3. Gate A qualitative sampling state-transition audit와 200-sample audit tool을 generated accepted data에 적용한다.
-4. Gate B comparison report를 generated candidate profile에 적용한다.
-5. generated manifest 후보가 생기면 Gate C 도구를 적용하고 report를 archive한다.
-6. Gate A/B/C 통과 뒤 synthetic `train`, `val`, `test`와 `public20_reference`를 물리적으로 분리한다.
-7. Gate A/B/C/D pass archive가 생긴 뒤에만 `docs/samples/self_instruct_sample.md` 작성 여부를 결정한다. 현재 mock fixture 검증 단계에서는 sample 생성이 no-go다.
-8. public20-only train/val validation runner를 작성한다.
-9. 모델 후보는 0.9B full FT, 0.9B full FT + retrieved rulebook/spec context, 4B LoRA/QLoRA selective FT, 4B LoRA/QLoRA + retrieved context, RAFT-style retrieval-augmented SFT/QLoRA를 public20 train/val로 비교한다.
-10. training code는 Gate A-C가 통과한 manifest가 생긴 뒤에만 연결한다.
+1. Do not restart gen3.1 unchanged.
+2. Build or run a reject taxonomy/gate audit that separates parse/schema errors, target schedule mismatch, true semantic invalidity, gate over-strictness, and gate bugs.
+3. If continuing synthetic generation, prefer deterministic OPAL skeleton/value generation for constrained fields instead of asking the LLM to mutate protocol values freely.
+4. Only after a canonical generated candidate set exists, apply Gate A qualitative sampling state-transition audit and the 200-sample audit tool.
+5. Apply Gate B comparison report to generated candidate profiles.
+6. When a generated manifest candidate exists, run Gate C and archive the report.
+7. Gate A/B/C 통과 뒤 synthetic `train`, `val`, `test`와 `public20_reference`를 물리적으로 분리한다.
+8. Gate A/B/C/D pass archive가 생긴 뒤에만 `docs/samples/self_instruct_sample.md` 작성 여부를 결정한다. 현재 gen3.1 pending 1 row는 sample 생성 근거가 아니다.
+9. public20-only train/val validation runner를 유지하되, generated pending rows를 섞지 않는다.
+10. training code는 Gate A-C가 통과한 canonical manifest가 생긴 뒤에만 연결한다.

@@ -1,0 +1,10 @@
+{
+  "accepted_count": 12,
+  "input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/raw_outputs.codex_agent_fallback.jsonl",
+  "official_counterpart": "prepare_for_finetuning.py outputs",
+  "official_stage": "candidate_preparation",
+  "prepared_candidate_artifact_schema_version": "self_instruct.prepare_for_finetuning_candidate.v1",
+  "reject_reason_counts": {},
+  "rejected_count": 0,
+  "schema_version": "self_instruct.raw_output_parser.v1"
+}

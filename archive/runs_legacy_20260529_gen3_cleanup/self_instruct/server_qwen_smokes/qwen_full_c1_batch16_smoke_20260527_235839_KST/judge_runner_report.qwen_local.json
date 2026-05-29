@@ -1,0 +1,13 @@
+{
+  "batch_size": 16,
+  "created_at_kst": "2026-05-28T09:11:11+09:00",
+  "errors": [],
+  "executed_count": 12,
+  "failed_count": 0,
+  "model_path": "/workspace/cache/hf_cache/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28",
+  "output_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/judge_raw_outputs.qwen_local.jsonl",
+  "provider": "hf_local",
+  "request_count": 12,
+  "schema_version": "self_instruct.judge_local_runner_report.v1",
+  "status": "completed"
+}

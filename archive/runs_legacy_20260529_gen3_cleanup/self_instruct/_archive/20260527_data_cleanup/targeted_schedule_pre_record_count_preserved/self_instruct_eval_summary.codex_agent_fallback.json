@@ -1,0 +1,241 @@
+{
+  "ablation_status": {
+    "accepted_pool_count": 40,
+    "blocked_sizes": [
+      200,
+      500,
+      1000,
+      2000,
+      4000
+    ],
+    "manifest_selected_count": 33,
+    "minimum_required_for_first_ablation": 200,
+    "minimum_required_for_full_ablation": 4000,
+    "planned_sizes": [
+      200,
+      500,
+      1000,
+      2000,
+      4000
+    ],
+    "status": "blocked_by_count"
+  },
+  "blockers": [
+    "codex_agent_fallback is not provider/Gemini raw generation",
+    "accepted fallback count 40 is below 200/500/1000/2000/4000 ablation sizes",
+    "manifest selected subset Gate B comparison still has record_count_mean_difference after length balancing",
+    "Gate D/package/training evaluation was not run by request and remains no-go"
+  ],
+  "created_artifacts": {
+    "dedup_report": "runs/self_instruct/targeted_schedule_20260527_192440_KST/dedup_report.codex_agent_fallback.json",
+    "gate_a_qualitative_report": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_a_qualitative_report.codex_agent_fallback.json",
+    "gate_a_report": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_a_report.codex_agent_fallback.json",
+    "gate_b_comparison": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_b_comparison.codex_agent_fallback.json",
+    "gate_c_equivalence": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_c_equivalence.codex_agent_fallback.json",
+    "judge_report": "runs/self_instruct/targeted_schedule_20260527_192440_KST/judge_report.codex_agent_fallback.json",
+    "manifest": "runs/self_instruct/targeted_schedule_20260527_192440_KST/manifest.codex_agent_fallback.jsonl",
+    "manifest_report": "runs/self_instruct/targeted_schedule_20260527_192440_KST/manifest_report.json",
+    "manifest_validation": "runs/self_instruct/targeted_schedule_20260527_192440_KST/manifest_validation.codex_agent_fallback.json",
+    "parse_report": "runs/self_instruct/targeted_schedule_20260527_192440_KST/parse_report.codex_agent_fallback.json",
+    "raw_output": "runs/self_instruct/targeted_schedule_20260527_192440_KST/raw_outputs.codex_agent_fallback.jsonl",
+    "target_coverage": "runs/self_instruct/targeted_schedule_20260527_192440_KST/target_coverage.codex_agent_fallback.json"
+  },
+  "filter_rates": {
+    "dedup": {
+      "accepted": 40,
+      "rejected": 0
+    },
+    "gate_a_qualitative": {
+      "accepted": 40,
+      "rejected": 0
+    },
+    "judge": {
+      "accepted": 40,
+      "rejected": 0
+    },
+    "manifest_length_balance": {
+      "dropped_record_count": 7,
+      "raw_records": 40,
+      "reason": "target_reached",
+      "selected_records": 33
+    },
+    "parse": {
+      "accepted": 40,
+      "rejected": 0
+    }
+  },
+  "gate_status": {
+    "dedup": {
+      "status": "pass"
+    },
+    "gate_a": {
+      "hard_invariant_fail": 0,
+      "hard_invariant_pass": 40,
+      "qualitative_status": "pass"
+    },
+    "gate_b_accepted_pool": {
+      "no_go_warning_codes": [],
+      "status": "pass"
+    },
+    "gate_b_manifest_selected_subset": {
+      "no_go_warning_codes": [
+        "record_count_mean_difference"
+      ],
+      "status": "no-go"
+    },
+    "gate_c": {
+      "issue_counts": {},
+      "status": "pass"
+    },
+    "gate_d": {
+      "reason": "No training/package/leaderboard evidence and no ablation reports; fallback provenance is not provider data.",
+      "status": "no-go"
+    },
+    "judge_filter": {
+      "accepted": 40,
+      "rejected": 0,
+      "status": "pass"
+    },
+    "manifest_build": {
+      "failed_gate_keys": [],
+      "selected_records": 33,
+      "status": "pass"
+    },
+    "manifest_validation": {
+      "failed_gate_keys": [],
+      "status": "pass"
+    },
+    "parse": {
+      "status": "pass"
+    }
+  },
+  "input_run_dir": "runs/self_instruct/targeted_schedule_20260527_192440_KST",
+  "label_distribution": {
+    "gate_a_accepted": {
+      "fail": 20,
+      "pass": 20
+    },
+    "manifest_selected": {
+      "fail": 16,
+      "pass": 17
+    },
+    "public20_local_eval_only": {
+      "fail": 10,
+      "pass": 10
+    }
+  },
+  "provider_note": "codex_agent_fallback only; not Gemini/provider data and not training-eligible by itself.",
+  "public20_dimension_deltas": {
+    "gate_a_accepted_pool": {
+      "final_return_value_count_mean_difference": {
+        "absolute_difference": 0.35,
+        "generated_mean": 0.6,
+        "generated_minus_public": -0.35,
+        "public_mean": 0.95
+      },
+      "input_json_chars_mean_difference": {
+        "absolute_difference": 11273.100000000002,
+        "generated_mean": 18184.4,
+        "generated_minus_public": 11273.100000000002,
+        "public_mean": 6911.3
+      },
+      "method_sequence_length_mean_difference": {
+        "absolute_difference": 0.0,
+        "generated_mean": 16.4,
+        "generated_minus_public": 0.0,
+        "public_mean": 16.4
+      },
+      "no_go_warning_codes": [],
+      "record_count_mean_difference": {
+        "absolute_difference": 0.0,
+        "generated_mean": 16.4,
+        "generated_minus_public": 0.0,
+        "public_mean": 16.4
+      },
+      "total_return_value_count_mean_difference": {
+        "absolute_difference": 4.650000000000002,
+        "generated_mean": 18.9,
+        "generated_minus_public": -4.650000000000002,
+        "public_mean": 23.55
+      }
+    },
+    "manifest_selected_subset": {
+      "input_json_chars_mean_difference": {
+        "absolute_difference": 8376.063636363637,
+        "generated_mean": 15287.363636363636,
+        "generated_minus_public": 8376.063636363637,
+        "public_mean": 6911.3
+      },
+      "manifest_validation_char_length_mean_ratio": 2.199783,
+      "manifest_validation_char_length_median_ratio": 2.573882,
+      "manifest_validation_length_jsd": 0.074814,
+      "method_sequence_length_mean_difference": {
+        "absolute_difference": 2.642424242424241,
+        "generated_mean": 13.757575757575758,
+        "generated_minus_public": -2.642424242424241,
+        "public_mean": 16.4
+      },
+      "no_go_warning_codes": [
+        "record_count_mean_difference"
+      ],
+      "record_count_mean_difference": {
+        "absolute_difference": 2.642424242424241,
+        "generated_mean": 13.757575757575758,
+        "generated_minus_public": -2.642424242424241,
+        "public_mean": 16.4
+      }
+    }
+  },
+  "quantity": {
+    "dedup_candidates": 40,
+    "gate_a_accepted_candidates": 40,
+    "judge_accepted_candidates": 40,
+    "manifest_selected_records": 33,
+    "parsed_candidates": 40,
+    "raw_candidate_count": 40,
+    "raw_wrapper_rows": 10,
+    "request_rows": 10
+  },
+  "record_count_stats": {
+    "gate_a_accepted": {
+      "max": 39,
+      "mean": 16.4,
+      "min": 1
+    },
+    "manifest_selected": {
+      "max": 28,
+      "mean": 13.757575757575758,
+      "min": 1
+    },
+    "public20_reference": {
+      "count": 20,
+      "max": 39,
+      "mean": 16.4,
+      "median": 16.0,
+      "min": 1
+    }
+  },
+  "sample_md_may_be_created": false,
+  "schema_version": "self_instruct.eval_summary.codex_agent_fallback.v1",
+  "target_schedule_confirmation": {
+    "all_targets_generated": true,
+    "label_counts": {
+      "fail": 20,
+      "pass": 20
+    },
+    "record_count_stats": {
+      "max": 39,
+      "mean": 16.4,
+      "min": 1
+    },
+    "target_contract_checks": {
+      "final_method_matches": true,
+      "final_status_matches": true,
+      "label_matches": true,
+      "record_count_matches": true,
+      "spec_rule_subset_matches": true
+    },
+    "target_count": 40
+  },
+  "training_eligibility": false
+}

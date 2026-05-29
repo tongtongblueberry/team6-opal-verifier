@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from tools.datagen.self_instruct_candidate_schema import (  # noqa: E402
     CandidateSchemaError,
+    FIXED_OPAL_VERIFIER_INSTRUCTION,
     build_profile_report,
     normalize_candidate,
     write_jsonl,
@@ -33,6 +34,7 @@ from tools.datagen.self_instruct_candidate_schema import (  # noqa: E402
 
 Json = Dict[str, Any]
 PARSER_SCHEMA_VERSION = "self_instruct.raw_output_parser.v1"
+PREPARED_CANDIDATE_ARTIFACT_SCHEMA_VERSION = "self_instruct.prepare_for_finetuning_candidate.v1"
 RAW_TEXT_KEYS = (
     "raw_output",
     "llm_output",
@@ -114,6 +116,96 @@ def _candidate_payloads_from_raw_row(row: Mapping[str, Any]) -> List[Mapping[str
     return _expand_payload(row)
 
 
+# Changed: carry request/instruction provenance from raw wrapper rows into candidate normalization.
+# Why: official instance-generation raw outputs must preserve their machine_generated_instructions and is_clf_or_not lineage.
+def _candidate_with_raw_provenance(candidate: Mapping[str, Any], raw_row: Mapping[str, Any], line_number: int) -> Json:
+    merged: Json = dict(candidate)
+    provenance = dict(merged.get("generation_provenance")) if isinstance(merged.get("generation_provenance"), Mapping) else {}
+    for raw_key, provenance_key in (
+        ("request_id", "raw_output_request_id"),
+        ("source_instruction_id", "source_instruction_id"),
+        ("classification_detection_id", "classification_detection_id"),
+    ):
+        value = raw_row.get(raw_key)
+        if isinstance(value, str) and value.strip() and provenance_key not in provenance and provenance_key not in merged:
+            provenance[provenance_key] = value.strip()
+    # Changed: provide an explicit legacy migration path for old raw wrappers that predate instruction artifacts.
+    # Why: backward-compatible parser tests may validate wiring, but migrated rows remain provenance-marked and are not accepted synthetic data.
+    if "source_instruction_id" not in provenance and "source_instruction_id" not in merged:
+        request_id = raw_row.get("request_id")
+        if isinstance(request_id, str) and request_id.strip():
+            provenance["source_instruction_id"] = f"legacy-migrated:{request_id.strip()}"
+            provenance["provenance_migration"] = "missing source_instruction_id in raw wrapper; set from request_id for parser compatibility only"
+    provenance.setdefault("official_instruction_artifact", "machine_generated_instructions.jsonl")
+    provenance.setdefault("official_classification_artifact", "is_clf_or_not_<engine>_<template>.jsonl")
+    provenance.setdefault("official_instance_artifact", "machine_generated_instances.jsonl")
+    provenance["parser_source_line"] = line_number
+    merged["generation_provenance"] = provenance
+    return merged
+
+
+# Changed: reject raw candidates that drift from the fixed instruction or encode empty/null instance inputs.
+# Why: this Opal task does not generate new instructions, and X_t,i must be a concrete trajectory record rather than a null/empty placeholder.
+def _null_paths(value: Any, prefix: Sequence[str]) -> List[str]:
+    if value is None:
+        return [".".join(prefix)]
+    if isinstance(value, Mapping):
+        paths: List[str] = []
+        for key, item in value.items():
+            paths.extend(_null_paths(item, [*prefix, str(key)]))
+        return paths
+    if isinstance(value, list):
+        paths = []
+        for index, item in enumerate(value):
+            paths.extend(_null_paths(item, [*prefix, str(index)]))
+        return paths
+    return []
+
+
+def _records_for_quality_gate(candidate: Mapping[str, Any]) -> Any:
+    records = candidate.get("records")
+    if records is None and isinstance(candidate.get("trajectory"), Mapping):
+        records = candidate["trajectory"].get("records")
+    return records
+
+
+def _validate_fixed_instruction_and_inputs(candidate: Mapping[str, Any]) -> None:
+    instruction = candidate.get("instruction") or candidate.get("task_instruction")
+    if not isinstance(instruction, str) or instruction.strip() != FIXED_OPAL_VERIFIER_INSTRUCTION:
+        raise CandidateSchemaError("instruction_not_fixed")
+
+    records = _records_for_quality_gate(candidate)
+    if not isinstance(records, Sequence) or isinstance(records, (bytes, bytearray, str)):
+        return
+
+    for index, record in enumerate(records):
+        if not isinstance(record, Mapping):
+            continue
+        input_payload = record.get("input")
+        if not isinstance(input_payload, Mapping):
+            continue
+        null_paths = _null_paths(input_payload, ["records", str(index), "input"])
+        if null_paths:
+            raise CandidateSchemaError(f"record_{index}_input_contains_null:{null_paths[0]}")
+
+        method = input_payload.get("method")
+        if not isinstance(method, Mapping):
+            continue
+        args = method.get("args")
+        if not isinstance(args, Mapping):
+            raise CandidateSchemaError(f"record_{index}_method_args_missing")
+        if not isinstance(args.get("required"), Mapping) or not isinstance(args.get("optional"), Mapping):
+            raise CandidateSchemaError(f"record_{index}_method_args_not_required_optional")
+        if set(args.keys()) == set() or args == {}:
+            raise CandidateSchemaError(f"record_{index}_method_args_bare_empty")
+
+        invoking_id = input_payload.get("invoking_id")
+        if isinstance(invoking_id, Mapping):
+            uid = invoking_id.get("uid")
+            if not isinstance(uid, str) or not uid.strip():
+                raise CandidateSchemaError(f"record_{index}_invoking_id_uid_empty")
+
+
 def _iter_jsonl_rows(path: Path) -> Iterable[Tuple[int, Mapping[str, Any]]]:
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
@@ -146,7 +238,8 @@ def parse_raw_output_rows(rows: Iterable[Tuple[int, Mapping[str, Any]]]) -> Tupl
 
         for candidate_index, candidate_payload in enumerate(candidate_payloads):
             try:
-                accepted.append(normalize_candidate(candidate_payload))
+                _validate_fixed_instruction_and_inputs(candidate_payload)
+                accepted.append(normalize_candidate(_candidate_with_raw_provenance(candidate_payload, raw_row, line_number)))
             except CandidateSchemaError as exc:
                 rejected.append(
                     {
@@ -170,6 +263,9 @@ def build_report(input_path: Path, accepted: Sequence[Mapping[str, Any]], reject
         reject_reason_counts[reason] = reject_reason_counts.get(reason, 0) + 1
     return {
         "schema_version": PARSER_SCHEMA_VERSION,
+        "prepared_candidate_artifact_schema_version": PREPARED_CANDIDATE_ARTIFACT_SCHEMA_VERSION,
+        "official_counterpart": "prepare_for_finetuning.py outputs",
+        "official_stage": "candidate_preparation",
         "input": str(input_path),
         "accepted_count": len(accepted),
         "rejected_count": len(rejected),

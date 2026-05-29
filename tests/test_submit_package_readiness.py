@@ -37,6 +37,10 @@ def _make_package(root: Path, artifact: str | None = "lora") -> tempfile.Tempora
     package_dir = Path(temp_dir.name)
     (package_dir / "src").mkdir()
     shutil.copy2(root / "setup.sh", package_dir / "setup.sh")
+    # Changed: copy official dependency metadata into package fixtures.
+    # Why: project.pdf requires pyproject.toml and uv.lock in submitted directories.
+    shutil.copy2(root / "pyproject.toml", package_dir / "pyproject.toml")
+    shutil.copy2(root / "uv.lock", package_dir / "uv.lock")
     shutil.copy2(root / "src" / "solver.py", package_dir / "src" / "solver.py")
     shutil.copy2(root / "src" / "__init__.py", package_dir / "src" / "__init__.py")
     # Changed: optionally add fake artifact markers after copying source files.
@@ -81,6 +85,18 @@ class SubmitPackageReadinessTest(unittest.TestCase):
         with _make_package(root, artifact=None) as temp_name:
             errors = check_submit_package(Path(temp_name))
         self.assertTrue(any("missing model artifact" in error for error in errors), errors)
+
+    def test_missing_dependency_metadata_fails_readiness(self) -> None:
+        # Changed: cover pyproject.toml/uv.lock as hard submit requirements.
+        # Why: server submission uses those files before model inference starts.
+        root = Path(__file__).resolve().parents[1]
+        with _make_package(root) as temp_name:
+            package_dir = Path(temp_name)
+            (package_dir / "pyproject.toml").unlink()
+            (package_dir / "uv.lock").unlink()
+            errors = check_submit_package(package_dir)
+        self.assertTrue(any("missing pyproject.toml" in error for error in errors), errors)
+        self.assertTrue(any("missing uv.lock" in error for error in errors), errors)
 
     def test_incomplete_merged_model_takes_precedence_and_fails(self) -> None:
         # Changed: incomplete merged_model blocks readiness even when LoRA exists.

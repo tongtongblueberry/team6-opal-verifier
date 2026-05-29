@@ -1,0 +1,14 @@
+{
+  "accepted_count": 12,
+  "input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/raw_outputs.qwen_local.jsonl",
+  "official_counterpart": "prepare_for_finetuning.py outputs",
+  "official_stage": "candidate_preparation",
+  "prepared_candidate_artifact_schema_version": "self_instruct.prepare_for_finetuning_candidate.v1",
+  "reject_reason_counts": {
+    "fail_label_final_response_success_compatible": 1,
+    "target_index_not_last_record": 5,
+    "target_response_not_last_record_output": 2
+  },
+  "rejected_count": 8,
+  "schema_version": "self_instruct.raw_output_parser.v1"
+}

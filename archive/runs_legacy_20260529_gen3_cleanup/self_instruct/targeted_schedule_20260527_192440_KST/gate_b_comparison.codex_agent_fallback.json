@@ -1,0 +1,179 @@
+{
+  "comparisons": {
+    "final_return_value_count_mean_difference": {
+      "absolute_difference": 0.35,
+      "generated_mean": 0.6,
+      "generated_minus_public": -0.35,
+      "public_mean": 0.95
+    },
+    "input_json_chars_mean_difference": {
+      "absolute_difference": 11273.100000000002,
+      "generated_mean": 18184.4,
+      "generated_minus_public": 11273.100000000002,
+      "public_mean": 6911.3
+    },
+    "method_sequence_length_mean_difference": {
+      "absolute_difference": 0.0,
+      "generated_mean": 16.4,
+      "generated_minus_public": 0.0,
+      "public_mean": 16.4
+    },
+    "record_count_mean_difference": {
+      "absolute_difference": 0.0,
+      "generated_mean": 16.4,
+      "generated_minus_public": 0.0,
+      "public_mean": 16.4
+    },
+    "row_count_difference": {
+      "generated": 40,
+      "generated_minus_public": 20,
+      "public": 20
+    },
+    "total_return_value_count_mean_difference": {
+      "absolute_difference": 4.650000000000002,
+      "generated_mean": 18.9,
+      "generated_minus_public": -4.650000000000002,
+      "public_mean": 23.55
+    }
+  },
+  "generated": {
+    "count": 40,
+    "declared_count": 40,
+    "final_method_blank_count": 0,
+    "final_method_counts": {
+      "Activate": 4,
+      "Authenticate": 3,
+      "Get": 10,
+      "Next": 1,
+      "Properties": 4,
+      "Random": 1,
+      "Revert": 1,
+      "RevertSP": 1,
+      "Set": 8,
+      "StartSession": 7
+    },
+    "final_status_blank_count": 0,
+    "final_status_counts": {
+      "FAIL": 2,
+      "INVALID_PARAMETER": 11,
+      "NOT_AUTHORIZED": 4,
+      "NO_SESSIONS_AVAILABLE": 1,
+      "SP_BUSY": 1,
+      "SP_FROZEN": 1,
+      "SUCCESS": 20
+    },
+    "input": "runs/self_instruct/targeted_schedule_20260527_192440_KST/gate_a_accepted.codex_agent_fallback.jsonl",
+    "label_counts": {
+      "fail": 20,
+      "pass": 20
+    },
+    "numeric_stats": {
+      "final_return_value_count": {
+        "max": 2.0,
+        "mean": 0.6,
+        "min": 0.0
+      },
+      "input_json_chars": {
+        "max": 42912.0,
+        "mean": 18184.4,
+        "min": 1093.0
+      },
+      "method_sequence_length": {
+        "max": 39.0,
+        "mean": 16.4,
+        "min": 1.0
+      },
+      "record_count": {
+        "max": 39.0,
+        "mean": 16.4,
+        "min": 1.0
+      },
+      "total_return_value_count": {
+        "max": 45.0,
+        "mean": 18.9,
+        "min": 0.0
+      }
+    },
+    "record_count_bins": {
+      "1-32": 38,
+      "33-64": 2
+    },
+    "schema_version": "self_instruct.candidate_profile.v1",
+    "schema_warnings": [],
+    "unknown_method_count": 0,
+    "unknown_status_count": 0
+  },
+  "generated_profile_path": "runs/self_instruct/targeted_schedule_20260527_192440_KST/candidate_profile.judge_gate_a_accepted.codex_agent_fallback.json",
+  "label_distribution": {
+    "generated": {
+      "fail": 20,
+      "pass": 20
+    },
+    "note": "public20 labels are local aggregate only and must not enter generation, judge, manifest, or training inputs.",
+    "public_local_eval_only": {
+      "fail": 10,
+      "pass": 10
+    }
+  },
+  "no_go_warnings": [],
+  "public": {
+    "count": 20,
+    "declared_count": 20,
+    "final_method_blank_count": 0,
+    "final_method_counts": {
+      "Activate": 1,
+      "Get": 6,
+      "Properties": 2,
+      "Read": 2,
+      "Set": 2,
+      "StartSession": 7
+    },
+    "final_status_blank_count": 0,
+    "final_status_counts": {
+      "8E": 1,
+      "FAIL": 1,
+      "INVALID_PARAMETER": 3,
+      "NOT_AUTHORIZED": 3,
+      "RANDOM DATA": 1,
+      "SUCCESS": 11
+    },
+    "input": "data/local/public20/public20_input.jsonl",
+    "numeric_stats": {
+      "final_return_value_count": {
+        "max": 2.0,
+        "mean": 0.95,
+        "min": 0.0
+      },
+      "input_json_chars": {
+        "max": 15256.0,
+        "mean": 6911.3,
+        "min": 429.0
+      },
+      "method_sequence_length": {
+        "max": 39.0,
+        "mean": 16.4,
+        "min": 1.0
+      },
+      "record_count": {
+        "max": 39.0,
+        "mean": 16.4,
+        "min": 1.0
+      },
+      "total_return_value_count": {
+        "max": 51.0,
+        "mean": 23.55,
+        "min": 0.0
+      }
+    },
+    "record_count_bins": {
+      "1-32": 18,
+      "33-64": 2
+    },
+    "schema_version": "self_instruct.seed_profile.v1",
+    "schema_warnings": [],
+    "unknown_method_count": 0,
+    "unknown_status_count": 0
+  },
+  "public_profile_path": "runs/self_instruct/public20_baseline/gate_b/public20.profile.json",
+  "schema_version": "self_instruct.gate_b_dimension_comparison.v1"
+}

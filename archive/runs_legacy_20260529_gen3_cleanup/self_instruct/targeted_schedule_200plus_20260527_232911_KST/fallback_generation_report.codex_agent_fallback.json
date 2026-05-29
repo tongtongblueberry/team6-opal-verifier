@@ -1,0 +1,26 @@
+{
+  "candidate_count": 200,
+  "changed": "Created 200 parser-compatible codex_agent_fallback raw candidates under the new SYNTH-200 run root.",
+  "created_at_kst": "2026-05-27T23:34:19+09:00",
+  "eligibility": "blocked_for_training_sample_package_due_missing_provider_provenance",
+  "label_counts": {
+    "fail": 100,
+    "pass": 100
+  },
+  "manifest_token_length_bin_counts": {
+    "1-32": 20,
+    "129-256": 30,
+    "257-512": 100,
+    "33-64": 20,
+    "65-128": 30
+  },
+  "provider_status": "not_provider_backed_codex_agent_fallback_only",
+  "raw_output_jsonl": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/raw_outputs.codex_agent_fallback.jsonl",
+  "record_count_max": 39,
+  "record_count_mean": 16.4,
+  "record_count_min": 1,
+  "request_count": 50,
+  "schema_version": "self_instruct.codex_agent_fallback_generation_report.v1",
+  "target_schedule": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/target_schedule.json",
+  "why": "Provider env is absent, so this fallback can only verify pipeline wiring and must not be recorded as provider-backed synthetic data."
+}

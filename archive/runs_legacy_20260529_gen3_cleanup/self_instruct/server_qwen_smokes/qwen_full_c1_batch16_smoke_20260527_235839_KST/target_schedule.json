@@ -1,0 +1,184 @@
+{
+  "targets": [
+    {
+      "allowed_source_rule_refs": [
+        "RULE 01"
+      ],
+      "target_final_method": "Properties",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 1
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 02"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "NOT_AUTHORIZED",
+      "target_label": "fail",
+      "target_record_count": 2
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 18"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 7
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 07"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_record_count": 10
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 20"
+      ],
+      "target_final_method": "EndSession",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 11
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 08"
+      ],
+      "target_final_method": "Activate",
+      "target_final_status": "FAIL",
+      "target_label": "fail",
+      "target_record_count": 21
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 27"
+      ],
+      "target_final_method": "GenKey",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 26
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 15"
+      ],
+      "target_final_method": "Authenticate",
+      "target_final_status": "AUTHORITY_LOCKED_OUT",
+      "target_label": "fail",
+      "target_record_count": 21
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 31"
+      ],
+      "target_final_method": "Random",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 27
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 21"
+      ],
+      "target_final_method": "Next",
+      "target_final_status": "SP_BUSY",
+      "target_label": "fail",
+      "target_record_count": 39
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 35"
+      ],
+      "target_final_method": "Revert",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 1
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 22"
+      ],
+      "target_final_method": "RevertSP",
+      "target_final_status": "SP_FROZEN",
+      "target_label": "fail",
+      "target_record_count": 2
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 48"
+      ],
+      "target_final_method": "Properties",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 7
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 29"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "NOT_AUTHORIZED",
+      "target_label": "fail",
+      "target_record_count": 10
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 50"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 9
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 30"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_record_count": 21
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 63"
+      ],
+      "target_final_method": "EndSession",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 26
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 43"
+      ],
+      "target_final_method": "Activate",
+      "target_final_status": "FAIL",
+      "target_label": "fail",
+      "target_record_count": 21
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 86"
+      ],
+      "target_final_method": "GenKey",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_record_count": 27
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 49"
+      ],
+      "target_final_method": "Authenticate",
+      "target_final_status": "AUTHORITY_LOCKED_OUT",
+      "target_label": "fail",
+      "target_record_count": 39
+    }
+  ]
+}

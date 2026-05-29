@@ -1,0 +1,12 @@
+{
+  "accepted_count": 8,
+  "candidates_input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/dedup_candidates.qwen_local.jsonl",
+  "decision_count": 12,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "reject_reason_counts": {
+    "judge_decision_reject": 4
+  },
+  "rejected_count": 4,
+  "request_count": 12,
+  "schema_version": "self_instruct.judge_filter_report.v1"
+}

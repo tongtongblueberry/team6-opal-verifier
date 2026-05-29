@@ -34,6 +34,9 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
     final_index = len(records) - 1
     return {
         "sample_id": sample_id,
+        # Changed: include official Self-Instruct provenance required before Gate A sampling.
+        # Why: Gate A must audit post-parser/judge candidates, not pre-migration draft rows.
+        "source_instruction_id": f"instruction-{sample_id}",
         "instruction": "Judge only the final response.",
         "records": records,
         "label": label,
@@ -47,6 +50,12 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "reason": "The final response determines the label.",
         },
         "spec_grounding": _spec_grounding(),
+        "generation_provenance": {
+            "source_instruction_id": f"instruction-{sample_id}",
+            "classification_detection_id": f"classification-{sample_id}",
+            "instance_generation_request_id": f"request-{sample_id}",
+            "raw_output_request_id": f"raw-{sample_id}",
+        },
         "source": "self_instruct_candidate",
     }
 

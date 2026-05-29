@@ -41,6 +41,10 @@ def _make_package(root: Path, artifact: str = "lora") -> tempfile.TemporaryDirec
     package_dir = Path(temp_dir.name)
     (package_dir / "src").mkdir()
     shutil.copy2(root / "setup.sh", package_dir / "setup.sh")
+    # Changed: include official dependency metadata in submit-package smoke fixtures.
+    # Why: check_submit_package now enforces project.pdf required files before runtime checks.
+    shutil.copy2(root / "pyproject.toml", package_dir / "pyproject.toml")
+    shutil.copy2(root / "uv.lock", package_dir / "uv.lock")
     shutil.copy2(root / "src" / "solver.py", package_dir / "src" / "solver.py")
     shutil.copy2(root / "src" / "__init__.py", package_dir / "src" / "__init__.py")
     # Changed: add a fake artifact marker so static readiness can pass without real weights.
@@ -62,6 +66,13 @@ def _make_fake_package(
     src_dir = package_dir / "src"
     src_dir.mkdir()
     (src_dir / "__init__.py").write_text("", encoding="utf-8")
+    # Changed: fake runtime packages now include project dependency metadata.
+    # Why: runtime smoke should test load/first-forward behavior after submit-file readiness passes.
+    (package_dir / "pyproject.toml").write_text(
+        "[project]\nname = \"fake-opal-package\"\nversion = \"0.0.0\"\n",
+        encoding="utf-8",
+    )
+    (package_dir / "uv.lock").write_text("", encoding="utf-8")
     (package_dir / "setup.sh").write_text(
         textwrap.dedent(
             """\

@@ -1,0 +1,69 @@
+{
+  "candidates_input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/dedup_candidates.codex_agent_fallback.jsonl",
+  "classification_detection_ids": [
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00001",
+    "self-instruct-clf-00001",
+    "self-instruct-clf-00001",
+    "self-instruct-clf-00002",
+    "self-instruct-clf-00002",
+    "self-instruct-clf-00002",
+    "self-instruct-clf-00003",
+    "self-instruct-clf-00003",
+    "self-instruct-clf-00003"
+  ],
+  "execute": false,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "judge prompt uses generated candidate fields only, not public20 labels",
+    "judge prompt includes generated instruction provenance and audited no-op classification detection provenance",
+    "accepted judge results still require Gate A state-transition audit"
+  ],
+  "payload_sha256": {
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00000-01": "81bee9a3650bd736fba2543c10b296383fc1c57d67593d49c945073284242c52",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00000-02": "a144d051e900382807e3ea994b9e417fd3d90413eb8cca55392c47b966ca4380",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00000-03": "c5ade994e5eb187b0a0f3a5ffbeb1019dab7e7eecf870573609d06079c21c4a8",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00001-01": "80d4ebb889f77c409d61a40bf13b19d96691143198823d3fbf841535b087e0e8",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00001-02": "8267575d02ba1911a3bbdebbe7230d20c8dbdcd9b27dc33ae5c5ac685a14a0d2",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00001-03": "d6fcb7ab4b51cca494221c74261449f4ef25cf040607849cb74239ff1cfc8d01",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00002-01": "4a38e121377bb42f997742d9c296ab4157f0f7ead3781d4d4c9cbabf5f513483",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00002-02": "91b4ac43afa1d3fd9370562571fc465593a7b5526942ea539dd3019058bf4918",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00002-03": "86f6ee20df30295ed81a0c0a780df7eb868feae80f4d46bca17f8f5088c986d3",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00003-01": "d767bfc5ed6a32cfd777e4df719cb931510d0d862811b8b7165291b6aaddd424",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00003-02": "8c14b54137f217a6e59070b0cde5c2724dbddd76c231c62c6091f3de13a7b257",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00003-03": "f8de9c41ca5f7fcee51d2032da38c035df9ded234cf50858cd15796ab7b5418c"
+  },
+  "request_count": 12,
+  "request_ids": [
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00000-01",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00000-02",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00000-03",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00001-01",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00001-02",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00001-03",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00002-01",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00002-02",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00002-03",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00003-01",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00003-02",
+    "self-instruct-judge-codex-agent-fallback-self-instruct-gen-00003-03"
+  ],
+  "schema_version": "self_instruct.judge_filter_report.v1",
+  "source_instruction_ids": [
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00001",
+    "self-instruct-instruction-00001",
+    "self-instruct-instruction-00001",
+    "self-instruct-instruction-00002",
+    "self-instruct-instruction-00002",
+    "self-instruct-instruction-00002",
+    "self-instruct-instruction-00003",
+    "self-instruct-instruction-00003",
+    "self-instruct-instruction-00003"
+  ]
+}

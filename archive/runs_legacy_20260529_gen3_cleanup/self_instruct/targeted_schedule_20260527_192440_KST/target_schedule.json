@@ -1,0 +1,404 @@
+{
+  "targets": [
+    {
+      "allowed_source_rule_refs": [
+        "RULE 01"
+      ],
+      "target_final_method": "Properties",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 1
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 02"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "NOT_AUTHORIZED",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 1
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 18"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 3
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 03"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "NOT_AUTHORIZED",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 3
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 19"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 5
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 04"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "SP_BUSY",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 5
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 20"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 7
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 05"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "SP_FROZEN",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 7
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 27"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 9
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 06"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "NO_SESSIONS_AVAILABLE",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 9
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 31"
+      ],
+      "target_final_method": "Authenticate",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 11
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 07"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 11
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 35"
+      ],
+      "target_final_method": "Authenticate",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 13
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 08"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 13
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 46"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 15
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 15"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 15
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 48"
+      ],
+      "target_final_method": "Activate",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 16
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 21"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "NOT_AUTHORIZED",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 16
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 50"
+      ],
+      "target_final_method": "Activate",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 16
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 22"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 16
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 53"
+      ],
+      "target_final_method": "Revert",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 17
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 23"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 17
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 62"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 18
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 24"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 18
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 63"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 19
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 29"
+      ],
+      "target_final_method": "Authenticate",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 19
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 74"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 20
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 47"
+      ],
+      "target_final_method": "StartSession",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 20
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 75"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 20
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 49"
+      ],
+      "target_final_method": "Activate",
+      "target_final_status": "FAIL",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 20
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 79"
+      ],
+      "target_final_method": "Properties",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 22
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 51"
+      ],
+      "target_final_method": "Activate",
+      "target_final_status": "NOT_AUTHORIZED",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 22
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 80"
+      ],
+      "target_final_method": "Properties",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 24
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 57"
+      ],
+      "target_final_method": "RevertSP",
+      "target_final_status": "FAIL",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 24
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 81"
+      ],
+      "target_final_method": "Properties",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 25
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 59"
+      ],
+      "target_final_method": "Set",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 25
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 86"
+      ],
+      "target_final_method": "Next",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "1-32",
+      "target_record_count": 28
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 70"
+      ],
+      "target_final_method": "Random",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "1-32",
+      "target_record_count": 28
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 01"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "SUCCESS",
+      "target_label": "pass",
+      "target_length_bin": "33-64",
+      "target_record_count": 39
+    },
+    {
+      "allowed_source_rule_refs": [
+        "RULE 85"
+      ],
+      "target_final_method": "Get",
+      "target_final_status": "INVALID_PARAMETER",
+      "target_label": "fail",
+      "target_length_bin": "33-64",
+      "target_record_count": 39
+    }
+  ]
+}

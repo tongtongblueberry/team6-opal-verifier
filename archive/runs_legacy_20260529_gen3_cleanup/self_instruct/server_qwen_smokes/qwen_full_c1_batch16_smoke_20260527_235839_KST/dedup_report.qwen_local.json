@@ -1,0 +1,12 @@
+{
+  "accepted_count": 12,
+  "input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/parsed_candidates.qwen_local.jsonl",
+  "near_duplicate_mode": "domain_text",
+  "near_duplicate_mode_default": "domain_text",
+  "public20_reference": "data/local/public20/public20_input.jsonl",
+  "reject_filter_stage_counts": {},
+  "reject_reason_counts": {},
+  "rejected_count": 0,
+  "rouge_l_threshold": 0.7,
+  "schema_version": "self_instruct.candidate_dedup.v1"
+}

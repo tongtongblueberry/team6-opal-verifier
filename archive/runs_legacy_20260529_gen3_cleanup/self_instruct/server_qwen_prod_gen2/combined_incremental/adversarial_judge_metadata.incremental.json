@@ -1,0 +1,17 @@
+{
+  "candidates_input": "runs/self_instruct/server_qwen_prod_gen2/combined_incremental/dedup_candidates.combined.namespaced.jsonl",
+  "classification_detection_ids": [],
+  "execute": false,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "judge prompt uses generated candidate fields only, not public20 labels",
+    "judge prompt includes generated instruction provenance and audited no-op classification detection provenance",
+    "accepted judge results still require Gate A state-transition audit"
+  ],
+  "payload_sha256": {},
+  "request_count": 0,
+  "request_ids": [],
+  "schema_version": "self_instruct.judge_filter_report.v1",
+  "source_instruction_ids": []
+}

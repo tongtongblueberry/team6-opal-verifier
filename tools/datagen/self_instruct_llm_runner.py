@@ -1,10 +1,12 @@
 # Changed: add a provider-gated external LLM runner for Self-Instruct generation requests.
 # Why: spec-grounded generation needs an optional execution lane without storing API secrets or bypassing raw-output parsing gates.
-"""Execute Self-Instruct generation request payloads with external LLM providers.
+"""Execute Self-Instruct generation request payloads with LLM providers.
 
-The runner is intentionally stdlib-only. It reads secrets only from environment
-variables, never writes them to artifacts, and writes successful provider text
-into a raw JSONL schema accepted by ``tools/datagen/parse_self_instruct_outputs.py``.
+The HTTP runner path is intentionally stdlib-only. The local Hugging Face path
+imports torch/transformers lazily only when cached-model execution is requested.
+Provider secrets are read only from environment variables and are never written
+to artifacts. Successful provider text is written into a raw JSONL schema
+accepted by ``tools/datagen/parse_self_instruct_outputs.py``.
 """
 
 from __future__ import annotations
@@ -24,14 +26,24 @@ Json = Dict[str, Any]
 GENERATION_REQUEST_SCHEMA_VERSION = "self_instruct.generation_request.v1"
 RAW_OUTPUT_SCHEMA_VERSION = "self_instruct.llm_raw_output.v1"
 RUNNER_REPORT_SCHEMA_VERSION = "self_instruct.llm_runner_report.v1"
-SUPPORTED_PROVIDERS = ("openai", "gemini")
+SUPPORTED_PROVIDERS = ("openai", "gemini", "qwen")
 PROVIDER_ENV_VARS = {
     "openai": "OPENAI_API_KEY",
     "gemini": "GEMINI_API_KEY",
+    "qwen": "QWEN_API_KEY",
+}
+PROVIDER_FALLBACK_ENV_VARS = {
+    "qwen": ("DASHSCOPE_API_KEY",),
+}
+PROVIDER_BASE_URL_ENV_VARS = {
+    "qwen": "QWEN_BASE_URL",
 }
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 GEMINI_GENERATE_CONTENT_URL = "https://generativelanguage.googleapis.com/v1beta/{model}:generateContent"
+QWEN_OPENAI_COMPATIBLE_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 HTTP_TRANSPORT = Callable[[str, Mapping[str, str], Mapping[str, Any], int], Mapping[str, Any]]
+LOCAL_TEXT_GENERATOR = Callable[[Mapping[str, Any]], Tuple[str, Mapping[str, Any]]]
+LOCAL_BATCH_TEXT_GENERATOR = Callable[[Sequence[Mapping[str, Any]]], List[Tuple[str, Mapping[str, Any]]]]
 
 
 class SelfInstructLLMRunnerError(ValueError):
@@ -54,12 +66,24 @@ def provider_env_var(provider: str) -> str:
     return PROVIDER_ENV_VARS[normalize_provider(provider)]
 
 
+def provider_env_vars(provider: str) -> Tuple[str, ...]:
+    normalized = normalize_provider(provider)
+    return (PROVIDER_ENV_VARS[normalized],) + PROVIDER_FALLBACK_ENV_VARS.get(normalized, ())
+
+
+def provider_base_url_env_var(provider: str) -> Optional[str]:
+    return PROVIDER_BASE_URL_ENV_VARS.get(normalize_provider(provider))
+
+
 # Changed: centralize provider-secret redaction for errors and diagnostic strings.
 # Why: API keys must remain environment-only and must not leak through stderr, reports, or test failures.
 def redact_text(text: str, env: Optional[Mapping[str, str]] = None) -> str:
     redacted = str(text)
     source_env = os.environ if env is None else env
-    for env_name in PROVIDER_ENV_VARS.values():
+    env_names = list(PROVIDER_ENV_VARS.values())
+    for fallback_names in PROVIDER_FALLBACK_ENV_VARS.values():
+        env_names.extend(fallback_names)
+    for env_name in env_names:
         value = source_env.get(env_name)
         if value:
             redacted = redacted.replace(value, f"[REDACTED:{env_name}]")
@@ -166,6 +190,170 @@ def _content_part_text(part: Any) -> str:
     return ""
 
 
+def _messages_to_prompt(tokenizer: Any, messages: Sequence[Any]) -> str:
+    # Changed: convert chat-completion request messages into a cached-model prompt.
+    # Why: local Qwen execution must consume the same request payloads as provider-backed execution.
+    normalized_messages: List[Json] = []
+    for message in messages:
+        if not isinstance(message, Mapping):
+            raise SelfInstructLLMRunnerError("hf_local_message_not_object")
+        role = str(message.get("role", "user")).strip() or "user"
+        content = message.get("content")
+        if not isinstance(content, str):
+            raise SelfInstructLLMRunnerError("hf_local_message_content_not_string")
+        normalized_messages.append({"role": role, "content": content})
+    if hasattr(tokenizer, "apply_chat_template") and getattr(tokenizer, "chat_template", None):
+        rendered = tokenizer.apply_chat_template(normalized_messages, tokenize=False, add_generation_prompt=True)
+        if isinstance(rendered, str) and rendered.strip():
+            return rendered
+    return "\n\n".join(f"{message['role'].upper()}:\n{message['content']}" for message in normalized_messages) + "\n\nASSISTANT:\n"
+
+
+def _resolve_hf_dtype(torch_module: Any, dtype_name: str) -> Any:
+    # Changed: keep dtype selection explicit for server cached-model execution.
+    # Why: Qwen cache paths may be used on CUDA, MPS, or CPU without changing request artifacts.
+    normalized = dtype_name.strip().lower()
+    if normalized in {"", "auto"}:
+        return "auto"
+    if normalized in {"bf16", "bfloat16"}:
+        return torch_module.bfloat16
+    if normalized in {"fp16", "float16", "half"}:
+        return torch_module.float16
+    if normalized in {"fp32", "float32"}:
+        return torch_module.float32
+    raise SelfInstructLLMRunnerError(f"hf_local_torch_dtype_unsupported:{dtype_name}")
+
+
+def _tensor_device(model: Any) -> Any:
+    device = getattr(model, "device", None)
+    if device is not None:
+        return device
+    try:
+        return next(model.parameters()).device
+    except Exception as exc:  # pragma: no cover - defensive for unusual model wrappers.
+        raise SelfInstructLLMRunnerError(f"hf_local_model_device_unavailable:{exc}") from exc
+
+
+def build_hf_local_text_generator(
+    *,
+    model_path: Path,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float,
+    device_map: str,
+    torch_dtype: str,
+    local_files_only: bool,
+) -> LOCAL_TEXT_GENERATOR:
+    # Changed: keep the single-request local HF callable as a compatibility wrapper.
+    # Why: existing tests and callers can use cached Qwen without knowing about batched execution.
+    batch_generate = build_hf_local_batch_text_generator(
+        model_path=model_path,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        device_map=device_map,
+        torch_dtype=torch_dtype,
+        local_files_only=local_files_only,
+    )
+
+    def generate(payload: Mapping[str, Any]) -> Tuple[str, Mapping[str, Any]]:
+        return batch_generate([payload])[0]
+
+    return generate
+
+
+def build_hf_local_batch_text_generator(
+    *,
+    model_path: Path,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float,
+    device_map: str,
+    torch_dtype: str,
+    local_files_only: bool,
+) -> LOCAL_BATCH_TEXT_GENERATOR:
+    # Changed: add batched cached Hugging Face model execution for server Qwen runs.
+    # Why: generating and judging hundreds of rows should reuse one model load and batch prompts without any API key.
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    except ImportError as exc:
+        raise SelfInstructLLMRunnerError(f"hf_local_dependency_missing:{exc}") from exc
+
+    dtype = _resolve_hf_dtype(torch, torch_dtype)
+    tokenizer = AutoTokenizer.from_pretrained(
+        str(model_path),
+        trust_remote_code=True,
+        local_files_only=local_files_only,
+    )
+    tokenizer.padding_side = "left"
+    load_kwargs: Json = {
+        "trust_remote_code": True,
+        "local_files_only": local_files_only,
+        "torch_dtype": dtype,
+    }
+    if device_map and device_map != "none":
+        load_kwargs["device_map"] = device_map
+    model = AutoModelForCausalLM.from_pretrained(str(model_path), **load_kwargs)
+    model.eval()
+
+    def generate_batch(payloads: Sequence[Mapping[str, Any]]) -> List[Tuple[str, Mapping[str, Any]]]:
+        prompts: List[str] = []
+        for payload in payloads:
+            messages = payload.get("messages")
+            if not isinstance(messages, Sequence) or isinstance(messages, (bytes, bytearray, str)):
+                raise SelfInstructLLMRunnerError("hf_local_messages_missing")
+            prompts.append(_messages_to_prompt(tokenizer, messages))
+        if not prompts:
+            return []
+        encoded = tokenizer(prompts, return_tensors="pt", padding=True)
+        device = _tensor_device(model)
+        encoded = {key: value.to(device) for key, value in encoded.items()}
+        attention_mask = encoded.get("attention_mask")
+        input_token_counts = []
+        if attention_mask is not None:
+            input_token_counts = [int(value) for value in attention_mask.sum(dim=1).tolist()]
+        else:
+            input_token_counts = [int(encoded["input_ids"].shape[-1])] * len(prompts)
+        encoded_prompt_width = int(encoded["input_ids"].shape[-1])
+        pad_token_id = getattr(tokenizer, "pad_token_id", None)
+        eos_token_id = getattr(tokenizer, "eos_token_id", None)
+        if pad_token_id is None:
+            pad_token_id = eos_token_id
+        generation_kwargs: Json = {
+            "max_new_tokens": max_new_tokens,
+            "do_sample": temperature > 0,
+            "pad_token_id": pad_token_id,
+        }
+        if temperature > 0:
+            generation_kwargs["temperature"] = temperature
+            generation_kwargs["top_p"] = top_p
+        with torch.no_grad():
+            output_ids = model.generate(**encoded, **generation_kwargs)
+        results: List[Tuple[str, Mapping[str, Any]]] = []
+        for index, input_token_count in enumerate(input_token_counts):
+            new_tokens = output_ids[index][encoded_prompt_width:]
+            text = tokenizer.decode(new_tokens, skip_special_tokens=True)
+            completion_token_count = int(new_tokens.shape[-1])
+            results.append(
+                (
+                    text,
+                    {
+                        "model": str(model_path),
+                        "finish_reason": "stop",
+                        "usage": {
+                            "prompt_tokens": input_token_count,
+                            "completion_tokens": completion_token_count,
+                            "total_tokens": int(input_token_count + completion_token_count),
+                        },
+                    },
+                )
+            )
+        return results
+
+    return generate_batch
+
+
 def _extract_openai_text(response: Mapping[str, Any]) -> str:
     choices = response.get("choices")
     if not isinstance(choices, Sequence) or isinstance(choices, (bytes, bytearray, str)) or not choices:
@@ -195,6 +383,17 @@ def _openai_finish_reason(response: Mapping[str, Any]) -> Optional[str]:
         return None
     finish_reason = first_choice.get("finish_reason")
     return finish_reason if isinstance(finish_reason, str) else None
+
+
+def _chat_completions_url_from_base(base_url: str) -> str:
+    # Changed: support Qwen DashScope and self-hosted OpenAI-compatible endpoints.
+    # Why: Qwen may be reached through Alibaba-compatible mode or a local/server vLLM endpoint.
+    stripped = base_url.strip().rstrip("/")
+    if not stripped:
+        stripped = QWEN_OPENAI_COMPATIBLE_BASE_URL
+    if stripped.endswith("/chat/completions"):
+        return stripped
+    return f"{stripped}/chat/completions"
 
 
 def _gemini_model_path(model: str) -> str:
@@ -280,13 +479,17 @@ def call_provider(
     payload: Mapping[str, Any],
     api_key: str,
     timeout_seconds: int,
+    base_url: Optional[str] = None,
     transport: Optional[HTTP_TRANSPORT] = None,
 ) -> Tuple[str, Mapping[str, Any], Json]:
     normalized_provider = normalize_provider(provider)
     post = _post_json if transport is None else transport
-    if normalized_provider == "openai":
+    if normalized_provider in {"openai", "qwen"}:
+        endpoint = OPENAI_CHAT_COMPLETIONS_URL
+        if normalized_provider == "qwen":
+            endpoint = _chat_completions_url_from_base(base_url or QWEN_OPENAI_COMPATIBLE_BASE_URL)
         response = post(
-            OPENAI_CHAT_COMPLETIONS_URL,
+            endpoint,
             {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
@@ -391,15 +594,20 @@ def run_generation_requests(
     transport: Optional[HTTP_TRANSPORT] = None,
 ) -> Json:
     normalized_provider = normalize_provider(provider)
-    env_var = provider_env_var(normalized_provider)
+    env_var_names = provider_env_vars(normalized_provider)
+    env_var = env_var_names[0]
+    base_url_env_var = provider_base_url_env_var(normalized_provider)
     source_env = os.environ if env is None else env
     timestamp = created_at_kst or _now_kst()
     validated_requests = [validate_generation_request(request) for request in requests]
-    api_key = source_env.get(env_var, "")
+    # Changed: allow Qwen's native DashScope env name as a fallback.
+    # Why: Alibaba/Qwen deployments often expose DASHSCOPE_API_KEY rather than QWEN_API_KEY.
+    used_env_var = next((name for name in env_var_names if source_env.get(name, "")), env_var)
+    api_key = source_env.get(used_env_var, "")
     if not api_key:
         return _empty_report(
             provider=normalized_provider,
-            env_var=env_var,
+            env_var=" or ".join(env_var_names),
             output_path=output_path,
             created_at_kst=timestamp,
             status="skipped_missing_env",
@@ -414,12 +622,16 @@ def run_generation_requests(
         if not isinstance(payload, Mapping):
             errors.append({"request_id": request_id, "reason": "payload_missing"})
             continue
+        # Changed: pass Qwen's OpenAI-compatible base URL from env into the provider call.
+        # Why: the same code path must support DashScope and self-hosted Qwen/vLLM servers.
+        provider_base_url = source_env.get(base_url_env_var, "") if base_url_env_var is not None else None
         try:
             raw_output, _provider_response, provider_summary = call_provider(
                 provider=normalized_provider,
                 payload=payload,
                 api_key=api_key,
                 timeout_seconds=timeout_seconds,
+                base_url=provider_base_url,
                 transport=transport,
             )
         except (SelfInstructLLMRunnerError, json.JSONDecodeError) as exc:
@@ -442,7 +654,122 @@ def run_generation_requests(
         "schema_version": RUNNER_REPORT_SCHEMA_VERSION,
         "created_at_kst": timestamp,
         "provider": normalized_provider,
-        "provider_env_var": env_var,
+        "provider_env_var": used_env_var,
+        "provider_env_var_candidates": list(env_var_names),
+        "provider_base_url_env_var": base_url_env_var,
+        "output_path": str(output_path),
+        "status": "completed" if not errors else "completed_with_errors",
+        "request_count": len(validated_requests),
+        "executed_count": len(output_rows),
+        "skipped_count": 0,
+        "failed_count": len(errors),
+        "errors": errors,
+    }
+
+
+def run_generation_requests_with_hf_model(
+    requests: Sequence[Mapping[str, Any]],
+    *,
+    model_path: Path,
+    output_path: Path,
+    max_new_tokens: int = 4096,
+    temperature: float = 0.7,
+    top_p: float = 0.95,
+    device_map: str = "auto",
+    torch_dtype: str = "auto",
+    local_files_only: bool = True,
+    batch_size: int = 1,
+    created_at_kst: Optional[str] = None,
+    text_generator: Optional[LOCAL_TEXT_GENERATOR] = None,
+) -> Json:
+    # Changed: run generation requests through a cached local HF model instead of an API provider.
+    # Why: Qwen weights available on the server should be usable without QWEN/DashScope API credentials.
+    if max_new_tokens <= 0:
+        raise SelfInstructLLMRunnerError("hf_local_max_new_tokens_must_be_positive")
+    if not 0.0 <= temperature <= 2.0:
+        raise SelfInstructLLMRunnerError("hf_local_temperature_out_of_range")
+    if not 0.0 < top_p <= 1.0:
+        raise SelfInstructLLMRunnerError("hf_local_top_p_out_of_range")
+    if batch_size <= 0:
+        raise SelfInstructLLMRunnerError("hf_local_batch_size_must_be_positive")
+
+    timestamp = created_at_kst or _now_kst()
+    validated_requests = [validate_generation_request(request) for request in requests]
+    batch_generator: Optional[LOCAL_BATCH_TEXT_GENERATOR] = None
+    generator = text_generator
+    if generator is None:
+        batch_generator = build_hf_local_batch_text_generator(
+            model_path=model_path,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            device_map=device_map,
+            torch_dtype=torch_dtype,
+            local_files_only=local_files_only,
+        )
+
+    output_rows: List[Json] = []
+    errors: List[Json] = []
+    # Changed: stream raw outputs after each local-model batch instead of buffering the whole run.
+    # Why: long server Qwen jobs should leave usable partial JSONL and visible progress if interrupted.
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as output_handle:
+        for offset in range(0, len(validated_requests), batch_size):
+            request_batch = validated_requests[offset : offset + batch_size]
+            payloads: List[Mapping[str, Any]] = []
+            payload_requests: List[Mapping[str, Any]] = []
+            for request in request_batch:
+                request_id = str(request.get("request_id"))
+                payload = request.get("payload")
+                if not isinstance(payload, Mapping):
+                    errors.append({"request_id": request_id, "reason": "payload_missing"})
+                    continue
+                payloads.append(payload)
+                payload_requests.append(request)
+            if not payloads:
+                continue
+            try:
+                if generator is not None:
+                    generated_rows = [generator(payload) for payload in payloads]
+                elif batch_generator is not None:
+                    generated_rows = batch_generator(payloads)
+                else:  # pragma: no cover - defensive initialization guard.
+                    raise SelfInstructLLMRunnerError("hf_local_generator_missing")
+            except (SelfInstructLLMRunnerError, json.JSONDecodeError, RuntimeError) as exc:
+                reason = redact_text(str(exc))
+                for request in payload_requests:
+                    errors.append({"request_id": str(request.get("request_id")), "reason": reason})
+                continue
+            if len(generated_rows) != len(payload_requests):
+                reason = f"hf_local_batch_result_count_mismatch:{len(generated_rows)}!={len(payload_requests)}"
+                for request in payload_requests:
+                    errors.append({"request_id": str(request.get("request_id")), "reason": reason})
+                continue
+            for request, (raw_output, provider_summary) in zip(payload_requests, generated_rows):
+                output_row = build_raw_output_row(
+                    request=request,
+                    provider="qwen",
+                    raw_output=raw_output,
+                    provider_summary={
+                        "id": None,
+                        "model": provider_summary.get("model") or str(model_path),
+                        "finish_reason": provider_summary.get("finish_reason"),
+                        "usage": provider_summary.get("usage"),
+                    },
+                    created_at_kst=timestamp,
+                )
+                output_rows.append(output_row)
+                output_handle.write(json.dumps(output_row, ensure_ascii=False, sort_keys=True) + "\n")
+                output_handle.flush()
+
+    return {
+        "schema_version": RUNNER_REPORT_SCHEMA_VERSION,
+        "created_at_kst": timestamp,
+        "provider": "hf_local",
+        "provider_env_var": None,
+        "provider_base_url_env_var": None,
+        "model_path": str(model_path),
+        "batch_size": batch_size,
         "output_path": str(output_path),
         "status": "completed" if not errors else "completed_with_errors",
         "request_count": len(validated_requests),

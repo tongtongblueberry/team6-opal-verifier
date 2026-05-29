@@ -30,6 +30,11 @@ from tools.datagen.self_instruct_seed_schema import profile_seed  # noqa: E402
 Json = Dict[str, Any]
 CANDIDATE_SCHEMA_VERSION = "self_instruct.candidate.v1"
 CANDIDATE_PROFILE_SCHEMA_VERSION = "self_instruct.candidate_profile.v1"
+# Changed: centralize the fixed Opal verifier instruction used by Qwen generation.
+# Why: Self-Instruct instruction generation is an audited no-op for this task, so raw candidates must be checked against one stable final-pair instruction string.
+FIXED_OPAL_VERIFIER_INSTRUCTION = (
+    "Given the full Opal command-response trajectory, judge only whether the final command-response pair (cN, rN) is valid under the cited rule-book."
+)
 
 
 class CandidateSchemaError(ValueError):
@@ -69,6 +74,38 @@ def _extract_records(candidate: Mapping[str, Any]) -> List[Any]:
     return copy.deepcopy(list(records))
 
 
+def _normalize_status_codes_value(value: Any) -> Any:
+    # Changed: canonicalize generated Opal status fields to lists.
+    # Why: Qwen sometimes emits "SUCCESS" while public-style records use status_codes as a list.
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return value
+
+
+def _normalize_status_codes_mapping(value: Any) -> Any:
+    if not isinstance(value, Mapping):
+        return value
+    normalized = copy.deepcopy(dict(value))
+    if "status_codes" in normalized:
+        normalized["status_codes"] = _normalize_status_codes_value(normalized["status_codes"])
+    return normalized
+
+
+def _normalize_record_status_codes(records: Sequence[Any]) -> List[Any]:
+    # Changed: normalize status_codes in record input/output before target comparison and export.
+    # Why: final public schema should not mix string and list status representations.
+    normalized_records = copy.deepcopy(list(records))
+    for record in normalized_records:
+        if not isinstance(record, Mapping):
+            continue
+        for key in ("input", "output"):
+            if isinstance(record.get(key), Mapping):
+                record[key] = _normalize_status_codes_mapping(record[key])
+    return normalized_records
+
+
 def _final_output(records: Sequence[Any]) -> Any:
     final_record = records[-1]
     if not isinstance(final_record, Mapping):
@@ -87,12 +124,13 @@ def _normalize_target(candidate: Mapping[str, Any], final_index: int, final_resp
     source_index = _as_index(target.get("final_response_index"))
     if source_index != final_index:
         raise CandidateSchemaError("target_index_not_last_record")
-    if target.get("final_response") != final_response:
+    target_final_response = _normalize_status_codes_mapping(target.get("final_response"))
+    if target_final_response != final_response:
         raise CandidateSchemaError("target_response_not_last_record_output")
 
     normalized: Json = {
         "final_response_index": final_index,
-        "final_response": final_response,
+        "final_response": target_final_response,
     }
     final_method = target.get("final_method")
     if isinstance(final_method, str) and final_method.strip():
@@ -154,6 +192,44 @@ def _normalize_spec_grounding(candidate: Mapping[str, Any]) -> List[Json]:
     return normalized
 
 
+# Changed: require generated-instruction provenance on every candidate row.
+# Why: official Self-Instruct instance rows must trace back to the instruction generation and classification-detection artifacts.
+def _normalize_generation_provenance(candidate: Mapping[str, Any]) -> Json:
+    provenance_value = candidate.get("generation_provenance")
+    if not isinstance(provenance_value, Mapping):
+        provenance_value = candidate.get("provenance")
+    provenance = dict(provenance_value) if isinstance(provenance_value, Mapping) else {}
+
+    source_instruction_id = candidate.get("source_instruction_id") or provenance.get("source_instruction_id")
+    if not isinstance(source_instruction_id, str) or not source_instruction_id.strip():
+        raise CandidateSchemaError(
+            "source_instruction_id_missing; migration: set source_instruction_id or "
+            "generation_provenance.source_instruction_id from the machine_generated_instructions dry-run artifact"
+        )
+
+    normalized: Json = {
+        "source_instruction_id": source_instruction_id.strip(),
+        "official_instruction_artifact": provenance.get("official_instruction_artifact")
+        or "machine_generated_instructions.jsonl",
+        "official_instance_artifact": provenance.get("official_instance_artifact")
+        or "machine_generated_instances.jsonl",
+    }
+    for key in (
+        "classification_detection_id",
+        "official_classification_artifact",
+        "instance_generation_request_id",
+        "raw_output_request_id",
+        "provenance_migration",
+        "parser_source_line",
+    ):
+        value = candidate.get(key) if key in candidate else provenance.get(key)
+        if isinstance(value, str) and value.strip():
+            normalized[key] = value.strip()
+        elif isinstance(value, int):
+            normalized[key] = value
+    return normalized
+
+
 # Changed: canonicalize label-bearing candidate rows and run the final-response invariant gate.
 # Why: generated labels must target records[-1].output before any judge, manifest, or training step.
 def normalize_candidate(candidate: Mapping[str, Any]) -> Json:
@@ -162,13 +238,14 @@ def normalize_candidate(candidate: Mapping[str, Any]) -> Json:
 
     sample_id = _required_string(candidate, ("sample_id", "candidate_id", "id"), "sample_id")
     instruction = _required_string(candidate, ("instruction", "task_instruction"), "instruction")
-    records = _extract_records(candidate)
+    records = _normalize_record_status_codes(_extract_records(candidate))
     final_index = len(records) - 1
     final_response = _final_output(records)
 
     label = normalize_label(candidate.get("label"))
     if label is None:
         raise CandidateSchemaError("invalid_label")
+    generation_provenance = _normalize_generation_provenance(candidate)
 
     label_target = candidate.get("label_target")
     if label_target is not None and str(label_target).strip().lower() != "final_response":
@@ -177,6 +254,7 @@ def normalize_candidate(candidate: Mapping[str, Any]) -> Json:
     normalized: Json = {
         "schema_version": CANDIDATE_SCHEMA_VERSION,
         "sample_id": sample_id,
+        "source_instruction_id": generation_provenance["source_instruction_id"],
         "instruction": instruction,
         "records": records,
         "label": label,
@@ -184,6 +262,7 @@ def normalize_candidate(candidate: Mapping[str, Any]) -> Json:
         "target": _normalize_target(candidate, final_index, final_response),
         "primary_evidence": _normalize_primary_evidence(candidate, final_index),
         "spec_grounding": _normalize_spec_grounding(candidate),
+        "generation_provenance": generation_provenance,
         "source": candidate.get("source") if isinstance(candidate.get("source"), str) else "self_instruct_candidate",
     }
 
@@ -207,6 +286,7 @@ def profile_candidate(candidate: Mapping[str, Any]) -> Json:
             for item in grounding
             if isinstance(item, Mapping) and isinstance(item.get("rule_ref"), str)
         ]
+    profile["source_instruction_id"] = candidate.get("source_instruction_id")
     return profile
 
 

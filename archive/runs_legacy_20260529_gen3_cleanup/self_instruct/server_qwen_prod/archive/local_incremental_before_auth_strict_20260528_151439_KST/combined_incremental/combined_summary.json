@@ -1,0 +1,33 @@
+{
+  "combined_dedup": 27,
+  "combined_dedup_rejects": 1,
+  "combined_input_rows": 28,
+  "label_counts": {
+    "fail": 13,
+    "pass": 14
+  },
+  "record_count_counts": {
+    "1": 3,
+    "2": 3,
+    "7": 3,
+    "9": 2,
+    "10": 2,
+    "11": 2,
+    "21": 7,
+    "26": 2,
+    "27": 1,
+    "39": 2
+  },
+  "sample_ids_first10": [
+    "self-instruct-gen-00000-cand-00",
+    "self-instruct-gen-00002-cand-00",
+    "self-instruct-gen-00003-cand-00",
+    "self-instruct-gen-00006-cand-00",
+    "self-instruct-gen-00007-cand-00",
+    "self-instruct-gen-00009-cand-00",
+    "self-instruct-gen-00012-cand-00",
+    "self-instruct-gen-00014-cand-00",
+    "self-instruct-gen-00015-cand-00",
+    "self-instruct-gen-00016-cand-00"
+  ]
+}

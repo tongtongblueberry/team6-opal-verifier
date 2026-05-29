@@ -57,6 +57,52 @@ trainable `852,985,920`, total `852,985,920`, frozen `0`, PEFT/LoRA disabled다.
 3. 필요 시 seed29 full FT artifact inspect/calibration과 threshold 결정을 수행한다.
 4. package `<12GB`, `tools/eval/check_submit_package.py`, `tools/eval/runtime_smoke_submit_package.py --offline --first-forward` gate를 확인한다.
 
+## QLoRA 준비 상태
+
+<!-- Changed: record the reviewed QLoRA implementation basis and current verification boundary. -->
+<!-- Why: 4B LoRA/QLoRA must use verified TRL/PEFT loading paths instead of a custom trainer. -->
+
+[EXTERNAL KNOWLEDGE] Dettmers, T., Pagnoni, A., Holtzman, A., & Zettlemoyer, L.
+(2023). *QLoRA: Efficient finetuning of quantized LLMs*. In *Advances in Neural
+Information Processing Systems, 36*. https://arxiv.org/abs/2305.14314
+
+[EXTERNAL KNOWLEDGE] Hugging Face. (2026). *TRL PEFT Integration*. Hugging Face
+Documentation. https://huggingface.co/docs/trl/en/peft_integration
+
+[Original Text/Data] `third_party/hf_trl_sft/trl/scripts/sft.py:70-84` imports
+`SFTTrainer`, `get_kbit_device_map`, `get_peft_config`, `get_quantization_config`
+and attaches `device_map` plus `quantization_config` to `training_args.model_init_kwargs`
+when quantization is enabled.
+→ [Exact Interpretation] QLoRA model loading belongs in TRL `SFTConfig.model_init_kwargs`
+or equivalent model loading kwargs, while PEFT/LoRA remains the adapter-training path.
+→ [Detailed Explanation/Example] `tools/training/run_trl_sft_public20.py:81-87`
+adds CLI knobs for 4-bit quantization, and `tools/training/run_trl_sft_public20.py:233-250`
+adds `device_map` plus `BitsAndBytesConfig` under `model_init_kwargs`.
+
+[Original Text/Data] `third_party/hf_peft_sft_qlora/examples/sft/utils.py:100-112`
+builds `BitsAndBytesConfig(load_in_4bit=..., bnb_4bit_quant_type=...,
+bnb_4bit_compute_dtype=..., bnb_4bit_use_double_quant=...,
+bnb_4bit_quant_storage=...)`.
+→ [Exact Interpretation] The local runner's `--bnb-4bit-*` arguments are a wrapper
+around the reviewed PEFT/Transformers quantization fields, not a new quantizer.
+→ [Detailed Explanation/Example] `tests/test_run_trl_sft_public20.py:78-97` now
+checks that 4-bit requires `--use-peft` and that dry-run config emits
+`model_init_kwargs.quantization_config.class == transformers.BitsAndBytesConfig`.
+
+[Original Text/Data] Local verification on 2026-05-27 KST:
+`python3 -m unittest discover -s tests -v` ran `142` tests and returned `OK`.
+The QLoRA dry-run command against
+`runs/model_validation/public20_trl_sft/seed11_retrieved_spec_context_dataset`
+returned `model_init_kwargs.device_map == trl.get_kbit_device_map()` and a
+4-bit `BitsAndBytesConfig` report. The invalid command
+`--use-4bit-quantization` without `--use-peft` exited with code `2`.
+→ [Exact Interpretation] The implementation is source-aligned and dry-run verified.
+It is not yet a completed 4B training result.
+→ [Detailed Explanation/Example] Actual QLoRA training still requires a server/runtime
+environment with `trl`, `torch`, `transformers`, `peft`, `datasets`, and
+`bitsandbytes` installed and must be evaluated with the same public20 train/val
+protocol before becoming a model candidate.
+
 ## 서버 실행 command 초안
 
 ```bash

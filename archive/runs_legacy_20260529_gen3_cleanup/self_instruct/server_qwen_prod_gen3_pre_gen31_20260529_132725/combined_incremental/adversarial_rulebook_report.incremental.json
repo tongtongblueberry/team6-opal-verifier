@@ -1,0 +1,29 @@
+{
+  "accepted_count": 0,
+  "accepted_output": "runs/self_instruct/server_qwen_prod_gen3/combined_incremental/adversarial_rulebook_accepted.incremental.jsonl",
+  "candidate_count": 8,
+  "candidates_input": "runs/self_instruct/server_qwen_prod_gen3/combined_incremental/dedup_candidates.combined.namespaced.jsonl",
+  "decisions_output": "runs/self_instruct/server_qwen_prod_gen3/combined_incremental/adversarial_rulebook_decisions.incremental.jsonl",
+  "generation_requests_jsonl": "runs/self_instruct/server_qwen_prod_gen3/current_raw_check/generation_requests.jsonl",
+  "reject_reason_counts": {
+    "pass_final_status_not_supported_by_rulebook:SUCCESS (SYNCSESSION) not in SUCCESS,FAIL": 1,
+    "pass_final_status_not_supported_by_rulebook:SUCCESS not in FAIL,NOT_AUTHORIZED": 1,
+    "required_auth_session_missing_hostchallenge_or_authority": 8,
+    "required_context_domains_missing:Authority": 2,
+    "required_context_domains_missing:SP": 1,
+    "target_final_method_mismatch:Get!=EndSession": 1,
+    "target_final_status_mismatch:NOT_AUTHORIZED!=SUCCESS": 1,
+    "target_final_status_mismatch:SUCCESS!=INVALID_PARAMETER": 1,
+    "target_final_status_mismatch:SUCCESS!=NOT_AUTHORIZED": 2,
+    "target_final_status_mismatch:SUCCESS!=SUCCESS (SYNCSESSION)": 1,
+    "target_label_mismatch:fail!=pass": 2,
+    "target_record_count_mismatch:21!=3": 1,
+    "target_record_count_mismatch:27!=10": 1,
+    "target_record_count_mismatch:9!=10": 1
+  },
+  "rejected_count": 8,
+  "rejected_output": "runs/self_instruct/server_qwen_prod_gen3/combined_incremental/adversarial_rulebook_rejected.incremental.jsonl",
+  "rulebook_path": "docs/legacy_spec_rules.md",
+  "schema_version": "self_instruct.adversarial_rulebook_quality_gate.v1",
+  "training_use": "accepted_rows_only_pending_gate_b_c"
+}

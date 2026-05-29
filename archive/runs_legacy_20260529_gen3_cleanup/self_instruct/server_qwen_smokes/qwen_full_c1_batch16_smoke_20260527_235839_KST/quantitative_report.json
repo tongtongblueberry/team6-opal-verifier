@@ -1,0 +1,555 @@
+{
+  "dedup_candidates": 12,
+  "dedup_rejects": 0,
+  "dedup_report": {
+    "accepted_count": 12,
+    "input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/parsed_candidates.qwen_local.jsonl",
+    "near_duplicate_mode": "domain_text",
+    "near_duplicate_mode_default": "domain_text",
+    "public20_reference": "data/local/public20/public20_input.jsonl",
+    "reject_filter_stage_counts": {},
+    "reject_reason_counts": {},
+    "rejected_count": 0,
+    "rouge_l_threshold": 0.7,
+    "schema_version": "self_instruct.candidate_dedup.v1"
+  },
+  "export_input_rows": 1,
+  "export_label_counts": {
+    "pass": 1
+  },
+  "export_label_rows": 1,
+  "export_report": {
+    "clean_output_dir": true,
+    "input_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/gen_export/gen_input.jsonl",
+    "label_counts": {
+      "pass": 1
+    },
+    "label_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/gen_export/gen_labels.local.jsonl",
+    "output_dir": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/gen_export",
+    "record_count_counts": {
+      "1": 1
+    },
+    "row_count": 1,
+    "schema_version": "self_instruct.public_schema_export.v1",
+    "source": "qwen_local_self_instruct_batch16"
+  },
+  "gate_a_report": {
+    "accepted_label_distribution": {
+      "fail": 1,
+      "pass": 7
+    },
+    "artifact_note": "이 입력은 generated synthetic candidate pool이며 state-transition audit decision을 채워야 한다.",
+    "audit_targets": [
+      {
+        "final_method": "EndSession",
+        "final_status": "NOT_AUTHORIZED",
+        "label": "fail",
+        "line_number": 6,
+        "method_status_sequence": [
+          {
+            "index": 0,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 1,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 2,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 3,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 4,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 5,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 6,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 7,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 8,
+            "method": "Authenticate",
+            "status": "INVALID_PARAMETER"
+          },
+          {
+            "index": 9,
+            "method": "EndSession",
+            "status": "NOT_AUTHORIZED"
+          }
+        ],
+        "record_count": 10,
+        "sample_id": "self-instruct-gen-00013-cand-00"
+      },
+      {
+        "final_method": "StartSession",
+        "final_status": "SUCCESS",
+        "label": "pass",
+        "line_number": 5,
+        "method_status_sequence": [
+          {
+            "index": 0,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 1,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 2,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 3,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 4,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 5,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 6,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          }
+        ],
+        "record_count": 7,
+        "sample_id": "self-instruct-gen-00012-cand-00"
+      },
+      {
+        "final_method": "StartSession",
+        "final_status": "SUCCESS",
+        "label": "pass",
+        "line_number": 3,
+        "method_status_sequence": [
+          {
+            "index": 0,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 1,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 2,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 3,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 4,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 5,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 6,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 7,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 8,
+            "method": "Activate",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 9,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 10,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 11,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 12,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 13,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 14,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 15,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 16,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 17,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 18,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 19,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 20,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 21,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 22,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 23,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 24,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 25,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          }
+        ],
+        "record_count": 26,
+        "sample_id": "self-instruct-gen-00006-cand-00"
+      },
+      {
+        "final_method": "Activate",
+        "final_status": "SUCCESS",
+        "label": "pass",
+        "line_number": 7,
+        "method_status_sequence": [
+          {
+            "index": 0,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 1,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 2,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 3,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 4,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 5,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 6,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 7,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 8,
+            "method": "Activate",
+            "status": "SUCCESS"
+          }
+        ],
+        "record_count": 9,
+        "sample_id": "self-instruct-gen-00014-cand-00"
+      },
+      {
+        "final_method": "EndSession",
+        "final_status": "SUCCESS",
+        "label": "pass",
+        "line_number": 8,
+        "method_status_sequence": [
+          {
+            "index": 0,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 1,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 2,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 3,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 4,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 5,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 6,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 7,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 8,
+            "method": "Activate",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 9,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 10,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 11,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 12,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 13,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 14,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 15,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 16,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 17,
+            "method": "Get",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 18,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 19,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 20,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 21,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 22,
+            "method": "StartSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 23,
+            "method": "Set",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 24,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          },
+          {
+            "index": 25,
+            "method": "EndSession",
+            "status": "SUCCESS"
+          }
+        ],
+        "record_count": 26,
+        "sample_id": "self-instruct-gen-00016-cand-00"
+      }
+    ],
+    "generated_at_kst": "2026-05-28T09:11:41+09:00",
+    "hard_invariant_fail_count": 0,
+    "hard_invariant_pass_count": 8,
+    "input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/judge_accepted_candidates.qwen_local.jsonl",
+    "invariant_failures": [],
+    "sample_label_distribution": {
+      "fail": 1,
+      "pass": 4
+    },
+    "sample_md_policy": "create-only-after-gate-a-b-c-pass",
+    "sample_size_actual": 5,
+    "sample_size_requested": 5,
+    "schema_version": "self_instruct.gate_a_quality_audit.v1",
+    "seed": 20260528,
+    "status": "pending-qualitative-state-transition-audit",
+    "total_candidates": 8,
+    "training_use": "pending-gate-a-human-or-llm-judge-review"
+  },
+  "judge_accepted_candidates": 8,
+  "judge_accepted_label_counts": {
+    "fail": 1,
+    "pass": 7
+  },
+  "judge_filter_report": {
+    "accepted_count": 8,
+    "candidates_input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/dedup_candidates.qwen_local.jsonl",
+    "decision_count": 12,
+    "judge_contract_version": "opal_final_response_judge.v1",
+    "reject_reason_counts": {
+      "judge_decision_reject": 4
+    },
+    "rejected_count": 4,
+    "request_count": 12,
+    "schema_version": "self_instruct.judge_filter_report.v1"
+  },
+  "judge_rejects": 4,
+  "parse_rejects": 8,
+  "parse_report": {
+    "accepted_count": 12,
+    "input": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/raw_outputs.qwen_local.jsonl",
+    "official_counterpart": "prepare_for_finetuning.py outputs",
+    "official_stage": "candidate_preparation",
+    "prepared_candidate_artifact_schema_version": "self_instruct.prepare_for_finetuning_candidate.v1",
+    "reject_reason_counts": {
+      "fail_label_final_response_success_compatible": 1,
+      "target_index_not_last_record": 5,
+      "target_response_not_last_record_output": 2
+    },
+    "rejected_count": 8,
+    "schema_version": "self_instruct.raw_output_parser.v1"
+  },
+  "parsed_candidates": 12,
+  "raw_output_rows": 20,
+  "requested_final_limit": 1,
+  "run": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST",
+  "runner_report": {
+    "batch_size": 16,
+    "created_at_kst": "2026-05-28T08:58:39+09:00",
+    "errors": [],
+    "executed_count": 20,
+    "failed_count": 0,
+    "model_path": "/workspace/cache/hf_cache/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28",
+    "output_path": "runs/self_instruct/qwen_full_c1_batch16_smoke_20260527_235839_KST/raw_outputs.qwen_local.jsonl",
+    "provider": "hf_local",
+    "provider_base_url_env_var": null,
+    "provider_env_var": null,
+    "request_count": 20,
+    "schema_version": "self_instruct.llm_runner_report.v1",
+    "skipped_count": 0,
+    "status": "completed"
+  }
+}

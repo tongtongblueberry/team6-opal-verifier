@@ -1,0 +1,13 @@
+{
+  "created_at_kst": "2026-05-27T23:29:29+09:00",
+  "errors": [],
+  "executed_count": 0,
+  "failed_count": 0,
+  "output_path": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/raw_outputs.provider_gemini.jsonl",
+  "provider": "gemini",
+  "provider_env_var": "GEMINI_API_KEY",
+  "request_count": 50,
+  "schema_version": "self_instruct.llm_runner_report.v1",
+  "skipped_count": 50,
+  "status": "skipped_missing_env"
+}

@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
+import json
 import math
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 
@@ -33,6 +34,87 @@ class EvalTrlSftPublic20GenerationTests(unittest.TestCase):
         self.assertTrue(math.isclose(metrics["accuracy"], 0.5))
         self.assertTrue(math.isclose(metrics["precision_fail"], 0.5))
         self.assertTrue(math.isclose(metrics["recall_fail"], 0.5))
+
+    # Changed: cover the corrected queue --max-length CLI contract without model inference.
+    # Why: generation eval must accept 8192 and pass it to tokenizer input preparation.
+    def test_cli_accepts_max_length_and_uses_it_in_tokenizer_kwargs(self) -> None:
+        args = generation_eval.parse_args(
+            [
+                "--dataset-jsonl",
+                "validation.jsonl",
+                "--model-name-or-path",
+                "model",
+                "--output-json",
+                "generation.json",
+                "--output-md",
+                "generation.md",
+                "--max-length",
+                "8192",
+            ]
+        )
+
+        self.assertEqual(8192, args.max_length)
+        self.assertEqual(
+            {"return_tensors": "pt", "padding": True, "truncation": True, "max_length": 8192},
+            generation_eval.build_generation_tokenizer_kwargs(args.max_length),
+        )
+
+    # Changed: lock default generation tokenization to the previous non-truncating behavior.
+    # Why: adding --max-length must not change existing calls that omit the option.
+    def test_default_generation_tokenizer_kwargs_do_not_truncate(self) -> None:
+        self.assertIsNone(generation_eval.parse_args(
+            [
+                "--dataset-jsonl",
+                "validation.jsonl",
+                "--model-name-or-path",
+                "model",
+                "--output-json",
+                "generation.json",
+                "--output-md",
+                "generation.md",
+            ]
+        ).max_length)
+        self.assertEqual(
+            {"return_tensors": "pt", "padding": True},
+            generation_eval.build_generation_tokenizer_kwargs(None),
+        )
+
+    # Changed: verify --max-length is archived in generation reports.
+    # Why: server-side eval artifacts need evidence that corrected queue runs used the intended prompt budget.
+    def test_dry_run_report_records_max_length_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_name:
+            temp_dir = Path(temp_name)
+            dataset = temp_dir / "validation.jsonl"
+            output_json = temp_dir / "generation.json"
+            output_md = temp_dir / "generation.md"
+            dataset.write_text(
+                json.dumps({"input": "input\n", "labels": "pass"}) + "\n",
+                encoding="utf-8",
+            )
+
+            with redirect_stdout(StringIO()):
+                exit_code = generation_eval.main(
+                    [
+                        "--dataset-jsonl",
+                        str(dataset),
+                        "--model-name-or-path",
+                        "dummy-model",
+                        "--output-json",
+                        str(output_json),
+                        "--output-md",
+                        str(output_md),
+                        "--max-length",
+                        "8192",
+                        "--dry-run",
+                    ]
+                )
+
+            report = json.loads(output_json.read_text(encoding="utf-8"))
+            markdown = output_md.read_text(encoding="utf-8")
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual({"max_length": 8192, "truncation": True}, report["tokenization"])
+        self.assertIn("max_length: `8192`", markdown)
 
     # Changed: cover direct adapter-dir and explicit --adapter-path loading flow without importing HF packages.
     # Why: the regression was caused by the adapter-path branch diverging from verified PEFT/Transformers semantics.
@@ -76,7 +158,8 @@ class EvalTrlSftPublic20GenerationTests(unittest.TestCase):
                 model = FakeModel()
 
                 @classmethod
-                def from_pretrained(cls, path: str) -> FakeModel:
+                def from_pretrained(cls, path: str, **kwargs: object) -> FakeModel:
+                    del kwargs
                     cls.loaded.append(path)
                     return cls.model
 
@@ -128,7 +211,8 @@ class EvalTrlSftPublic20GenerationTests(unittest.TestCase):
                 model = FakeModel()
 
                 @classmethod
-                def from_pretrained(cls, path: str) -> FakeModel:
+                def from_pretrained(cls, path: str, **kwargs: object) -> FakeModel:
+                    del kwargs
                     cls.loaded.append(path)
                     return cls.model
 
@@ -158,6 +242,40 @@ class EvalTrlSftPublic20GenerationTests(unittest.TestCase):
                 generation_eval.validate_model_adapter_args(str(base_adapter_dir), str(adapter_dir))
 
             self.assertEqual(2, raised.exception.code)
+
+    # Changed: verify model placement/dtype CLI values are passed as official from_pretrained kwargs.
+    # Why: evaluator device fixes must avoid heavy model loading in tests and avoid custom placement code.
+    def test_load_model_passes_transformers_from_pretrained_kwargs(self) -> None:
+        class FakeTorch:
+            bfloat16 = "resolved-bfloat16"
+
+        class FakeTokenizer:
+            pad_token_id = 0
+            eos_token = "<eos>"
+
+        class FakeAutoTokenizer:
+            @classmethod
+            def from_pretrained(cls, path: str) -> FakeTokenizer:
+                self.assertEqual("model", path)
+                return FakeTokenizer()
+
+        class FakeModel:
+            def eval(self) -> None:
+                pass
+
+        class FakeAutoModel:
+            kwargs: dict[str, object] | None = None
+
+            @classmethod
+            def from_pretrained(cls, path: str, **kwargs: object) -> FakeModel:
+                self.assertEqual("model", path)
+                cls.kwargs = kwargs
+                return FakeModel()
+
+        kwargs = generation_eval.build_model_from_pretrained_kwargs(FakeTorch, "auto", "bfloat16")
+        generation_eval.load_model_and_tokenizer(FakeAutoTokenizer, FakeAutoModel, "model", None, kwargs)
+
+        self.assertEqual({"device_map": "auto", "torch_dtype": "resolved-bfloat16"}, FakeAutoModel.kwargs)
 
 
 if __name__ == "__main__":

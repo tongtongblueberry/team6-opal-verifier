@@ -1,0 +1,56 @@
+{
+  "adapter": "public20_trl_sft_prompt_completion",
+  "completion_only_loss_intent": {
+    "reason": "prompt/completion columns let TRL mask prompt tokens and train on completion tokens.",
+    "trl_sft_config": {
+      "completion_only_loss": true
+    }
+  },
+  "created_at": "2026-05-27T05:35:18.816500+09:00",
+  "custom_training_loop": false,
+  "dataset_format": "standard_prompt_completion",
+  "output_dir": "runs/model_validation/public20_trl_sft_10_10/datasets/plain_seed_29",
+  "outputs": [
+    {
+      "label_counts": {
+        "fail": 5,
+        "pass": 5
+      },
+      "output_path": "runs/model_validation/public20_trl_sft_10_10/datasets/plain_seed_29/train.jsonl",
+      "output_split": "train",
+      "retrieved_spec_context_char_max": null,
+      "retrieved_spec_context_char_min": null,
+      "retrieved_spec_context_enabled": false,
+      "row_count": 10,
+      "source_path": "runs/model_validation/public20_10_10_splits/split_seed_29/train.jsonl",
+      "source_split": "train"
+    },
+    {
+      "label_counts": {
+        "fail": 5,
+        "pass": 5
+      },
+      "output_path": "runs/model_validation/public20_trl_sft_10_10/datasets/plain_seed_29/validation.jsonl",
+      "output_split": "validation",
+      "retrieved_spec_context_char_max": null,
+      "retrieved_spec_context_char_min": null,
+      "retrieved_spec_context_enabled": false,
+      "row_count": 10,
+      "source_path": "runs/model_validation/public20_10_10_splits/split_seed_29/val.jsonl",
+      "source_split": "val"
+    }
+  ],
+  "prompt_suffix": "\n",
+  "public20_test_split_created": false,
+  "retrieved_spec_context": {
+    "enabled": false,
+    "label_used_for_retrieval": false,
+    "max_context_chars": 4096,
+    "rule_card_count": 0,
+    "runtime_rule_engine": false,
+    "source_path": null,
+    "top_k": 0
+  },
+  "split_dir": "runs/model_validation/public20_10_10_splits/split_seed_29",
+  "training_core": "trl.SFTTrainer"
+}

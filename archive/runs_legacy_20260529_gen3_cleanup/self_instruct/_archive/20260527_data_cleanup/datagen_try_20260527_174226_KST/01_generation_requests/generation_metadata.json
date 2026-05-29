@@ -1,0 +1,101 @@
+{
+  "artifacts": {
+    "candidate_preparation": {
+      "official_counterpart": "prepare_for_finetuning.py outputs",
+      "path": null,
+      "status": "handled_by_parse_self_instruct_outputs_and_candidate_schema_after_raw_llm_output"
+    },
+    "classification_detection": {
+      "official_counterpart": "is_clf_or_not_<engine>_<template>.jsonl",
+      "path": "runs/self_instruct/datagen_try_20260527_174226_KST/01_generation_requests/is_clf_or_not_audited_noop.jsonl",
+      "schema_version": "self_instruct.is_clf_or_not.audited_noop.v1",
+      "status": "audited_noop_true_for_pass_fail_domain"
+    },
+    "instance_generation": {
+      "official_counterpart": "machine_generated_instances.jsonl",
+      "path": null,
+      "schema_version": "self_instruct.generation_request.v1",
+      "status": "dry_run_request_only_no_llm_call"
+    },
+    "instruction_generation": {
+      "official_counterpart": "machine_generated_instructions.jsonl",
+      "path": "runs/self_instruct/datagen_try_20260527_174226_KST/01_generation_requests/machine_generated_instructions.dry_run.jsonl",
+      "schema_version": "self_instruct.machine_generated_instructions.dry_run.v1",
+      "status": "dry_run_request_only_not_machine_generated_instruction"
+    }
+  },
+  "classification_detection_ids": [
+    "self-instruct-clf-00000",
+    "self-instruct-clf-00001"
+  ],
+  "execute": false,
+  "execute_requested": true,
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "request payloads contain input-only seed profiles, not public20 labels",
+    "request payloads contain spec rule cards with source spans from docs/legacy_spec_rules.md",
+    "instruction and classification artifacts are dry-run provenance, not accepted synthetic data",
+    "raw candidates without spec_grounding/source_span must be rejected before manifest creation",
+    "raw candidates without source_instruction_id or generation_provenance.source_instruction_id must be migrated before normalization",
+    "raw LLM outputs must be parsed by tools/datagen/parse_self_instruct_outputs.py"
+  ],
+  "official_pipeline_stage_map": {
+    "candidate_preparation": "prepare_for_finetuning.py outputs",
+    "classification_detection": "is_clf_or_not_<engine>_<template>.jsonl",
+    "instance_generation": "machine_generated_instances.jsonl",
+    "instruction_generation": "machine_generated_instructions.jsonl"
+  },
+  "official_source": {
+    "license": "Apache-2.0",
+    "official_code": "https://github.com/yizhongw/self-instruct",
+    "paper": "Wang et al. 2023 Self-Instruct"
+  },
+  "payload_sha256": {
+    "self-instruct-gen-00000": "5697b3fd2f8ee5a47748c4b662d69271b5a7e5db9442c517a838cfb2abb10509",
+    "self-instruct-gen-00001": "a28c64e98d8d034b29a216ddee9b1ce414e7c9f3704075a4ac59ffeaae534a78"
+  },
+  "prompt_contract_version": "opal_final_response_spec_grounded_output_first.v1",
+  "request_count": 2,
+  "request_ids": [
+    "self-instruct-gen-00000",
+    "self-instruct-gen-00001"
+  ],
+  "runner": {
+    "executed_count": 0,
+    "failed_count": 0,
+    "output_path": "runs/self_instruct/datagen_try_20260527_174226_KST/02_raw_generation/raw_outputs.jsonl",
+    "provider": "openai",
+    "provider_env_var": "OPENAI_API_KEY",
+    "report_path": "runs/self_instruct/datagen_try_20260527_174226_KST/02_raw_generation/runner_report.json",
+    "request_count": 2,
+    "schema_version": "self_instruct.llm_runner_report.v1",
+    "skipped_count": 2,
+    "status": "skipped_missing_env"
+  },
+  "schema_version": "self_instruct.generation_metadata.v1",
+  "seed_input": "data/local/public20/public20_input.jsonl",
+  "source_instruction_ids": [
+    "self-instruct-instruction-00000",
+    "self-instruct-instruction-00001"
+  ],
+  "source_spec_rule_refs": {
+    "self-instruct-gen-00000": [
+      "RULE 01",
+      "RULE 02",
+      "RULE 03",
+      "RULE 04",
+      "RULE 05",
+      "RULE 06"
+    ],
+    "self-instruct-gen-00001": [
+      "RULE 07",
+      "RULE 08",
+      "RULE 09",
+      "RULE 10",
+      "RULE 11",
+      "RULE 12"
+    ]
+  },
+  "spec_rule_count": 86,
+  "spec_rules_input": "docs/legacy_spec_rules.md"
+}

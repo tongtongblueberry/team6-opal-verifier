@@ -111,6 +111,27 @@ class SolverMergedModelPathTest(unittest.TestCase):
         self.assertEqual(merged_dir, resolved)
         self.assertEqual("repo-local artifacts/merged_model", source)
 
+    def test_full_model_prompt_contract_uses_raw_records_json(self) -> None:
+        # Changed: cover the full-model TRL prompt-completion formatter.
+        # Why: selected full FT validation evidence used raw {"records":[...]} JSON plus newline, not the LoRA chat prompt.
+        records = [{"index": 1, "input": {"method": {"name": "StartSession"}}, "output": {"status": "SUCCESS"}}]
+
+        prompt = solver._format_trl_prompt_completion_inline(records)
+
+        self.assertEqual(
+            '{"records":[{"index":1,"input":{"method":{"name":"StartSession"}},"output":{"status":"SUCCESS"}}]}\n',
+            prompt,
+        )
+
+    def test_parse_records_accepts_raw_public20_input_string(self) -> None:
+        # Changed: cover raw JSON input strings as solver payloads.
+        # Why: public20 rows store the evaluator input as a JSON string under the input field.
+        raw_input = '{"records":[{"index":1,"input":{"command":"Read"},"output":{"status":"SUCCESS"}}]}'
+
+        records = solver._parse_records(raw_input)
+
+        self.assertEqual([{"index": 1, "input": {"command": "Read"}, "output": {"status": "SUCCESS"}}], records)
+
     def test_solver_repo_local_merged_model_skips_lora_loader(self) -> None:
         # Changed: assert Solver stops after a repo-local merged artifact is selected.
         # Why: merged packages must not silently compose or prefer a LoRA adapter at runtime.

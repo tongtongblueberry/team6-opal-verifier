@@ -1,0 +1,393 @@
+{
+  "count": 12,
+  "final_status_counts": {
+    "INVALID_PARAMETER": 5,
+    "NOT_AUTHORIZED": 3,
+    "SP_BUSY": 1,
+    "SUCCESS": 3
+  },
+  "input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/parsed_candidates.codex_agent_fallback.jsonl",
+  "label_counts": {
+    "fail": 4,
+    "pass": 8
+  },
+  "profiles": [
+    {
+      "final_method": "Get",
+      "final_return_value_count": 1,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 888,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Authenticate",
+        "Get"
+      ],
+      "method_sequence_length": 3,
+      "record_count": 3,
+      "return_value_counts": [
+        2,
+        1,
+        1
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-01",
+      "source_instruction_id": "self-instruct-instruction-00000",
+      "spec_rule_refs": [
+        "RULE 01"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 2,
+      "total_return_value_count": 4
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 851,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get",
+        "Set"
+      ],
+      "method_sequence_length": 3,
+      "record_count": 3,
+      "return_value_counts": [
+        2,
+        1,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-02",
+      "source_instruction_id": "self-instruct-instruction-00000",
+      "spec_rule_refs": [
+        "RULE 02"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 2,
+      "total_return_value_count": 3
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 0,
+      "final_status": "SP_BUSY",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 555,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "StartSession"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-03",
+      "source_instruction_id": "self-instruct-instruction-00000",
+      "spec_rule_refs": [
+        "RULE 04"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SP_BUSY"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 325,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession"
+      ],
+      "method_sequence_length": 1,
+      "record_count": 1,
+      "return_value_counts": [
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-01",
+      "source_instruction_id": "self-instruct-instruction-00001",
+      "spec_rule_refs": [
+        "RULE 07"
+      ],
+      "status_sequence": [
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 0,
+      "total_return_value_count": 0
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 554,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "StartSession"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-02",
+      "source_instruction_id": "self-instruct-instruction-00001",
+      "spec_rule_refs": [
+        "RULE 10"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 580,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Set"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-03",
+      "source_instruction_id": "self-instruct-instruction-00001",
+      "spec_rule_refs": [
+        "RULE 11",
+        "RULE 12"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "StartSession",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 544,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "Properties",
+        "StartSession"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-01",
+      "source_instruction_id": "self-instruct-instruction-00002",
+      "spec_rule_refs": [
+        "RULE 13"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 0,
+      "final_status": "NOT_AUTHORIZED",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 592,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-02",
+      "source_instruction_id": "self-instruct-instruction-00002",
+      "spec_rule_refs": [
+        "RULE 15"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "NOT_AUTHORIZED"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 2,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 646,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        2
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-03",
+      "source_instruction_id": "self-instruct-instruction-00002",
+      "spec_rule_refs": [
+        "RULE 18"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 4
+    },
+    {
+      "final_method": "Get",
+      "final_return_value_count": 0,
+      "final_status": "SUCCESS",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 590,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Get"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-01",
+      "source_instruction_id": "self-instruct-instruction-00003",
+      "spec_rule_refs": [
+        "RULE 19"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "SUCCESS"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 602,
+      "label": "fail",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Set"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-02",
+      "source_instruction_id": "self-instruct-instruction-00003",
+      "spec_rule_refs": [
+        "RULE 21"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    },
+    {
+      "final_method": "Set",
+      "final_return_value_count": 0,
+      "final_status": "INVALID_PARAMETER",
+      "input_format": "canonical_instruction_records",
+      "input_json_chars": 638,
+      "label": "pass",
+      "label_target": "final_response",
+      "length_bin": "1-32",
+      "method_sequence": [
+        "StartSession",
+        "Set"
+      ],
+      "method_sequence_length": 2,
+      "record_count": 2,
+      "return_value_counts": [
+        2,
+        0
+      ],
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-03",
+      "source_instruction_id": "self-instruct-instruction-00003",
+      "spec_rule_refs": [
+        "RULE 22"
+      ],
+      "status_sequence": [
+        "SUCCESS",
+        "INVALID_PARAMETER"
+      ],
+      "target_final_response_index": 1,
+      "total_return_value_count": 2
+    }
+  ],
+  "schema_version": "self_instruct.candidate_profile.v1"
+}

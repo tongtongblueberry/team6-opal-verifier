@@ -1,0 +1,69 @@
+{
+  "accepted_label_distribution": {
+    "pass": 1
+  },
+  "artifact_note": "이 입력은 generated synthetic candidate pool이며 state-transition audit decision을 채워야 한다.",
+  "audit_targets": [
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 1,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "active::self-instruct-gen-00006-cand-00"
+    }
+  ],
+  "generated_at_kst": "2026-05-29T14:12:34+09:00",
+  "hard_invariant_fail_count": 0,
+  "hard_invariant_pass_count": 1,
+  "input": "runs/self_instruct/server_qwen_prod_gen31/combined_incremental/adversarial_rulebook_accepted.incremental.jsonl",
+  "invariant_failures": [],
+  "sample_label_distribution": {
+    "pass": 1
+  },
+  "sample_md_policy": "create-only-after-gate-a-b-c-pass",
+  "sample_size_actual": 1,
+  "sample_size_requested": 40,
+  "schema_version": "self_instruct.gate_a_quality_audit.v1",
+  "seed": 20260529,
+  "status": "pending-qualitative-state-transition-audit",
+  "total_candidates": 1,
+  "training_use": "pending-gate-a-human-or-llm-judge-review"
+}

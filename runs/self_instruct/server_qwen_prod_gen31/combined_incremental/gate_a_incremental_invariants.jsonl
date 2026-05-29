@@ -1,0 +1,1 @@
+{"details": {"final_method": "Get", "final_response_index": 6, "final_response_markers": ["SUCCESS"], "final_statuses": ["SUCCESS"], "label": "pass", "record_count": 7, "sample_id": "active::self-instruct-gen-00006-cand-00"}, "line_number": 1, "passed": true, "reason": "ok", "sample_id": "active::self-instruct-gen-00006-cand-00"}

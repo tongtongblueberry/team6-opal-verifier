@@ -212,6 +212,11 @@ REFERENCE_AUXILIARY_PATH_TERMS = (
     "rejection",
 )
 REFERENCE_SKIP_EXAMPLE_LIMIT = 50
+# 변경: record_count 보존 selector의 탐색 범위를 고정한다.
+# 이유: optional 분포 보정이 작은 remediation manifest에서는 정확히 탐색되되, 큰 ablation manifest에서 폭발하지 않게 하기 위해서다.
+RECORD_COUNT_SELECTION_MAX_GROUPS = 64
+RECORD_COUNT_SELECTION_MAX_DROP_RECORDS = 64
+RECORD_COUNT_SELECTION_STATE_LIMIT = 8_000_000
 
 
 @dataclass(frozen=True)
@@ -268,6 +273,7 @@ class ReferenceLoadResult:
     errors: List[Dict[str, Any]]
     eligible_records: int
     skipped: Mapping[str, Any]
+    record_count_values: List[int]
 
 
 @dataclass(frozen=True)
@@ -301,6 +307,13 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         default=0.2,
         help="Maximum fraction of deduped records the length balancer may drop by group.",
     )
+    # 변경: length selector에 optional record_count reference objective를 추가한다.
+    # 이유: length-bin JSD만 맞추는 selection이 public20-like conversation depth를 깨뜨릴 수 있기 때문이다.
+    parser.add_argument(
+        "--preserve-record-count-distribution",
+        action="store_true",
+        help="When length balancing, prefer a bounded group-preserving subset whose record_count mean matches the reference.",
+    )
     return parser.parse_args(argv)
 
 
@@ -331,6 +344,8 @@ def validate_args(args: argparse.Namespace) -> None:
         fail("--length-balance-target-jsd must be >= 0")
     if not 0.0 <= args.length_balance_max_drop_fraction <= 1.0:
         fail("--length-balance-max-drop-fraction must be between 0 and 1")
+    if args.preserve_record_count_distribution and not args.length_balance_reference:
+        fail("--preserve-record-count-distribution requires --length-balance-reference")
 
 
 # 변경: 디렉터리/파일 입력을 JSON 계열과 skip 대상 파일로 분리한다.
@@ -773,6 +788,59 @@ def has_reference_length_source(record: Mapping[str, Any]) -> bool:
     return False
 
 
+# 변경: reference/candidate record_count를 input JSON에서 공통 추출한다.
+# 이유: optional selector가 token length-bin JSD와 별도로 trajectory depth를 보존해야 하기 때문이다.
+def non_negative_int(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    if isinstance(value, float) and value.is_integer() and value >= 0:
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+    return None
+
+
+def infer_record_count_from_value(value: Any) -> Optional[int]:
+    if isinstance(value, Mapping):
+        direct = non_negative_int(value_for_key(value, "record_count"))
+        if direct is not None:
+            return direct
+
+        for key in ("records", "steps"):
+            nested = value_for_key(value, key)
+            if isinstance(nested, list):
+                return len(nested)
+
+        for key in INPUT_KEYS:
+            nested = value_for_key(value, key)
+            if nested is None:
+                continue
+            inferred = infer_record_count_from_value(nested)
+            if inferred is not None:
+                return inferred
+        return None
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            return None
+        return infer_record_count_from_value(parsed)
+
+    return None
+
+
+def record_count_for_manifest_record(record: ManifestRecord) -> Optional[int]:
+    return infer_record_count_from_value(record.input_text)
+
+
 # 변경: auxiliary score/report record를 schema-like identity/label record보다 먼저 판정한다.
 # 이유: sample_id/label/source가 있어도 length source가 없으면 reference length balancing의 eligible corpus가 아니기 때문이다.
 def classify_reference_record(record: Mapping[str, Any], auxiliary_path_reason: Optional[str] = None) -> Tuple[bool, str]:
@@ -905,6 +973,7 @@ def load_length_balance_reference(path: Path) -> ReferenceLoadResult:
     errors: List[Dict[str, Any]] = []
     skipped = new_reference_skip_summary()
     eligible_records = 0
+    record_count_values: List[int] = []
 
     for file_path in collect_reference_files(path):
         file_seen_records = 0
@@ -938,6 +1007,9 @@ def load_length_balance_reference(path: Path) -> ReferenceLoadResult:
                             errors.append({"path": str(file_path), "line": line_number, "record_index": file_seen_records, "error": "eligible reference record missing length_bin/input/text", "eligibility": reason})
                         else:
                             counts[bin_label] += 1
+                        record_count = infer_record_count_from_value(record)
+                        if record_count is not None:
+                            record_count_values.append(record_count)
         else:
             try:
                 with file_path.open("r", encoding="utf-8") as handle:
@@ -963,6 +1035,9 @@ def load_length_balance_reference(path: Path) -> ReferenceLoadResult:
                     errors.append({"path": str(file_path), "line": None, "record_index": file_seen_records, "error": "eligible reference record missing length_bin/input/text", "eligibility": reason})
                 else:
                     counts[bin_label] += 1
+                record_count = infer_record_count_from_value(record)
+                if record_count is not None:
+                    record_count_values.append(record_count)
 
         if pending_parse_errors:
             if file_eligible_records > 0 or auxiliary_path_reason is None:
@@ -981,6 +1056,7 @@ def load_length_balance_reference(path: Path) -> ReferenceLoadResult:
         errors=errors,
         eligible_records=eligible_records,
         skipped=finalize_reference_skip_summary(skipped),
+        record_count_values=record_count_values,
     )
 
 
@@ -1443,6 +1519,12 @@ def rounded_metric(value: Optional[float]) -> Optional[float]:
     return None if value is None else round(value, 6)
 
 
+def mean_int(values: Sequence[int]) -> Optional[float]:
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
 def length_counts_for_records(records: Sequence[ManifestRecord]) -> Counter:
     return Counter(record.length_bin for record in records)
 
@@ -1485,7 +1567,213 @@ def length_balance_disabled_report(args: argparse.Namespace) -> Dict[str, Any]:
         "dropped_group_count": 0,
         "dropped_record_count": 0,
         "dropped_groups": [],
+        "record_count_preservation": {
+            "enabled": bool(args.preserve_record_count_distribution),
+            "applied": False,
+            "reason": "disabled",
+        },
     }
+
+
+# 변경: bounded exact selector가 쓸 group aggregate를 만든다.
+# 이유: split 전 selection은 group 단위여야 leakage 없이 length와 record_count objective를 함께 평가할 수 있기 때문이다.
+def build_selection_groups(records: Sequence[ManifestRecord]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    records_by_group: DefaultDict[str, List[ManifestRecord]] = defaultdict(list)
+    for record in records:
+        records_by_group[record.group_id].append(record)
+
+    groups: List[Dict[str, Any]] = []
+    missing_record_counts: List[Dict[str, Any]] = []
+    length_labels = [label for _, _, label in LENGTH_BINS]
+    for group_id in sorted(records_by_group):
+        group_records = records_by_group[group_id]
+        record_counts: List[int] = []
+        length_counts = [0 for _ in length_labels]
+        pass_count = 0
+        for record in group_records:
+            record_count = record_count_for_manifest_record(record)
+            if record_count is None:
+                missing_record_counts.append({"group_id": group_id, "sample_id": record.sample_id})
+                continue
+            record_counts.append(record_count)
+            if record.label == "pass":
+                pass_count += 1
+            if record.length_bin in length_labels:
+                length_counts[length_labels.index(record.length_bin)] += 1
+        groups.append(
+            {
+                "group_id": group_id,
+                "records": group_records,
+                "record_count_sum": sum(record_counts),
+                "selected_record_count": len(group_records),
+                "pass_count": pass_count,
+                "length_counts": tuple(length_counts),
+            }
+        )
+    return groups, missing_record_counts
+
+
+def length_counter_from_tuple(counts: Sequence[int]) -> Counter:
+    labels = [label for _, _, label in LENGTH_BINS]
+    return Counter({label: count for label, count in zip(labels, counts) if count})
+
+
+def score_selected_records(
+    selected_records: Sequence[ManifestRecord],
+    selected_record_count_sum: int,
+    selected_pass_count: int,
+    selected_length_counts: Sequence[int],
+    reference: ReferenceLoadResult,
+) -> Optional[Tuple[Tuple[Any, ...], Dict[str, Any]]]:
+    if not selected_records:
+        return None
+    reference_mean = mean_int(reference.record_count_values)
+    if reference_mean is None:
+        return None
+    selected_mean = selected_record_count_sum / len(selected_records)
+    mean_abs_gap = abs(selected_mean - reference_mean)
+    selected_length_counter = length_counter_from_tuple(selected_length_counts)
+    jsd = jensen_shannon_divergence(selected_length_counter, reference.length_counts)
+    if jsd is None:
+        return None
+    label_balance_gap = abs(selected_pass_count - (len(selected_records) - selected_pass_count))
+    sample_ids = tuple(record.sample_id for record in selected_records)
+    score = (
+        round(mean_abs_gap, 12),
+        -len(selected_records),
+        label_balance_gap,
+        round(jsd, 12),
+        sample_ids,
+    )
+    return score, {
+        "record_count_mean": round(selected_mean, 6),
+        "record_count_mean_abs_gap": round(mean_abs_gap, 6),
+        "length_jsd": rounded_metric(jsd),
+        "selected_records": len(selected_records),
+        "label_counts": counter_to_sorted_dict(Counter(record.label for record in selected_records)),
+        "length_bins": {label: selected_length_counter.get(label, 0) for _, _, label in LENGTH_BINS},
+        "sample_ids": list(sample_ids[:50]),
+    }
+
+
+def select_record_count_preserving_records(
+    records: Sequence[ManifestRecord],
+    reference: ReferenceLoadResult,
+    args: argparse.Namespace,
+    max_drop_records: int,
+) -> Tuple[Optional[List[ManifestRecord]], Dict[str, Any]]:
+    reference_mean = mean_int(reference.record_count_values)
+    original_record_counts = [record_count_for_manifest_record(record) for record in records]
+    before_mean = None
+    if original_record_counts and not any(value is None for value in original_record_counts):
+        before_mean = sum(int(value) for value in original_record_counts if value is not None) / len(original_record_counts)
+    report: Dict[str, Any] = {
+        "enabled": True,
+        "applied": False,
+        "reason": "",
+        "bounded_exact": True,
+        "limits": {
+            "max_groups": RECORD_COUNT_SELECTION_MAX_GROUPS,
+            "max_drop_records": RECORD_COUNT_SELECTION_MAX_DROP_RECORDS,
+            "max_states": RECORD_COUNT_SELECTION_STATE_LIMIT,
+        },
+        "reference_record_count_mean": None if reference_mean is None else round(reference_mean, 6),
+        "before_record_count_mean": None if before_mean is None else round(before_mean, 6),
+        "after_record_count_mean": None,
+        "after_record_count_mean_abs_gap": None,
+        "candidate_state_count": 0,
+        "best_candidate": None,
+    }
+
+    if reference_mean is None:
+        report["reason"] = "reference_record_count_unavailable"
+        return None, report
+    if before_mean is None:
+        report["reason"] = "candidate_record_count_unavailable"
+        return None, report
+
+    groups, missing_record_counts = build_selection_groups(records)
+    if missing_record_counts:
+        report["reason"] = "candidate_group_record_count_unavailable"
+        report["missing_record_count_examples"] = missing_record_counts[:20]
+        return None, report
+    if len(groups) > RECORD_COUNT_SELECTION_MAX_GROUPS:
+        report["reason"] = "group_count_exceeds_bounded_selector"
+        report["group_count"] = len(groups)
+        return None, report
+    if max_drop_records > RECORD_COUNT_SELECTION_MAX_DROP_RECORDS:
+        report["reason"] = "max_drop_records_exceeds_bounded_selector"
+        report["max_drop_records"] = max_drop_records
+        return None, report
+
+    min_selected_records = len(records) - max_drop_records
+    length_label_count = len(LENGTH_BINS)
+    empty_length_counts = tuple(0 for _ in range(length_label_count))
+    total_record_count_sum = sum(int(group["record_count_sum"]) for group in groups)
+    total_pass_count = sum(int(group["pass_count"]) for group in groups)
+    total_length_counts = tuple(
+        sum(int(group["length_counts"][index]) for group in groups) for index in range(length_label_count)
+    )
+    states: Dict[Tuple[int, int, int, Tuple[int, ...]], int] = {(0, 0, 0, empty_length_counts): 0}
+
+    for index, group in enumerate(groups):
+        next_states = dict(states)
+        bit = 1 << index
+        group_length_counts = group["length_counts"]
+        for (dropped_count, dropped_record_count_sum, dropped_pass_count, dropped_length_counts), mask in states.items():
+            next_dropped_count = dropped_count + int(group["selected_record_count"])
+            if next_dropped_count > max_drop_records:
+                continue
+            next_dropped_record_count_sum = dropped_record_count_sum + int(group["record_count_sum"])
+            next_dropped_pass_count = dropped_pass_count + int(group["pass_count"])
+            next_dropped_length_counts = tuple(left + right for left, right in zip(dropped_length_counts, group_length_counts))
+            state = (next_dropped_count, next_dropped_record_count_sum, next_dropped_pass_count, next_dropped_length_counts)
+            next_states.setdefault(state, mask | bit)
+        if len(next_states) > RECORD_COUNT_SELECTION_STATE_LIMIT:
+            report["reason"] = "state_count_exceeds_bounded_selector"
+            report["candidate_state_count"] = len(next_states)
+            return None, report
+        states = next_states
+
+    report["candidate_state_count"] = len(states)
+    best_score: Optional[Tuple[Any, ...]] = None
+    best_records: Optional[List[ManifestRecord]] = None
+    best_summary: Optional[Dict[str, Any]] = None
+
+    for (dropped_count, dropped_record_count_sum, dropped_pass_count, dropped_length_counts), mask in states.items():
+        selected_count = len(records) - dropped_count
+        if selected_count < min_selected_records or selected_count == 0:
+            continue
+        record_count_sum = total_record_count_sum - dropped_record_count_sum
+        pass_count = total_pass_count - dropped_pass_count
+        length_counts = tuple(left - right for left, right in zip(total_length_counts, dropped_length_counts))
+        length_jsd = jensen_shannon_divergence(length_counter_from_tuple(length_counts), reference.length_counts)
+        if length_jsd is None or length_jsd > args.length_balance_target_jsd:
+            continue
+        selected_group_ids = {group["group_id"] for index, group in enumerate(groups) if not mask & (1 << index)}
+        selected_records = [record for record in records if record.group_id in selected_group_ids]
+        issue = length_balance_safety_issue(selected_records, args)
+        if issue:
+            continue
+        scored = score_selected_records(selected_records, record_count_sum, pass_count, length_counts, reference)
+        if scored is None:
+            continue
+        score, summary = scored
+        if best_score is None or score < best_score:
+            best_score = score
+            best_records = selected_records
+            best_summary = summary
+
+    if best_records is None or best_summary is None:
+        report["reason"] = "no_length_valid_record_count_candidate"
+        return None, report
+
+    report["applied"] = True
+    report["reason"] = "record_count_preserving_target_reached"
+    report["after_record_count_mean"] = best_summary["record_count_mean"]
+    report["after_record_count_mean_abs_gap"] = best_summary["record_count_mean_abs_gap"]
+    report["best_candidate"] = best_summary
+    return best_records, report
 
 
 def select_length_balanced_records(records: Sequence[ManifestRecord], args: argparse.Namespace) -> LengthBalanceOutcome:
@@ -1498,7 +1786,7 @@ def select_length_balanced_records(records: Sequence[ManifestRecord], args: argp
         reference = load_length_balance_reference(reference_path)
         reference_error = None
     except ValueError as exc:
-        reference = ReferenceLoadResult(Counter(), [{"path": str(reference_path), "line": None, "error": str(exc)}], 0, finalize_reference_skip_summary(new_reference_skip_summary()))
+        reference = ReferenceLoadResult(Counter(), [{"path": str(reference_path), "line": None, "error": str(exc)}], 0, finalize_reference_skip_summary(new_reference_skip_summary()), [])
         reference_error = str(exc)
 
     before_counts = length_counts_for_records(original_records)
@@ -1518,6 +1806,8 @@ def select_length_balanced_records(records: Sequence[ManifestRecord], args: argp
         "reference": {
             "eligible_records": reference.eligible_records,
             "length_bins": counter_to_sorted_dict(reference.length_counts),
+            "record_count_mean": rounded_metric(mean_int(reference.record_count_values)),
+            "record_count_available": len(reference.record_count_values),
             "error_count": len(reference.errors),
             "errors": reference.errors[:50],
             "skipped": reference.skipped,
@@ -1540,6 +1830,11 @@ def select_length_balanced_records(records: Sequence[ManifestRecord], args: argp
         "dropped_groups": [],
         "candidate_rejected_reason_counts": {},
         "best_attempt": None,
+        "record_count_preservation": {
+            "enabled": bool(args.preserve_record_count_distribution),
+            "applied": False,
+            "reason": "not_requested" if not args.preserve_record_count_distribution else "pending",
+        },
     }
 
     if reference.errors:
@@ -1563,6 +1858,41 @@ def select_length_balanced_records(records: Sequence[ManifestRecord], args: argp
     if max_drop_records <= 0:
         base_report["reason"] = "max_drop_fraction_allows_no_records"
         return LengthBalanceOutcome(records=original_records, report=base_report)
+
+    if args.preserve_record_count_distribution:
+        selected_records, preservation_report = select_record_count_preserving_records(
+            original_records,
+            reference,
+            args,
+            max_drop_records,
+        )
+        base_report["record_count_preservation"] = preservation_report
+        if selected_records is not None:
+            selected_counts = length_counts_for_records(selected_records)
+            selected_jsd = jensen_shannon_divergence(selected_counts, reference.length_counts)
+            base_report["applied"] = True
+            base_report["target_reached"] = True
+            base_report["reason"] = "record_count_preserving_target_reached"
+            base_report["after"] = {
+                "record_count": len(selected_records),
+                "group_count": group_count_for_records(selected_records),
+                "length_bins": {label: selected_counts.get(label, 0) for _, _, label in LENGTH_BINS},
+                "jsd": rounded_metric(selected_jsd),
+            }
+            selected_group_ids = {record.group_id for record in selected_records}
+            dropped_groups = sorted({record.group_id for record in original_records if record.group_id not in selected_group_ids})
+            base_report["dropped_group_count"] = len(dropped_groups)
+            base_report["dropped_record_count"] = len(original_records) - len(selected_records)
+            base_report["dropped_groups"] = dropped_groups[:50]
+            base_report["best_attempt"] = {
+                "record_count": len(selected_records),
+                "group_count": group_count_for_records(selected_records),
+                "jsd": rounded_metric(selected_jsd),
+                "dropped_group_count": len(dropped_groups),
+                "dropped_record_count": len(original_records) - len(selected_records),
+                "dropped_groups": dropped_groups[:50],
+            }
+            return LengthBalanceOutcome(records=selected_records, report=base_report)
 
     records_by_group: DefaultDict[str, List[ManifestRecord]] = defaultdict(list)
     for record in original_records:
@@ -1828,6 +2158,7 @@ def build_report(
             "length_balance_reference": args.length_balance_reference,
             "length_balance_target_jsd": args.length_balance_target_jsd,
             "length_balance_max_drop_fraction": args.length_balance_max_drop_fraction,
+            "preserve_record_count_distribution": args.preserve_record_count_distribution,
         },
         "files": {
             "json_files_loaded": [str(path) for path in discovery.json_files],
@@ -1972,6 +2303,19 @@ def render_markdown(report: Mapping[str, Any]) -> str:
                 f"- reference errors: {reference.get('error_count')}",
             ]
         )
+        preservation = length_balance.get("record_count_preservation") or {}
+        if preservation.get("enabled"):
+            # 변경: record_count 보존 selector 결과를 감사 Markdown에 기록한다.
+            # 이유: length-valid subset이 public20-like depth를 얼마나 보존했는지 재현 가능해야 하기 때문이다.
+            lines.extend(
+                [
+                    f"- record_count preservation applied: {preservation.get('applied')}",
+                    f"- record_count preservation reason: {preservation.get('reason')}",
+                    f"- record_count mean before/reference/after: {preservation.get('before_record_count_mean')} / {preservation.get('reference_record_count_mean')} / {preservation.get('after_record_count_mean')}",
+                    f"- record_count mean abs gap: {preservation.get('after_record_count_mean_abs_gap')}",
+                    f"- record_count selector states: {preservation.get('candidate_state_count')}",
+                ]
+            )
         for value in skipped.get("file_examples", [])[:10]:
             lines.append(f"- skipped file `{json.dumps(value, ensure_ascii=False, sort_keys=True)}`")
         for value in skipped.get("record_examples", [])[:10]:

@@ -1,0 +1,457 @@
+{
+  "candidate_count": 11,
+  "candidates_jsonl": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/gate_a_accepted.codex_agent_fallback.jsonl",
+  "issue_counts": {},
+  "issues": [],
+  "manifest_count": 11,
+  "manifest_jsonl": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/manifest.codex_agent_fallback.jsonl",
+  "matched_count": 11,
+  "normalized_candidate_count": 11,
+  "overall_pass": true,
+  "row_reports": [
+    {
+      "candidate_record_count": 3,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "8a5ec10bd22831c6b0f403b68ec10dc4acd65daf61f11e4c840a58148a7f22b5",
+        "input_hash_no_label": "bd989631fed25cef61d9782e34d14da017ae51782a6d3e97f1093db2dd6dfb42",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 778,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "8a5ec10bd22831c6b0f403b68ec10dc4acd65daf61f11e4c840a58148a7f22b5",
+        "input_hash_no_label": "bd989631fed25cef61d9782e34d14da017ae51782a6d3e97f1093db2dd6dfb42",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-01",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 3,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "d95b21c661af2792d051d0badd218f211710f26a7eff4f34f898a89245da63da",
+        "input_hash_no_label": "203175c4adb096b265740e4a71d8e86d348aee6efd7f0d5e1efb79bd67dd3e48",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 741,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "d95b21c661af2792d051d0badd218f211710f26a7eff4f34f898a89245da63da",
+        "input_hash_no_label": "203175c4adb096b265740e4a71d8e86d348aee6efd7f0d5e1efb79bd67dd3e48",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-02",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "fff41d9f6fd711812535967097269037003beba7183445b8f3bd1b6d7e5de5d2",
+        "input_hash_no_label": "a0a1eae44e57997d0d37c53eb288be43ab397bd3226ffe531d05cbf9facff5e7",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 445,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "fff41d9f6fd711812535967097269037003beba7183445b8f3bd1b6d7e5de5d2",
+        "input_hash_no_label": "a0a1eae44e57997d0d37c53eb288be43ab397bd3226ffe531d05cbf9facff5e7",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-03",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 1,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "bc38d5ddeb1408f4c19f499b9671c7dc5035952e2bb6393d90e3435958568c01",
+        "input_hash_no_label": "b926fbb7684efd66954f73dc9e46f9805d9c15e17ed393602ee7cc37ccbbc82a",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 215,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "bc38d5ddeb1408f4c19f499b9671c7dc5035952e2bb6393d90e3435958568c01",
+        "input_hash_no_label": "b926fbb7684efd66954f73dc9e46f9805d9c15e17ed393602ee7cc37ccbbc82a",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-01",
+      "split": "calibration",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "090d872399a88ba65ced2087f40fd62df9d000638b1d9e66c715b0bc185b2400",
+        "input_hash_no_label": "7aa84a6ce554de199ab196670193546a5a726d54172d2696fb345bc4dbf48876",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 444,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "090d872399a88ba65ced2087f40fd62df9d000638b1d9e66c715b0bc185b2400",
+        "input_hash_no_label": "7aa84a6ce554de199ab196670193546a5a726d54172d2696fb345bc4dbf48876",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-02",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "0a0dedbca791ccda387ad7fc97187fe739eed94cc891c6bbf980d0f4e5c4ddc8",
+        "input_hash_no_label": "4629dd6146af2864ae2e46c75414f0b4b1319a72a2f9e422b7e8755c4ad5c21b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 470,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "0a0dedbca791ccda387ad7fc97187fe739eed94cc891c6bbf980d0f4e5c4ddc8",
+        "input_hash_no_label": "4629dd6146af2864ae2e46c75414f0b4b1319a72a2f9e422b7e8755c4ad5c21b",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-03",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "0e264f0fab8d2d5f66df56a5f57ef74c121c5d935fedbf5a745cbe9262f96ba5",
+        "input_hash_no_label": "dbfc8ad4a3bc0fec2116bbda847d3fc214b06e15137ed4fa805befdcc141a639",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 434,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "0e264f0fab8d2d5f66df56a5f57ef74c121c5d935fedbf5a745cbe9262f96ba5",
+        "input_hash_no_label": "dbfc8ad4a3bc0fec2116bbda847d3fc214b06e15137ed4fa805befdcc141a639",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-01",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "ae5d3492aef2c40cad664f88d3874959379f6cca24a937496f7c538e96d76d69",
+        "input_hash_no_label": "ce6ed82fc90f6f13c79006cdc7bf1baa6a28985cb41ed2430521b05010a1edba",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 482,
+      "label": "fail",
+      "manifest_hashes": {
+        "content_hash": "ae5d3492aef2c40cad664f88d3874959379f6cca24a937496f7c538e96d76d69",
+        "input_hash_no_label": "ce6ed82fc90f6f13c79006cdc7bf1baa6a28985cb41ed2430521b05010a1edba",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-02",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "a1561f936ed8ede68d097e316267b15040678974063010577a69b203bfc317fb",
+        "input_hash_no_label": "6a1bad4b14b6d8e18b092695ad48eb379c275a20285376a3eb4e91a8e4a42b06",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 536,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "a1561f936ed8ede68d097e316267b15040678974063010577a69b203bfc317fb",
+        "input_hash_no_label": "6a1bad4b14b6d8e18b092695ad48eb379c275a20285376a3eb4e91a8e4a42b06",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-03",
+      "split": "train",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "b778324782c5b7dd16849fc76576c030ee2bd9ce33c20b10c4c05df7e3d18a5a",
+        "input_hash_no_label": "7791773573b4f38932f4968163a80397f84bfe07e128ebbd831c7df7630ec537",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 480,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "b778324782c5b7dd16849fc76576c030ee2bd9ce33c20b10c4c05df7e3d18a5a",
+        "input_hash_no_label": "7791773573b4f38932f4968163a80397f84bfe07e128ebbd831c7df7630ec537",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-01",
+      "split": "hidden",
+      "warnings": []
+    },
+    {
+      "candidate_record_count": 2,
+      "checks": {
+        "canonical_builder_input_match": true,
+        "content_hash_match": true,
+        "full_records_match": true,
+        "input_hash_no_label_match": true,
+        "label_match": true,
+        "prompt_schema_hash_match": true,
+        "prompt_schema_version_match": true
+      },
+      "expected_hashes": {
+        "content_hash": "b078434769179aaccaf335d92441c6346320626f6644dba31a6f203476e006a3",
+        "input_hash_no_label": "be5593e5b1d328f10e82eb0413cae02a96f0f0515acd1a99c8f8358f5c8a600d",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "input_char_count": 528,
+      "label": "pass",
+      "manifest_hashes": {
+        "content_hash": "b078434769179aaccaf335d92441c6346320626f6644dba31a6f203476e006a3",
+        "input_hash_no_label": "be5593e5b1d328f10e82eb0413cae02a96f0f0515acd1a99c8f8358f5c8a600d",
+        "prompt_schema_hash": "3bdbb813c108aff1030bf38371def8162eb09965b50a17ec9fd6e20dbde2f4c9"
+      },
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-03",
+      "split": "hidden",
+      "warnings": []
+    }
+  ],
+  "schema_version": "gate_c_manifest_model_input_equivalence.v1",
+  "trainer_loader": {
+    "loaded": true,
+    "loader": "tools.training.train_manifest_lora.load_manifest",
+    "loader_sample_ids": [
+      "codex-agent-fallback-self-instruct-gen-00000-01",
+      "codex-agent-fallback-self-instruct-gen-00000-02",
+      "codex-agent-fallback-self-instruct-gen-00000-03",
+      "codex-agent-fallback-self-instruct-gen-00001-02",
+      "codex-agent-fallback-self-instruct-gen-00001-03",
+      "codex-agent-fallback-self-instruct-gen-00002-01",
+      "codex-agent-fallback-self-instruct-gen-00002-02",
+      "codex-agent-fallback-self-instruct-gen-00002-03"
+    ],
+    "row_count_match": true,
+    "rows": [
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 1,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00000-01"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 2,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00000-02"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 3,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00000-03"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 5,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00001-02"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 6,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00001-03"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 7,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00002-01"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 8,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00002-02"
+      },
+      {
+        "input_text_match": true,
+        "label_match": true,
+        "message_roles": [
+          "user",
+          "assistant"
+        ],
+        "row_index": 9,
+        "sample_id": "codex-agent-fallback-self-instruct-gen-00002-03"
+      }
+    ],
+    "sample_id_set_match": true,
+    "summary": {
+      "label_counts": {
+        "fail": 3,
+        "pass": 8
+      },
+      "manifest_path": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/manifest.codex_agent_fallback.jsonl",
+      "skipped_non_train_rows": 3,
+      "source_counts_top20": {
+        "self_instruct_output_first": 11
+      },
+      "split_counts": {
+        "calibration": 1,
+        "hidden": 2,
+        "train": 8
+      },
+      "total_rows": 11,
+      "train_label_counts": {
+        "fail": 3,
+        "pass": 5
+      },
+      "train_rows": 8
+    },
+    "train_manifest_sample_ids": [
+      "codex-agent-fallback-self-instruct-gen-00000-01",
+      "codex-agent-fallback-self-instruct-gen-00000-02",
+      "codex-agent-fallback-self-instruct-gen-00000-03",
+      "codex-agent-fallback-self-instruct-gen-00001-02",
+      "codex-agent-fallback-self-instruct-gen-00001-03",
+      "codex-agent-fallback-self-instruct-gen-00002-01",
+      "codex-agent-fallback-self-instruct-gen-00002-02",
+      "codex-agent-fallback-self-instruct-gen-00002-03"
+    ],
+    "warnings": [
+      {
+        "detail": "Gate C checks trainer build_messages only. eval/submission solver prompt renderers are not imported here.",
+        "reason": "prompt_renderer_scope"
+      },
+      {
+        "detail": "No tokenizer/model is loaded in this tool; heavy first-forward smoke belongs to package/runtime gates.",
+        "reason": "first_forward_not_executed"
+      }
+    ]
+  },
+  "warnings": [
+    {
+      "detail": "trainer/eval manifest paths should use raw manifest input; submission solver prompt format must be audited separately without importing runtime solver here.",
+      "reason": "eval_solver_prompt_mismatch_possible"
+    }
+  ]
+}

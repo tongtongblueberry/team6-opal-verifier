@@ -11,21 +11,27 @@ from pathlib import Path
 from tools.analysis import dedup_self_instruct_candidates as dedup
 
 
-def _record(method: str, status: str) -> dict[str, object]:
+def _record(method: str, status: str, args: dict[str, object] | None = None) -> dict[str, object]:
     return {
-        "input": {"method": {"name": method}},
+        "input": {"method": {"name": method}, "args": args or {}},
         "output": {"status_codes": status, "return_values": []},
     }
 
 
-def _spec_grounding() -> list[dict[str, object]]:
+def _spec_grounding(
+    *,
+    rule_ref: str = "RULE 01",
+    source_span: str = "docs/legacy_spec_rules.md:10-15",
+    condition: str = "A method is processed completely and without error by the TPer",
+    expected_status: str = "SUCCESS (0x00)",
+) -> list[dict[str, object]]:
     return [
         {
-            "rule_ref": "RULE 01",
+            "rule_ref": rule_ref,
             "source_path": "docs/legacy_spec_rules.md",
-            "source_span": "docs/legacy_spec_rules.md:10-15",
-            "condition": "A method is processed completely and without error by the TPer",
-            "expected_status": "SUCCESS (0x00)",
+            "source_span": source_span,
+            "condition": condition,
+            "expected_status": expected_status,
         }
     ]
 
@@ -35,10 +41,14 @@ def _candidate(
     label: str,
     records: list[dict[str, object]],
     instruction: str = "Judge only the final response.",
+    spec_grounding: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     final_index = len(records) - 1
     return {
         "sample_id": sample_id,
+        # Changed: carry source instruction provenance through dedup fixtures.
+        # Why: candidate normalization now requires official instruction-stage lineage.
+        "source_instruction_id": "self-instruct-instruction-00000",
         "instruction": instruction,
         "records": records,
         "label": label,
@@ -51,7 +61,11 @@ def _candidate(
             "record_index": final_index,
             "reason": "The final response determines the label.",
         },
-        "spec_grounding": _spec_grounding(),
+        "spec_grounding": spec_grounding or _spec_grounding(),
+        "generation_provenance": {
+            "source_instruction_id": "self-instruct-instruction-00000",
+            "classification_detection_id": "self-instruct-clf-00000",
+        },
     }
 
 
@@ -68,9 +82,42 @@ class DedupSelfInstructCandidatesTests(unittest.TestCase):
         self.assertEqual(["si-conflict-pass"], [row["sample_id"] for row in accepted])
         self.assertEqual(1, len(rejected))
         self.assertEqual("same_input_conflicting_label", rejected[0]["reason"])
+        self.assertEqual("trajectory_level_duplicate", rejected[0]["filter_stage"])
         self.assertEqual("fail", rejected[0]["details"]["current_label"])
 
-    def test_rejects_near_duplicate_instruction_at_threshold(self) -> None:
+    def test_keeps_fixed_instruction_with_different_trajectory_and_spec_grounding_by_default(self) -> None:
+        candidates = [
+            _candidate(
+                "si-fixed-1",
+                "pass",
+                [_record("Get", "SUCCESS")],
+                "Judge only the final response.",
+                _spec_grounding(
+                    rule_ref="RULE 01",
+                    source_span="docs/legacy_spec_rules.md:10-15",
+                    expected_status="SUCCESS (0x00)",
+                ),
+            ),
+            _candidate(
+                "si-fixed-2",
+                "fail",
+                [_record("Set", "INVALID_PARAMETER")],
+                "Judge only the final response.",
+                _spec_grounding(
+                    rule_ref="RULE 02",
+                    source_span="docs/legacy_spec_rules.md:20-25",
+                    condition="A Set request contains an invalid parameter",
+                    expected_status="INVALID_PARAMETER (0x03)",
+                ),
+            ),
+        ]
+
+        accepted, rejected = dedup.dedup_candidates(candidates, rouge_l_threshold=0.7)
+
+        self.assertEqual(["si-fixed-1", "si-fixed-2"], [row["sample_id"] for row in accepted])
+        self.assertEqual([], rejected)
+
+    def test_legacy_instruction_mode_rejects_near_duplicate_instruction_at_threshold(self) -> None:
         candidates = [
             _candidate(
                 "si-near-1",
@@ -86,13 +133,54 @@ class DedupSelfInstructCandidatesTests(unittest.TestCase):
             ),
         ]
 
-        accepted, rejected = dedup.dedup_candidates(candidates, rouge_l_threshold=0.7)
+        accepted, rejected = dedup.dedup_candidates(
+            candidates,
+            rouge_l_threshold=0.7,
+            near_duplicate_mode="instruction",
+        )
 
         self.assertEqual(["si-near-1"], [row["sample_id"] for row in accepted])
         self.assertEqual("near_duplicate_instruction", rejected[0]["reason"])
+        self.assertEqual("legacy_instruction_level_rouge_l", rejected[0]["filter_stage"])
+        self.assertEqual("instruction", rejected[0]["details"]["near_duplicate_mode"])
         self.assertGreaterEqual(rejected[0]["details"]["rouge_l"], 0.7)
 
-    def test_rejects_exact_duplicate(self) -> None:
+    def test_default_domain_text_rejects_same_signature_near_duplicate(self) -> None:
+        candidates = [
+            _candidate(
+                "si-domain-1",
+                "fail",
+                [_record("Set", "INVALID_PARAMETER", {"required": {"locking_sp": "00 01"}})],
+                "Judge only the final response.",
+                _spec_grounding(
+                    rule_ref="RULE 02",
+                    source_span="docs/legacy_spec_rules.md:20-25",
+                    condition="A Set request contains an invalid parameter",
+                    expected_status="INVALID_PARAMETER (0x03)",
+                ),
+            ),
+            _candidate(
+                "si-domain-2",
+                "fail",
+                [_record("Set", "INVALID_PARAMETER", {"required": {"locking_sp": "00 02"}})],
+                "Judge only the final response.",
+                _spec_grounding(
+                    rule_ref="RULE 02",
+                    source_span="docs/legacy_spec_rules.md:20-25",
+                    condition="A Set request contains an invalid parameter",
+                    expected_status="INVALID_PARAMETER (0x03)",
+                ),
+            ),
+        ]
+
+        accepted, rejected = dedup.dedup_candidates(candidates, rouge_l_threshold=0.7)
+
+        self.assertEqual(["si-domain-1"], [row["sample_id"] for row in accepted])
+        self.assertEqual("near_duplicate_domain_text", rejected[0]["reason"])
+        self.assertEqual("domain_adapted_rouge_l", rejected[0]["filter_stage"])
+        self.assertEqual("domain_text", rejected[0]["details"]["near_duplicate_mode"])
+
+    def test_rejects_same_trajectory_and_target(self) -> None:
         candidate = _candidate("si-dup-1", "pass", [_record("Get", "SUCCESS")])
         duplicate = dict(candidate)
         duplicate["sample_id"] = "si-dup-2"
@@ -162,6 +250,9 @@ class DedupSelfInstructCandidatesTests(unittest.TestCase):
             self.assertEqual("exact_duplicate", rejected[0]["reason"])
             self.assertEqual(1, report["accepted_count"])
             self.assertEqual(1, report["rejected_count"])
+            self.assertEqual({"trajectory_level_duplicate": 1}, report["reject_filter_stage_counts"])
+            self.assertEqual("domain_text", report["near_duplicate_mode"])
+            self.assertEqual("domain_text", report["near_duplicate_mode_default"])
 
 
 if __name__ == "__main__":

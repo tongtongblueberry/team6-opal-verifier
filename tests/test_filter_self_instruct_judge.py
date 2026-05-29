@@ -30,7 +30,13 @@ def _fixture_rows(path: Path) -> list[tuple[int, dict[str, object]]]:
 
 def _record(method: str, status: str) -> dict[str, object]:
     return {
-        "input": {"method": {"name": method}},
+        # Changed: include concrete Opal input shape in judge candidates.
+        # Why: gen3 candidates must preserve parse/export-compatible trajectory records.
+        "input": {
+            "method": {"name": method, "args": {"required": {"HostSessionID": "00000001"}, "optional": {}}},
+            "invoking_id": {"uid": "00 00 00 06 00 00 00 01", "name": "Locking"},
+            "status_codes": ["SUCCESS"],
+        },
         "output": {"status_codes": status, "return_values": []},
     }
 
@@ -51,7 +57,10 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
     final_index = len(records) - 1
     return {
         "sample_id": sample_id,
-        "instruction": "Judge whether the final response is valid.",
+        # Changed: include generated instruction and classification provenance in judge fixtures.
+        # Why: judge payloads must audit candidates with official-stage lineage.
+        "source_instruction_id": "self-instruct-instruction-00000",
+        "instruction": parser.FIXED_OPAL_VERIFIER_INSTRUCTION,
         "records": records,
         "label": label,
         "label_target": "final_response",
@@ -64,6 +73,13 @@ def _candidate(sample_id: str, label: str, records: list[dict[str, object]]) -> 
             "reason": "The final response determines the verdict.",
         },
         "spec_grounding": _spec_grounding(),
+        "generation_provenance": {
+            "source_instruction_id": "self-instruct-instruction-00000",
+            "classification_detection_id": "self-instruct-clf-00000",
+            "official_instruction_artifact": "machine_generated_instructions.jsonl",
+            "official_classification_artifact": "is_clf_or_not_audited_noop.jsonl",
+            "official_instance_artifact": "machine_generated_instances.jsonl",
+        },
     }
 
 
@@ -126,6 +142,8 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
             self.assertFalse(row["execute"])
             self.assertFalse(metadata["execute"])
             self.assertEqual("si-judge-1", row["sample_id"])
+            self.assertEqual("self-instruct-instruction-00000", row["source_instruction_id"])
+            self.assertEqual("self-instruct-clf-00000", row["classification_detection_id"])
             prompt = row["payload"]["messages"][1]["content"]
             self.assertIn("is_final_response_targeted", prompt)
             self.assertIn("has_required_spec_grounding", prompt)
@@ -133,10 +151,18 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
             self.assertIn("spec_grounding", prompt)
             self.assertIn("has_public_or_rule_leakage", prompt)
             self.assertIn("generated_label", prompt)
+            self.assertIn("official_pipeline_provenance", prompt)
+            self.assertIn("classification_detection_id", prompt)
+            # Changed: judge prompts must carry exact source text from docs/legacy_spec_rules.md.
+            # Why: adversarial qualitative checks cannot trust generator-copied condition text alone.
+            self.assertIn("resolved_spec_source_spans", prompt)
+            self.assertIn("SUCCESS on complete method processing", prompt)
+            self.assertIn("A method is processed completely and without error by the TPer", prompt)
 
     def test_parses_judge_results_and_splits_accept_reject(self) -> None:
         accepted_candidate = _candidate("si-judge-ok", "pass", [_record("Get", "SUCCESS")])
         rejected_candidate = _candidate("si-judge-bad", "fail", [_record("Set", "INVALID_PARAMETER")])
+        boolean_accepted_candidate = _candidate("si-judge-fail-ok", "fail", [_record("Set", "INVALID_PARAMETER")])
         results = [
             {
                 "request_id": "req-ok",
@@ -156,6 +182,19 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
                         "rationale": "Final response supports the label.",
                     }
                 ),
+            },
+            {
+                "request_id": "req-fail-ok",
+                "sample_id": "si-judge-fail-ok",
+                "decision": "reject",
+                "is_final_response_targeted": True,
+                "has_required_spec_grounding": True,
+                "is_source_span_supported": True,
+                "is_state_transition_consistent": True,
+                "is_manifest_loader_compatible": True,
+                "is_label_plausible": True,
+                "has_intermediate_label_leak": False,
+                "has_public_or_rule_leakage": False,
             },
             {
                 "request_id": "req-bad",
@@ -181,7 +220,7 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
             decisions_path = tmp / "decisions.json"
             report_path = tmp / "report.json"
             candidates_path.write_text(
-                "\n".join(json.dumps(row) for row in [accepted_candidate, rejected_candidate]) + "\n",
+                "\n".join(json.dumps(row) for row in [accepted_candidate, boolean_accepted_candidate, rejected_candidate]) + "\n",
                 encoding="utf-8",
             )
             results_path.write_text("\n".join(json.dumps(row) for row in results) + "\n", encoding="utf-8")
@@ -211,9 +250,9 @@ class FilterSelfInstructJudgeTests(unittest.TestCase):
             accepted = [json.loads(line) for line in accepted_path.read_text(encoding="utf-8").splitlines()]
             rejected = [json.loads(line) for line in reject_path.read_text(encoding="utf-8").splitlines()]
             report = json.loads(report_path.read_text(encoding="utf-8"))
-            self.assertEqual(["si-judge-ok"], [row["sample_id"] for row in accepted])
+            self.assertEqual(["si-judge-ok", "si-judge-fail-ok"], [row["sample_id"] for row in accepted])
             self.assertEqual("intermediate_label_leak", rejected[0]["reason"])
-            self.assertEqual(1, report["accepted_count"])
+            self.assertEqual(2, report["accepted_count"])
             self.assertEqual(1, report["rejected_count"])
 
     def test_execute_flag_does_not_call_api(self) -> None:

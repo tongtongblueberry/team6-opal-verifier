@@ -1,0 +1,65 @@
+{
+  "changed": "Expanded the current best target-controlled schedule from 40 to 200 request-only candidate targets.",
+  "created_at_kst": "2026-05-27T23:29:11+09:00",
+  "label_counts": {
+    "fail": 100,
+    "pass": 100
+  },
+  "multiplier": 5,
+  "provenance_note": "request-only target quotas; public20 row-level labels are not included.",
+  "record_count_counts": {
+    "1": 10,
+    "11": 10,
+    "13": 10,
+    "15": 10,
+    "16": 20,
+    "17": 10,
+    "18": 10,
+    "19": 10,
+    "20": 20,
+    "22": 10,
+    "24": 10,
+    "25": 10,
+    "28": 10,
+    "3": 10,
+    "39": 10,
+    "5": 10,
+    "7": 10,
+    "9": 10
+  },
+  "record_count_max": 39,
+  "record_count_mean": 16.4,
+  "record_count_min": 1,
+  "run_root": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST",
+  "schema_version": "self_instruct.target_schedule_200plus_build_report.v1",
+  "source_schedule": "runs/self_instruct/targeted_schedule_20260527_192440_KST/target_schedule.json",
+  "source_target_count": 40,
+  "target_count": 200,
+  "target_final_method_counts": {
+    "Activate": 20,
+    "Authenticate": 15,
+    "Get": 50,
+    "Next": 5,
+    "Properties": 20,
+    "Random": 5,
+    "Revert": 5,
+    "RevertSP": 5,
+    "Set": 40,
+    "StartSession": 35
+  },
+  "target_final_status_counts": {
+    "FAIL": 10,
+    "INVALID_PARAMETER": 55,
+    "NOT_AUTHORIZED": 20,
+    "NO_SESSIONS_AVAILABLE": 5,
+    "SP_BUSY": 5,
+    "SP_FROZEN": 5,
+    "SUCCESS": 100
+  },
+  "target_length_bin_counts": {
+    "1-32": 190,
+    "33-64": 10
+  },
+  "target_schedule": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/target_schedule.json",
+  "why": "SYNTH-200 requires at least 200 candidates while preserving label balance and public20-like record-count/length/final-response profile controls."
+}

@@ -1,0 +1,169 @@
+{
+  "adversarial_rulebook_gate": {
+    "accepted_count": 1,
+    "accepted_output": "runs/self_instruct/server_qwen_prod_gen31/combined_incremental/adversarial_rulebook_accepted.incremental.jsonl",
+    "candidate_count": 21,
+    "candidates_input": "runs/self_instruct/server_qwen_prod_gen31/combined_incremental/dedup_candidates.combined.namespaced.jsonl",
+    "decisions_output": "runs/self_instruct/server_qwen_prod_gen31/combined_incremental/adversarial_rulebook_decisions.incremental.jsonl",
+    "generation_requests_jsonl": "runs/self_instruct/server_qwen_prod_gen31/current_raw_check/generation_requests.jsonl",
+    "reject_reason_counts": {
+      "pass_final_status_not_supported_by_rulebook:SUCCESS not in INVALID_PARAMETER,FAIL": 1,
+      "pass_final_status_not_supported_by_rulebook:SUCCESS not in NOT_AUTHORIZED,FAIL": 1,
+      "required_auth_session_missing_hostchallenge_or_authority": 4,
+      "required_context_domains_missing:Locking": 8,
+      "target_final_method_mismatch:Get!=EndSession": 1,
+      "target_final_method_mismatch:Set!=EndSession": 1,
+      "target_final_method_mismatch:Set!=Get": 1,
+      "target_final_status_mismatch:SUCCESS!=ERROR": 1,
+      "target_final_status_mismatch:SUCCESS!=INVALID_PARAMETER": 4,
+      "target_label_mismatch:fail!=pass": 5,
+      "target_record_count_mismatch:10!=11": 1,
+      "target_record_count_mismatch:10!=5": 1,
+      "target_record_count_mismatch:10!=6": 2,
+      "target_record_count_mismatch:10!=7": 1,
+      "target_record_count_mismatch:11!=4": 1,
+      "target_record_count_mismatch:11!=6": 1,
+      "target_record_count_mismatch:11!=7": 1,
+      "target_record_count_mismatch:11!=8": 1,
+      "target_record_count_mismatch:21!=4": 1,
+      "target_record_count_mismatch:21!=5": 2,
+      "target_record_count_mismatch:21!=6": 2,
+      "target_record_count_mismatch:21!=7": 1,
+      "target_record_count_mismatch:9!=10": 1,
+      "target_record_count_mismatch:9!=6": 1,
+      "target_record_count_mismatch:9!=7": 1
+    },
+    "rejected_count": 20,
+    "rejected_output": "runs/self_instruct/server_qwen_prod_gen31/combined_incremental/adversarial_rulebook_rejected.incremental.jsonl",
+    "rulebook_path": "docs/legacy_spec_rules.md",
+    "schema_version": "self_instruct.adversarial_rulebook_quality_gate.v1",
+    "training_use": "accepted_rows_only_pending_gate_b_c"
+  },
+  "combined_auth_session_summary": {
+    "auth_row_rate": 1.0,
+    "auth_rows": 1,
+    "auth_start_session_rate": 0.5,
+    "auth_start_sessions": 1,
+    "rows": 1,
+    "start_sessions": 2
+  },
+  "combined_candidates": 1,
+  "combined_label_counts": {
+    "pass": 1
+  },
+  "combined_record_count_counts": {
+    "7": 1
+  },
+  "export_arg_leaf_avg": 1.5714,
+  "export_auth_session_summary": {
+    "auth_row_rate": 1.0,
+    "auth_rows": 1,
+    "auth_start_session_rate": 0.5,
+    "auth_start_sessions": 1,
+    "rows": 1,
+    "start_sessions": 2
+  },
+  "export_files": [
+    "gen_input.jsonl",
+    "gen_labels.local.jsonl"
+  ],
+  "export_final_status_rule_hits": 1,
+  "export_final_status_rule_rate": 1.0,
+  "export_final_status_rule_total": 1,
+  "export_input_rows": 1,
+  "export_label_counts": {
+    "pass": 1
+  },
+  "export_label_rows": 1,
+  "export_method_counts": {
+    "EndSession": 2,
+    "Get": 3,
+    "StartSession": 2
+  },
+  "export_method_sequence_public20_match_count": 0,
+  "export_method_sequence_public20_matches": [],
+  "export_missing_public_method_counts": {},
+  "export_output_method_counts": {
+    "SyncSession": 2
+  },
+  "export_record_count_counts": {
+    "7": 1
+  },
+  "export_record_count_label_rule_hits": 1,
+  "export_record_count_label_rule_rate": 1.0,
+  "export_record_count_label_rule_total": 1,
+  "export_sequence_skeleton_public20_match_count": 0,
+  "export_sequence_skeleton_public20_matches": [],
+  "export_status_codes_type_counts": {
+    "str": 7
+  },
+  "forbidden_key_occurrences": 0,
+  "instruction_mismatch_count": 0,
+  "instruction_mismatch_sample_ids": [],
+  "parse_reject_reason_counts": {
+    "instruction_not_fixed": 1,
+    "primary_evidence_not_final_response": 3,
+    "record_1_method_args_not_required_optional": 26,
+    "target_index_not_last_record": 19,
+    "target_response_not_last_record_output": 2
+  },
+  "parsed_auth_session_summary": {
+    "auth_row_rate": 0.8095,
+    "auth_rows": 17,
+    "auth_start_session_rate": 0.6429,
+    "auth_start_sessions": 18,
+    "rows": 21,
+    "start_sessions": 28
+  },
+  "parsed_bad_method_args_count": 0,
+  "parsed_bad_method_args_examples": [],
+  "parsed_input_null_count": 0,
+  "parsed_input_null_examples": [],
+  "pre_adversarial_combined_candidates": 21,
+  "public20_arg_leaf_avg": 2.1031,
+  "public20_auth_session_summary": {
+    "auth_row_rate": 0.8,
+    "auth_rows": 16,
+    "auth_start_session_rate": 0.7431,
+    "auth_start_sessions": 81,
+    "rows": 20,
+    "start_sessions": 109
+  },
+  "public20_exact_export_match_count": 0,
+  "public20_exact_export_matches": [],
+  "public20_final_status_rule_hits": 17,
+  "public20_final_status_rule_rate": 0.85,
+  "public20_final_status_rule_total": 20,
+  "public20_method_counts": {
+    "Activate": 12,
+    "EndSession": 93,
+    "GenKey": 4,
+    "Get": 68,
+    "Properties": 2,
+    "Read": 4,
+    "Set": 34,
+    "StartSession": 109,
+    "Write": 2
+  },
+  "public20_record_count_counts": {
+    "1": 2,
+    "10": 2,
+    "11": 1,
+    "2": 2,
+    "21": 4,
+    "26": 2,
+    "27": 2,
+    "39": 2,
+    "7": 2,
+    "9": 1
+  },
+  "qualitative_warnings": [
+    "export_rows_below_200:1",
+    "missing_public_record_counts:1,10,11,2,21,26,27,39,9",
+    "missing_public_methods:Activate,GenKey,Properties,Read,Set,Write",
+    "args_richness_lower_than_public20:1.5714<2.1031",
+    "final_status_rule_more_predictive_than_public20:1.0>0.85",
+    "record_count_label_shortcut_high:1.0"
+  ],
+  "sample_id_alignment": true
+}

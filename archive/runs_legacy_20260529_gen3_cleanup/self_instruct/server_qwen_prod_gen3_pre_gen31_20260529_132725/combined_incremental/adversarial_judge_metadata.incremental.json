@@ -1,0 +1,53 @@
+{
+  "candidates_input": "runs/self_instruct/server_qwen_prod_gen3/combined_incremental/dedup_candidates.combined.namespaced.jsonl",
+  "classification_detection_ids": [
+    "self-instruct-clf-00003",
+    "self-instruct-clf-00025",
+    "self-instruct-clf-00030",
+    "self-instruct-clf-00036",
+    "self-instruct-clf-00043",
+    "self-instruct-clf-00045",
+    "self-instruct-clf-00048",
+    "self-instruct-clf-00059"
+  ],
+  "execute": false,
+  "judge_contract_version": "opal_final_response_judge.v1",
+  "notes": [
+    "dry-run only: no LLM/API call was made",
+    "judge prompt uses generated candidate fields only, not public20 labels",
+    "judge prompt includes generated instruction provenance and audited no-op classification detection provenance",
+    "accepted judge results still require Gate A state-transition audit"
+  ],
+  "payload_sha256": {
+    "self-instruct-judge-active::self-instruct-gen-00003-cand-00": "aed8a5ca933335b917456cdbb9ddb1d677c076de2c86ef7817b77aa410e0fd17",
+    "self-instruct-judge-active::self-instruct-gen-00025-cand-00": "f5e8a431e2be601e8393c3eab5d6d5af185c409e9d1e92d9ab2c988e30ae8474",
+    "self-instruct-judge-active::self-instruct-gen-00030-cand-00": "47473c95c935cf7fae8b710c796b42fca20759b6f50307b069515bb1158c3815",
+    "self-instruct-judge-active::self-instruct-gen-00036-cand-00": "4e9bebd3cef32d16b7d1d28af8100af6aa99c31538401afba02300387a2efeec",
+    "self-instruct-judge-active::self-instruct-gen-00043-cand-00": "4fc7a68bab8e991860b13ba303a95fda07bbdd041c7a4069172fed3ef87fa93d",
+    "self-instruct-judge-active::self-instruct-gen-00045-cand-00": "4604e2151164f9212f9f08a8c1b58c9efc3478f8be48aac4812832540fe593ce",
+    "self-instruct-judge-active::self-instruct-gen-00048-cand-00": "8980b49d54b93e2ee83745a982d8490683f0dd75bc5ecb825a53d0f96b660b53",
+    "self-instruct-judge-active::self-instruct-gen-00059-cand-00": "50aa080ee45ef3e0d3b0c05fe501439cadd2ed0e941c3fe3b1f155f54fa7bb40"
+  },
+  "request_count": 8,
+  "request_ids": [
+    "self-instruct-judge-active::self-instruct-gen-00003-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00025-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00030-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00036-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00043-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00045-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00048-cand-00",
+    "self-instruct-judge-active::self-instruct-gen-00059-cand-00"
+  ],
+  "schema_version": "self_instruct.judge_filter_report.v1",
+  "source_instruction_ids": [
+    "self-instruct-instruction-00003",
+    "self-instruct-instruction-00025",
+    "self-instruct-instruction-00030",
+    "self-instruct-instruction-00036",
+    "self-instruct-instruction-00043",
+    "self-instruct-instruction-00045",
+    "self-instruct-instruction-00048",
+    "self-instruct-instruction-00059"
+  ]
+}

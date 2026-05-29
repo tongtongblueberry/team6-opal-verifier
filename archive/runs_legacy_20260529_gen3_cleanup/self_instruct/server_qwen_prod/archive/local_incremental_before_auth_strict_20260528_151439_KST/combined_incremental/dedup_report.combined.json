@@ -1,0 +1,16 @@
+{
+  "accepted_count": 27,
+  "input": "runs/self_instruct/server_qwen_prod/combined_incremental/all_dedup_candidates.jsonl",
+  "near_duplicate_mode": "domain_text",
+  "near_duplicate_mode_default": "domain_text",
+  "public20_reference": "data/local/public20/public20_input.jsonl",
+  "reject_filter_stage_counts": {
+    "trajectory_level_duplicate": 1
+  },
+  "reject_reason_counts": {
+    "exact_duplicate": 1
+  },
+  "rejected_count": 1,
+  "rouge_l_threshold": 0.7,
+  "schema_version": "self_instruct.candidate_dedup.v1"
+}

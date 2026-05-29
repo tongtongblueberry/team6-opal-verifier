@@ -36,6 +36,9 @@ def _candidate(sample_id: str = "si-001", label: str = "pass") -> dict[str, obje
     final_index = len(records) - 1
     return {
         "sample_id": sample_id,
+        # Changed: keep Gate C fixtures aligned with official Self-Instruct provenance.
+        # Why: candidate normalization now requires instruction-stage provenance before manifest/model-input checks run.
+        "source_instruction_id": "self-instruct-instruction-00000",
         "instruction": "Judge only the final response.",
         "records": records,
         "label": label,
@@ -49,6 +52,13 @@ def _candidate(sample_id: str = "si-001", label: str = "pass") -> dict[str, obje
             "reason": "The final response determines the label.",
         },
         "spec_grounding": _spec_grounding(),
+        "generation_provenance": {
+            "source_instruction_id": "self-instruct-instruction-00000",
+            "classification_detection_id": "self-instruct-clf-00000",
+            "official_instruction_artifact": "machine_generated_instructions.jsonl",
+            "official_classification_artifact": "is_clf_or_not_audited_noop.jsonl",
+            "official_instance_artifact": "machine_generated_instances.jsonl",
+        },
         "source": "self_instruct_candidate",
     }
 

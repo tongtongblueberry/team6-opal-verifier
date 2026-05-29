@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import tempfile
@@ -101,6 +102,7 @@ class EvalTrlSftPublic20LogprobTests(unittest.TestCase):
                 torch=object(),
                 batch_size=1,
                 max_length=128,
+                progress_every=0,
             )
 
         self.assertEqual("fail", predictions[0]["prediction"])
@@ -108,21 +110,95 @@ class EvalTrlSftPublic20LogprobTests(unittest.TestCase):
         self.assertGreater(predictions[0]["mean_logprob_margin_fail_minus_pass"], 0)
 
     def test_load_logprob_model_reuses_generation_helper(self) -> None:
+        auto_tokenizer = object()
+        auto_model = object()
         with mock.patch.object(
             generation_eval,
             "load_model_and_tokenizer",
             return_value=("tokenizer", "model"),
         ) as load_helper:
             tokenizer, model = logprob_eval.load_logprob_model_and_tokenizer(
-                auto_tokenizer=object(),
-                auto_model=object(),
+                auto_tokenizer=auto_tokenizer,
+                auto_model=auto_model,
                 model_name_or_path="adapter-or-full-model",
                 adapter_path=None,
             )
 
         self.assertEqual("tokenizer", tokenizer)
         self.assertEqual("model", model)
-        load_helper.assert_called_once()
+        load_helper.assert_called_once_with(
+            auto_tokenizer,
+            auto_model,
+            "adapter-or-full-model",
+            None,
+            None,
+        )
+
+    # Changed: cover flushed row progress without loading a real model.
+    # Why: long logprob runs need liveness logging while tests remain fake-model only.
+    def test_evaluate_rows_writes_per_row_progress(self) -> None:
+        rows = [
+            generation_eval.EvalRow(sample_id="tc1", prompt="input\n", gold="fail", line_number=1),
+            generation_eval.EvalRow(sample_id="tc2", prompt="input\n", gold="pass", line_number=2),
+        ]
+
+        def fake_score_candidate_batch(torch, model, tokenizer, features):
+            del torch, model, tokenizer
+            return [
+                logprob_eval.CandidateScore(nll=4.0, sum_logprob=-4.0, mean_logprob=-1.0, token_count=4),
+                logprob_eval.CandidateScore(nll=2.0, sum_logprob=-2.0, mean_logprob=-0.5, token_count=4),
+            ] * (len(features) // 2)
+
+        progress = StringIO()
+        with mock.patch.object(logprob_eval, "score_candidate_batch", fake_score_candidate_batch):
+            predictions = logprob_eval.evaluate_rows(
+                rows,
+                tokenizer=FakeTokenizer(),
+                model=object(),
+                torch=object(),
+                batch_size=1,
+                max_length=128,
+                progress_every=1,
+                progress_stream=progress,
+            )
+
+        self.assertEqual(2, len(predictions))
+        self.assertIn("[logprob-progress] row 1/2 sample_id=tc1", progress.getvalue())
+        self.assertIn("[logprob-progress] row 2/2 sample_id=tc2", progress.getvalue())
+
+    # Changed: verify logprob CLI kwargs and timeout metadata without importing Transformers.
+    # Why: device/progress/timeout behavior must be testable without heavy model load.
+    def test_generate_logprob_predictions_passes_from_pretrained_kwargs(self) -> None:
+        rows = [generation_eval.EvalRow(sample_id="tc1", prompt="input\n", gold="fail", line_number=1)]
+        args = argparse.Namespace(
+            model_name_or_path="model",
+            adapter_path=None,
+            device_map="auto",
+            torch_dtype="bfloat16",
+            batch_size=1,
+            max_length=128,
+            progress_every=0,
+        )
+
+        class FakeTorch:
+            bfloat16 = "resolved-bfloat16"
+
+        with (
+            mock.patch.object(logprob_eval, "import_runtime_dependencies", return_value=(FakeTorch, "tok", "model_cls")),
+            mock.patch.object(logprob_eval, "load_logprob_model_and_tokenizer", return_value=(FakeTokenizer(), object())) as load_helper,
+            mock.patch.object(logprob_eval, "evaluate_rows", return_value=[]) as evaluate_helper,
+        ):
+            predictions = logprob_eval.generate_logprob_predictions(args, rows)
+
+        self.assertEqual([], predictions)
+        load_helper.assert_called_once_with(
+            "tok",
+            "model_cls",
+            "model",
+            None,
+            {"device_map": "auto", "torch_dtype": "resolved-bfloat16"},
+        )
+        evaluate_helper.assert_called_once()
 
     def test_direct_adapter_without_tokenizer_uses_base_tokenizer_from_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_name:
@@ -144,7 +220,7 @@ class EvalTrlSftPublic20LogprobTests(unittest.TestCase):
             output_json = temp_dir / "logprob.json"
             output_md = temp_dir / "logprob.md"
             dataset.write_text(
-                json.dumps({"prompt": "input\n", "completion": "pass", "sample_id": "tc1"}) + "\n",
+                json.dumps({"input": "input\n", "labels": "pass"}) + "\n",
                 encoding="utf-8",
             )
 
@@ -159,6 +235,8 @@ class EvalTrlSftPublic20LogprobTests(unittest.TestCase):
                         str(output_json),
                         "--output-md",
                         str(output_md),
+                        "--timeout-seconds",
+                        "600",
                         "--dry-run",
                     ]
                 )
@@ -170,6 +248,7 @@ class EvalTrlSftPublic20LogprobTests(unittest.TestCase):
         self.assertTrue(report["dry_run"])
         self.assertEqual("public20_trl_sft_logprob", report["metric_adapter"])
         self.assertEqual(1, report["dataset"]["selected_rows"])
+        self.assertEqual({"timeout_seconds": 600, "enforced_by_evaluator": False, "owner": "queue_wrapper"}, report["timeout"])
         self.assertIn("labels=-100", markdown)
 
 

@@ -1,0 +1,20 @@
+{
+  "accepted_count": 55,
+  "input": "runs/self_instruct/server_qwen_prod/current_raw_check/raw_outputs.qwen_local.jsonl",
+  "official_counterpart": "prepare_for_finetuning.py outputs",
+  "official_stage": "candidate_preparation",
+  "prepared_candidate_artifact_schema_version": "self_instruct.prepare_for_finetuning_candidate.v1",
+  "reject_reason_counts": {
+    "instruction_not_fixed": 17,
+    "primary_evidence_not_final_response": 9,
+    "record_10_method_args_not_required_optional": 1,
+    "record_1_method_args_not_required_optional": 12,
+    "record_2_method_args_not_required_optional": 9,
+    "record_5_method_args_not_required_optional": 1,
+    "record_6_method_args_not_required_optional": 1,
+    "target_index_not_last_record": 43,
+    "target_response_not_last_record_output": 20
+  },
+  "rejected_count": 113,
+  "schema_version": "self_instruct.raw_output_parser.v1"
+}

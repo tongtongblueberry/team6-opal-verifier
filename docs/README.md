@@ -1,6 +1,10 @@
 # 문서 구조
 
-최종 갱신: 2026-05-26 16:50 KST
+최종 갱신: 2026-05-29 14:13:39 KST
+
+<!-- Changed: document the current gen3.1 stopped state at the docs index level. -->
+<!-- Why: every Markdown reader must see that the latest Self-Instruct generation is stopped and not training-eligible. -->
+현재 상태: gen3.1 Qwen Self-Instruct generation과 local watcher는 중단됐다. 마지막 server raw는 `72/1000`, local parsed candidates는 `21`, rule-book accepted는 `1`, rejected는 `20`이다. `data/local/gen3_pending`은 `1` row monitoring artifact이고, canonical `data/local/gen3`은 `0` rows다.
 
 ## Active 문서
 
@@ -20,11 +24,15 @@
   - [self_instruct_implementation_plan_2026-05-26_kst.md](archive/research/self_instruct_implementation_plan_2026-05-26_kst.md): Self-Instruct 공식 논문/공식 코드 기반 구현 기준.
 - [archive/submissions/](archive/submissions/): 과거 제출 시도와 제출 로그.
 
-Archive 파일은 현재 실행 기준이 아니다. 현재 기준은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/current_task.md`, `docs/agent_handoff.md`, `docs/server_operations_current.md`, `docs/current_self_instruct_data_plan.md`, `docs/samples/README.md`다.
+Archive 파일은 현재 실행 기준이 아니다. 다만 2026-05-29 generation stop/restart 판단의 권위 기록은 `docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`와 `docs/archive/cycles/2026-05-29_gen3_zero_accept_gen31_restart.md`다. 현재 live 기준은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/current_task.md`, `docs/agent_handoff.md`, `docs/server_operations_current.md`, `docs/current_self_instruct_data_plan.md`, `docs/samples/README.md`다.
 
 <!-- Changed: define the active docs update set that every cleanup or pipeline worker must keep synchronized. -->
 <!-- Why: agent_handoff.md must move with README/PROGRESS/current docs instead of becoming stale context. -->
 Active docs update set은 `README.md`, `PROGRESS.md`, `docs/README.md`, `docs/current_task.md`, `docs/current_self_instruct_data_plan.md`, `docs/agent_handoff.md`, `docs/samples/README.md`다. 데이터 생성/검증/학습/제출/sample 공개 기준을 바꾸는 agent는 이 묶음을 함께 점검한다.
+
+<!-- Changed: add gen3.1 stopped-run policy to active docs update set. -->
+<!-- Why: future workers must not resume the stopped run or train from pending data by default. -->
+gen3.1 stopped-run policy: `runs/self_instruct/server_qwen_prod_gen31`은 evidence mirror이고 active generator가 아니다. `data/local/gen3_pending`은 local watcher monitoring output이고 training/sample eligible 데이터가 아니다. `data/local/gen3`만 canonical generated-data 위치지만 현재 0 rows다.
 
 ## 현재 정리 기준
 

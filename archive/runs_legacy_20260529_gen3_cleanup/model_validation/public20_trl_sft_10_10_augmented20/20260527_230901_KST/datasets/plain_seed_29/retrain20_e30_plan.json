@@ -1,0 +1,76 @@
+{
+  "completion_only_loss_basis": {
+    "dataset_columns": [
+      "prompt",
+      "completion"
+    ],
+    "sft_config": {
+      "completion_only_loss": true
+    },
+    "trainer_owns_loss_masking": true
+  },
+  "created_at": "2026-05-27T23:13:23.455417+09:00",
+  "custom_data_collator": false,
+  "custom_training_loop": false,
+  "dataset": {
+    "dataset_dir": "runs/model_validation/public20_trl_sft_10_10_augmented20/20260527_230901_KST/datasets/plain_seed_29",
+    "train_label_counts": {
+      "fail": 12,
+      "pass": 12
+    },
+    "train_path": "runs/model_validation/public20_trl_sft_10_10_augmented20/20260527_230901_KST/datasets/plain_seed_29/train.jsonl",
+    "train_rows": 24,
+    "validation_label_counts": {
+      "fail": 5,
+      "pass": 5
+    },
+    "validation_path": "runs/model_validation/public20_trl_sft_10_10_augmented20/20260527_230901_KST/datasets/plain_seed_29/validation.jsonl",
+    "validation_rows": 10
+  },
+  "dataset_format": "standard_prompt_completion",
+  "dependency_report": null,
+  "formatting_func": null,
+  "max_length_policy": {
+    "completion_label_preflight_required": true,
+    "configured_max_length": 8192,
+    "default_max_length": 8192,
+    "preflight_method": "prompt_completion_token_length_truncation_only"
+  },
+  "model_name_or_path": "Qwen/Qwen3.5-0.8B",
+  "official_reference": "third_party/hf_trl_sft pinned HEAD a9993736c2250da0b3d2f206ec217f144b891e5a",
+  "output_dir": "/tmp/retrain20_seed29_e30",
+  "peft": {
+    "enabled": false,
+    "lora_alpha": null,
+    "lora_dropout": null,
+    "lora_r": null,
+    "lora_target_modules": null
+  },
+  "quantization": {
+    "config": null,
+    "enabled": false,
+    "method": null,
+    "model_init_kwargs_basis": null
+  },
+  "sft_config_kwargs": {
+    "bf16": true,
+    "completion_only_loss": true,
+    "eval_steps": 10,
+    "eval_strategy": "epoch",
+    "gradient_accumulation_steps": 8,
+    "gradient_checkpointing": true,
+    "learning_rate": 1e-05,
+    "logging_steps": 1,
+    "max_length": 8192,
+    "num_train_epochs": 30.0,
+    "output_dir": "/tmp/retrain20_seed29_e30",
+    "packing": false,
+    "per_device_eval_batch_size": 1,
+    "per_device_train_batch_size": 1,
+    "report_to": "none",
+    "save_steps": 10,
+    "save_strategy": "no",
+    "seed": 29
+  },
+  "training_core": "trl.SFTTrainer"
+}

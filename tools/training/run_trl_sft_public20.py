@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Thin TRL SFTTrainer launcher for converted public20 prompt-completion JSONL."""
+"""Thin TRL SFTTrainer launcher for public20 input/labels JSONL."""
 
 from __future__ import annotations
 
@@ -8,17 +8,23 @@ import importlib
 import inspect
 import json
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 
-# Changed: keep this launcher as a thin adapter around official TRL APIs.
-# Why: public20 SFT results must be separated from custom Trainer wrappers.
+# Changed: keep public20 input/labels files and adapt only in memory for TRL.
+# Why: disk artifacts must not grow prompt/completion/provenance columns.
 VALID_LABELS = {"pass", "fail"}
+DATASET_COLUMNS = ("input", "labels")
+TRAINER_COLUMNS = ("prompt", "completion")
 DEFAULT_TRAIN_FILE = "train.jsonl"
 DEFAULT_VALIDATION_FILE = "validation.jsonl"
+# Changed: raise the public20 TRL default sequence budget to the locally audited safe value.
+# Why: max_length 4096 can truncate every completion-only label for long public20 validation prompts.
+DEFAULT_MAX_LENGTH = 8192
 KST = timezone(timedelta(hours=9), name="KST")
 PINNED_TRL_REFERENCE = "third_party/hf_trl_sft pinned HEAD a9993736c2250da0b3d2f206ec217f144b891e5a"
 
@@ -41,14 +47,14 @@ def fail(message: str, exit_code: int = 2) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run official TRL SFTTrainer on converted public20 prompt-completion JSONL."
+        description="Run official TRL SFTTrainer on public20 input/labels JSONL."
     )
     parser.add_argument("--dataset-dir", required=True, help="Directory from prepare_public20_sft_dataset.py.")
     parser.add_argument("--model-name-or-path", required=True, help="HF model name/path for SFTTrainer.")
     parser.add_argument("--output-dir", required=True, help="Output directory for adapter/model artifacts.")
     parser.add_argument("--train-file", default=DEFAULT_TRAIN_FILE)
     parser.add_argument("--validation-file", default=DEFAULT_VALIDATION_FILE)
-    parser.add_argument("--max-length", type=int, default=4096)
+    parser.add_argument("--max-length", type=int, default=DEFAULT_MAX_LENGTH)
     parser.add_argument("--num-train-epochs", type=float, default=5.0)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
@@ -78,6 +84,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--lora-target-modules", default="all-linear")
+    # Changed: expose verified PEFT/TRL QLoRA loading knobs on the official runner.
+    # Why: the 4B candidate must be runnable as quantized-base LoRA without a custom training loop.
+    parser.add_argument("--use-4bit-quantization", action="store_true", help="Use QLoRA-style 4-bit base model loading.")
+    parser.add_argument("--bnb-4bit-quant-type", default="nf4", choices=("nf4", "fp4"))
+    parser.add_argument("--bnb-4bit-compute-dtype", default="bfloat16")
+    parser.add_argument("--bnb-4bit-quant-storage-dtype", default="uint8")
+    parser.add_argument("--bnb-4bit-use-double-quant", action="store_true")
 
     parser.add_argument("--dry-run", action="store_true", help="Validate dataset and plan only; no model load.")
     parser.add_argument(
@@ -107,14 +120,21 @@ def read_jsonl_rows(path: Path) -> list[dict[str, Any]]:
                 fail(f"Invalid JSONL at {path}:{line_number}: {exc}")
             if not isinstance(value, dict):
                 fail(f"Dataset row {path}:{line_number} is not an object")
-            prompt = value.get("prompt")
-            completion = value.get("completion")
+            # Changed: require exactly the public20-shaped columns on disk.
+            # Why: prompt/completion and sample metadata must not leak into JSONL artifacts.
+            if set(value) != set(DATASET_COLUMNS):
+                fail(
+                    f"Dataset row {path}:{line_number} must contain exactly "
+                    f"{list(DATASET_COLUMNS)!r}; got {sorted(value)}"
+                )
+            prompt = value.get("input")
+            completion = value.get("labels")
             if not isinstance(prompt, str) or not prompt:
-                fail(f"Dataset row {path}:{line_number} has missing prompt")
+                fail(f"Dataset row {path}:{line_number} has missing input")
             if not isinstance(completion, str) or completion.strip().lower() not in VALID_LABELS:
-                fail(f"Dataset row {path}:{line_number} has invalid completion {completion!r}")
+                fail(f"Dataset row {path}:{line_number} has invalid labels {completion!r}")
             if completion != completion.strip().lower():
-                fail(f"Dataset row {path}:{line_number} completion must be canonical pass/fail")
+                fail(f"Dataset row {path}:{line_number} labels must be canonical pass/fail")
             rows.append(value)
     if not rows:
         fail(f"No rows found in converted dataset file: {path}")
@@ -130,7 +150,7 @@ def validate_converted_dataset(dataset_dir: Path, train_file: str, validation_fi
     def counts(rows: list[dict[str, Any]]) -> dict[str, int]:
         result = {"fail": 0, "pass": 0}
         for row in rows:
-            result[row["completion"]] += 1
+            result[row["labels"]] += 1
         return {key: value for key, value in sorted(result.items()) if value}
 
     return DatasetSummary(
@@ -142,6 +162,129 @@ def validate_converted_dataset(dataset_dir: Path, train_file: str, validation_fi
         train_label_counts=counts(train_rows),
         validation_label_counts=counts(validation_rows),
     )
+
+
+# Changed: preflight completion-label survival before official TRL trainer construction.
+# Why: eval_loss can become NaN when completion-only labels are fully removed by max_length truncation.
+def _flatten_token_ids(value: Any, description: str) -> list[int]:
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+    if isinstance(value, tuple):
+        value = list(value)
+    if isinstance(value, list):
+        if not value:
+            return []
+        first = value[0]
+        if hasattr(first, "tolist"):
+            first = first.tolist()
+        if isinstance(first, tuple):
+            first = list(first)
+        if isinstance(first, list):
+            if len(value) != 1:
+                fail(f"Tokenizer returned batched input_ids for {description}; expected one sequence")
+            return [int(token_id) for token_id in first]
+        return [int(token_id) for token_id in value]
+    fail(f"Tokenizer returned unsupported input_ids for {description}: {type(value).__name__}")
+
+
+# Changed: tokenize prompt/completion columns directly without chat templates or response-prefix matching.
+# Why: this check must isolate max_length truncation, not completion template mismatch.
+def _tokenize_without_special_tokens(tokenizer: Any, text: str, description: str) -> list[int]:
+    try:
+        encoded = tokenizer(text, add_special_tokens=False)
+    except TypeError as exc:
+        fail(f"Tokenizer does not support add_special_tokens=False for {description}: {exc}", exit_code=3)
+    # Changed: accept Mapping outputs such as transformers BatchEncoding, not only plain dict.
+    # Why: the server tokenizer preflight must work with real AutoTokenizer return values.
+    if not isinstance(encoded, Mapping) or "input_ids" not in encoded:
+        fail(f"Tokenizer output for {description} does not contain input_ids", exit_code=3)
+    return _flatten_token_ids(encoded["input_ids"], description)
+
+
+# Changed: compute row-local completion label count after causal-LM shifting under configured max_length.
+# Why: a row with zero shifted valid completion labels must fail before SFTTrainer sees it.
+def completion_label_preflight_stats(tokenizer: Any, row: dict[str, Any], max_length: int) -> dict[str, int]:
+    # Changed: read persisted public20 fields directly for preflight.
+    # Why: truncation validation must check the exact JSONL content before the TRL in-memory rename.
+    prompt = row["input"]
+    completion = row["labels"]
+    prompt_ids = _tokenize_without_special_tokens(tokenizer, prompt, "prompt")
+    completion_ids = _tokenize_without_special_tokens(tokenizer, completion, "completion")
+    prompt_token_length = len(prompt_ids)
+    completion_token_length = len(completion_ids)
+    available_completion_slots = max(0, max_length - prompt_token_length)
+    retained_completion_tokens = min(completion_token_length, available_completion_slots)
+    shifted_valid_completion_label_count = retained_completion_tokens
+    if prompt_token_length == 0 and shifted_valid_completion_label_count > 0:
+        shifted_valid_completion_label_count -= 1
+    return {
+        "prompt_token_length": prompt_token_length,
+        "completion_token_length": completion_token_length,
+        "available_completion_slots": available_completion_slots,
+        "retained_completion_tokens": retained_completion_tokens,
+        "shifted_valid_completion_label_count": shifted_valid_completion_label_count,
+    }
+
+
+# Changed: fail fast on train/validation rows whose completion labels are entirely truncated.
+# Why: loss/calibration signals are invalid if a completion-only row contributes no shifted labels.
+def preflight_completion_label_truncation(
+    tokenizer: Any,
+    dataset_summary: DatasetSummary,
+    max_length: int,
+) -> dict[str, Any]:
+    if max_length <= 0:
+        fail(f"--max-length must be positive for completion label preflight; got {max_length}")
+
+    split_paths = (
+        ("train", Path(dataset_summary.train_path)),
+        ("validation", Path(dataset_summary.validation_path)),
+    )
+    split_summaries: dict[str, dict[str, Any]] = {}
+    checked_rows = 0
+    global_min_shifted: int | None = None
+
+    for split_name, path in split_paths:
+        rows = read_jsonl_rows(path)
+        split_min_shifted: int | None = None
+        max_prompt_tokens = 0
+        max_completion_tokens = 0
+        for row_index, row in enumerate(rows):
+            stats = completion_label_preflight_stats(tokenizer, row, max_length)
+            checked_rows += 1
+            shifted_count = stats["shifted_valid_completion_label_count"]
+            split_min_shifted = shifted_count if split_min_shifted is None else min(split_min_shifted, shifted_count)
+            global_min_shifted = shifted_count if global_min_shifted is None else min(global_min_shifted, shifted_count)
+            max_prompt_tokens = max(max_prompt_tokens, stats["prompt_token_length"])
+            max_completion_tokens = max(max_completion_tokens, stats["completion_token_length"])
+            if shifted_count <= 0:
+                fail(
+                    "Completion label truncation preflight failed: "
+                    f"split={split_name} row_index={row_index} "
+                    f"max_length={max_length} "
+                    f"prompt_token_length={stats['prompt_token_length']} "
+                    f"completion_token_length={stats['completion_token_length']} "
+                    f"shifted_valid_completion_label_count={shifted_count}. "
+                    "This is a prompt/completion token-length truncation check; "
+                    "no chat template or completion-prefix matching is used."
+                )
+        split_summaries[split_name] = {
+            "rows": len(rows),
+            "min_shifted_valid_completion_label_count": split_min_shifted,
+            "max_prompt_token_length": max_prompt_tokens,
+            "max_completion_token_length": max_completion_tokens,
+        }
+
+    return {
+        "ok": True,
+        "method": "prompt_completion_token_length_truncation_only",
+        "chat_template_used": False,
+        "completion_prefix_matching_used": False,
+        "max_length": max_length,
+        "checked_rows": checked_rows,
+        "min_shifted_valid_completion_label_count": global_min_shifted,
+        "splits": split_summaries,
+    }
 
 
 def sft_config_supported_names(sft_config_cls: Any) -> set[str]:
@@ -179,7 +322,96 @@ def choose_supported_name(
     fail(f"Installed TRL SFTConfig does not expose a supported {description} field")
 
 
-def build_sft_config_kwargs(args: argparse.Namespace, supported_names: set[str]) -> dict[str, Any]:
+def _validate_quantization_args(args: argparse.Namespace) -> None:
+    # Changed: keep QLoRA as quantized-base LoRA, not quantized full FT.
+    # Why: PEFT/QLoRA evidence requires LoRA adapters over a 4-bit base model.
+    if args.use_4bit_quantization and not args.use_peft:
+        fail("--use-4bit-quantization requires --use-peft for the QLoRA candidate")
+
+
+def _serialized_quantization_config(args: argparse.Namespace) -> dict[str, Any]:
+    # Changed: provide a JSON-safe plan for dry-run artifacts.
+    # Why: BitsAndBytesConfig is only materialized when real training starts.
+    return {
+        "class": "transformers.BitsAndBytesConfig",
+        "load_in_4bit": True,
+        "bnb_4bit_quant_type": args.bnb_4bit_quant_type,
+        "bnb_4bit_compute_dtype": args.bnb_4bit_compute_dtype,
+        "bnb_4bit_quant_storage": args.bnb_4bit_quant_storage_dtype,
+        "bnb_4bit_use_double_quant": bool(args.bnb_4bit_use_double_quant),
+    }
+
+
+def _materialized_quantization_config(args: argparse.Namespace) -> Any:
+    # Changed: mirror Hugging Face PEFT/TRL examples for QLoRA model loading.
+    # Why: real QLoRA training must pass BitsAndBytesConfig through SFTConfig.model_init_kwargs.
+    try:
+        import torch  # type: ignore
+        from transformers import BitsAndBytesConfig  # type: ignore
+    except ImportError as exc:
+        fail(f"--use-4bit-quantization requires torch/transformers bitsandbytes support: {exc}", exit_code=3)
+
+    try:
+        compute_dtype = getattr(torch, args.bnb_4bit_compute_dtype)
+        storage_dtype = getattr(torch, args.bnb_4bit_quant_storage_dtype)
+    except AttributeError as exc:
+        fail(f"Unknown torch dtype for QLoRA quantization: {exc}")
+
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type=args.bnb_4bit_quant_type,
+        bnb_4bit_compute_dtype=compute_dtype,
+        bnb_4bit_quant_storage=storage_dtype,
+        bnb_4bit_use_double_quant=bool(args.bnb_4bit_use_double_quant),
+    )
+
+
+def build_model_init_kwargs(args: argparse.Namespace, *, materialize_quantization: bool) -> dict[str, Any]:
+    # Changed: centralize TRL SFTConfig model_init_kwargs for QLoRA.
+    # Why: SFTTrainer should own model construction while receiving official quantization kwargs.
+    if not args.use_4bit_quantization:
+        return {}
+    if materialize_quantization:
+        try:
+            from trl import get_kbit_device_map  # type: ignore
+        except ImportError as exc:
+            fail(f"--use-4bit-quantization requires trl.get_kbit_device_map: {exc}", exit_code=3)
+        return {
+            "device_map": get_kbit_device_map(),
+            "quantization_config": _materialized_quantization_config(args),
+        }
+    return {
+        "device_map": "trl.get_kbit_device_map()",
+        "quantization_config": _serialized_quantization_config(args),
+    }
+
+
+def _jsonable_config_kwargs(config_kwargs: dict[str, Any]) -> dict[str, Any]:
+    # Changed: strip runtime-only objects from dry-run/report JSON.
+    # Why: BitsAndBytesConfig objects are not JSON serializable but the report must remain auditable.
+    result: dict[str, Any] = {}
+    for key, value in config_kwargs.items():
+        if key != "model_init_kwargs" or not isinstance(value, dict):
+            result[key] = value
+            continue
+        converted: dict[str, Any] = {}
+        for inner_key, inner_value in value.items():
+            if isinstance(inner_value, (str, int, float, bool)) or inner_value is None:
+                converted[inner_key] = inner_value
+            elif isinstance(inner_value, dict):
+                converted[inner_key] = inner_value
+            else:
+                converted[inner_key] = str(inner_value)
+        result[key] = converted
+    return result
+
+
+def build_sft_config_kwargs(
+    args: argparse.Namespace,
+    supported_names: set[str],
+    *,
+    materialize_quantization: bool = False,
+) -> dict[str, Any]:
     # Changed: make completion-only loss an explicit SFTConfig argument.
     # Why: prompt tokens must be ignored by TRL, not by a custom local collator.
     require_completion_only_support(supported_names)
@@ -215,6 +447,9 @@ def build_sft_config_kwargs(args: argparse.Namespace, supported_names: set[str])
         kwargs["bf16"] = True
     if args.fp16:
         kwargs["fp16"] = True
+    model_init_kwargs = build_model_init_kwargs(args, materialize_quantization=materialize_quantization)
+    if model_init_kwargs:
+        kwargs["model_init_kwargs"] = model_init_kwargs
 
     unsupported = sorted(key for key in kwargs if key not in supported_names)
     if unsupported:
@@ -272,6 +507,7 @@ def dry_run_supported_fields() -> set[str]:
         "learning_rate",
         "logging_steps",
         "max_length",
+        "model_init_kwargs",
         "num_train_epochs",
         "output_dir",
         "packing",
@@ -297,13 +533,24 @@ def build_plan_report(
         "custom_training_loop": False,
         "custom_data_collator": False,
         "formatting_func": None,
-        "dataset_format": "standard_prompt_completion",
+        # Changed: distinguish persisted public20 columns from trainer-facing columns.
+        # Why: the JSONL schema is input/labels only, then renamed in memory for TRL.
+        "dataset_format": "public20_input_labels",
         "dataset": dataset_summary.__dict__,
         "model_name_or_path": args.model_name_or_path,
         "output_dir": args.output_dir,
         "sft_config_kwargs": config_kwargs,
+        # Changed: expose the max_length/preflight policy in dry-run and training plan metadata.
+        # Why: queue operators must see that public20 TRL runs default to 8192 and fail on truncation.
+        "max_length_policy": {
+            "default_max_length": DEFAULT_MAX_LENGTH,
+            "configured_max_length": args.max_length,
+            "completion_label_preflight_required": True,
+            "preflight_method": "prompt_completion_token_length_truncation_only",
+        },
         "completion_only_loss_basis": {
-            "dataset_columns": ["prompt", "completion"],
+            "dataset_columns": list(DATASET_COLUMNS),
+            "trainer_dataset_columns": list(TRAINER_COLUMNS),
             "sft_config": {"completion_only_loss": True},
             "trainer_owns_loss_masking": True,
         },
@@ -313,6 +560,12 @@ def build_plan_report(
             "lora_alpha": args.lora_alpha if args.use_peft else None,
             "lora_dropout": args.lora_dropout if args.use_peft else None,
             "lora_target_modules": args.lora_target_modules if args.use_peft else None,
+        },
+        "quantization": {
+            "enabled": bool(args.use_4bit_quantization),
+            "method": "QLoRA 4-bit base + LoRA adapter" if args.use_4bit_quantization else None,
+            "model_init_kwargs_basis": "SFTConfig.model_init_kwargs" if args.use_4bit_quantization else None,
+            "config": _serialized_quantization_config(args) if args.use_4bit_quantization else None,
         },
         "dependency_report": dependency_report,
     }
@@ -373,7 +626,7 @@ def write_plan_reports(report: dict[str, Any], json_path: str | None, md_path: s
             "- 학습 core: `trl.SFTTrainer`",
             "- custom training loop: `false`",
             "- custom data collator: `false`",
-            "- 데이터 형식: standard prompt-completion",
+            "- 데이터 형식: public20 input/labels",
             "- completion-only loss: `SFTConfig(completion_only_loss=True)`",
             "",
             "## Dataset",
@@ -412,13 +665,29 @@ def load_prompt_completion_dataset(dataset_summary: DatasetSummary) -> Any:
         from datasets import load_dataset  # type: ignore
     except ImportError as exc:
         fail(f"Missing dependency 'datasets': {exc}", exit_code=3)
-    return load_dataset(
+    dataset = load_dataset(
         "json",
         data_files={
             "train": dataset_summary.train_path,
             "validation": dataset_summary.validation_path,
         },
     )
+    # Changed: rename public20 columns only in memory before SFTTrainer sees them.
+    # Why: persisted JSONL stays input/labels while TRL completion_only_loss receives prompt/completion.
+    return dataset.rename_column("input", "prompt").rename_column("labels", "completion")
+
+
+def load_processing_tokenizer(model_name_or_path: str) -> Any:
+    # Changed: pass an explicit tokenizer to SFTTrainer, mirroring the HF PEFT SFT example.
+    # Why: text-only public20 SFT must not let AutoProcessor select optional vision processors.
+    try:
+        from transformers import AutoTokenizer  # type: ignore
+    except ImportError as exc:
+        fail(f"Missing dependency 'transformers': {exc}", exit_code=3)
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, trust_remote_code=True)
+    if getattr(tokenizer, "pad_token", None) is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
 
 
 def run_training(args: argparse.Namespace, dataset_summary: DatasetSummary, config_kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -430,8 +699,13 @@ def run_training(args: argparse.Namespace, dataset_summary: DatasetSummary, conf
     dataset = load_prompt_completion_dataset(dataset_summary)
     peft_config = build_peft_config(args)
     training_args = SFTConfig(**config_kwargs)
+    tokenizer = load_processing_tokenizer(args.model_name_or_path)
+    # Changed: run tokenizer preflight before SFTTrainer can load/train the model.
+    # Why: rows with zero shifted completion labels must fail before producing NaN eval_loss.
+    preflight_report = preflight_completion_label_truncation(tokenizer, dataset_summary, args.max_length)
     trainer = SFTTrainer(
         model=args.model_name_or_path,
+        processing_class=tokenizer,
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"] if args.eval_strategy != "no" else None,
@@ -444,6 +718,7 @@ def run_training(args: argparse.Namespace, dataset_summary: DatasetSummary, conf
     eval_metrics = trainer.evaluate() if args.eval_strategy != "no" else None
     trainer.save_model(args.output_dir)
     return {
+        "completion_label_preflight": preflight_report,
         "parameter_check": parameter_check,
         "train_metrics": getattr(train_result, "metrics", None),
         "eval_metrics": eval_metrics,
@@ -453,6 +728,7 @@ def run_training(args: argparse.Namespace, dataset_summary: DatasetSummary, conf
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    _validate_quantization_args(args)
     dataset_summary = validate_converted_dataset(
         Path(args.dataset_dir),
         args.train_file,
@@ -465,7 +741,7 @@ def main(argv: list[str] | None = None) -> int:
         else dry_run_supported_fields()
     )
     config_kwargs = build_sft_config_kwargs(args, supported_names)
-    report = build_plan_report(args, dataset_summary, config_kwargs, dependency_report)
+    report = build_plan_report(args, dataset_summary, _jsonable_config_kwargs(config_kwargs), dependency_report)
     write_plan_reports(report, args.plan_json, args.plan_md)
 
     if args.dry_run:
@@ -475,7 +751,8 @@ def main(argv: list[str] | None = None) -> int:
     if dependency_report is None:
         dependency_report = check_dependencies()
         supported_names = set(dependency_report["sft_config_supported_fields"])
-        config_kwargs = build_sft_config_kwargs(args, supported_names)
+    config_kwargs = build_sft_config_kwargs(args, supported_names, materialize_quantization=True)
+    report["sft_config_kwargs"] = _jsonable_config_kwargs(config_kwargs)
     train_report = run_training(args, dataset_summary, config_kwargs)
     report["train_result"] = train_report
     print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))

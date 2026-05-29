@@ -1,0 +1,251 @@
+{
+  "accepted_label_distribution": {
+    "fail": 3,
+    "pass": 8
+  },
+  "artifact_note": "이 입력은 generated synthetic candidate pool이며 state-transition audit decision을 채워야 한다.",
+  "audit_targets": [
+    {
+      "final_method": "Get",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "fail",
+      "line_number": 8,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-02"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 9,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-03"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "pass",
+      "line_number": 6,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Set",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-03"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 7,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "StartSession",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00002-01"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 4,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 1,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-01"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_BUSY",
+      "label": "pass",
+      "line_number": 3,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "StartSession",
+          "status": "SP_BUSY"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-03"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 11,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-03"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 10,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00003-01"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "fail",
+      "line_number": 5,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00001-02"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 1,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Authenticate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 3,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-01"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "fail",
+      "line_number": 2,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 3,
+      "sample_id": "codex-agent-fallback-self-instruct-gen-00000-02"
+    }
+  ],
+  "generated_at_kst": "2026-05-27T18:30:22+09:00",
+  "hard_invariant_fail_count": 0,
+  "hard_invariant_pass_count": 11,
+  "input": "runs/self_instruct/official_restart_20260527_v1/02_raw_generation/judge_accepted.codex_agent_fallback.jsonl",
+  "invariant_failures": [],
+  "sample_label_distribution": {
+    "fail": 3,
+    "pass": 8
+  },
+  "sample_md_policy": "create-only-after-gate-a-b-c-pass",
+  "sample_size_actual": 11,
+  "sample_size_requested": 11,
+  "schema_version": "self_instruct.gate_a_quality_audit.v1",
+  "seed": 20260527,
+  "status": "pending-qualitative-state-transition-audit",
+  "total_candidates": 11,
+  "training_use": "pending-gate-a-human-or-llm-judge-review"
+}

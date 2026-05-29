@@ -1,0 +1,160 @@
+{
+  "combined_auth_session_summary": {
+    "auth_row_rate": 0.0952,
+    "auth_rows": 4,
+    "auth_start_session_rate": 0.0825,
+    "auth_start_sessions": 8,
+    "rows": 42,
+    "start_sessions": 97
+  },
+  "combined_candidates": 42,
+  "combined_label_counts": {
+    "fail": 14,
+    "pass": 28
+  },
+  "combined_record_count_counts": {
+    "1": 1,
+    "2": 12,
+    "3": 2,
+    "4": 2,
+    "6": 7,
+    "7": 2,
+    "8": 1,
+    "9": 1,
+    "10": 8,
+    "11": 1,
+    "12": 1,
+    "20": 2,
+    "21": 2
+  },
+  "export_arg_leaf_avg": 1.7385,
+  "export_auth_session_summary": {
+    "auth_row_rate": 0.1034,
+    "auth_rows": 3,
+    "auth_start_session_rate": 0.0972,
+    "auth_start_sessions": 7,
+    "rows": 29,
+    "start_sessions": 72
+  },
+  "export_files": [
+    "gen_input.jsonl",
+    "gen_labels.local.jsonl"
+  ],
+  "export_final_status_rule_hits": 23,
+  "export_final_status_rule_rate": 0.7931,
+  "export_final_status_rule_total": 29,
+  "export_input_rows": 29,
+  "export_label_counts": {
+    "fail": 10,
+    "pass": 19
+  },
+  "export_label_rows": 29,
+  "export_method_counts": {
+    "Activate": 8,
+    "EndSession": 52,
+    "GenKey": 3,
+    "Get": 54,
+    "Properties": 5,
+    "Read": 1,
+    "Set": 29,
+    "StartSession": 72
+  },
+  "export_method_sequence_public20_match_count": 0,
+  "export_method_sequence_public20_matches": [],
+  "export_missing_public_method_counts": {},
+  "export_output_method_counts": {
+    "SyncSession": 72
+  },
+  "export_record_count_counts": {
+    "10": 8,
+    "11": 1,
+    "12": 1,
+    "2": 5,
+    "20": 2,
+    "3": 1,
+    "4": 2,
+    "6": 6,
+    "7": 1,
+    "8": 1,
+    "9": 1
+  },
+  "export_record_count_label_rule_hits": 21,
+  "export_record_count_label_rule_rate": 0.7241,
+  "export_record_count_label_rule_total": 29,
+  "export_sequence_skeleton_public20_match_count": 0,
+  "export_sequence_skeleton_public20_matches": [],
+  "export_status_codes_type_counts": {
+    "NoneType": 1,
+    "str": 223
+  },
+  "forbidden_key_occurrences": 0,
+  "instruction_mismatch_count": 0,
+  "instruction_mismatch_sample_ids": [],
+  "parse_reject_reason_counts": {
+    "instruction_not_fixed": 12,
+    "primary_evidence_not_final_response": 5,
+    "record_10_method_args_not_required_optional": 1,
+    "record_1_method_args_not_required_optional": 7,
+    "record_2_method_args_not_required_optional": 7,
+    "record_6_method_args_not_required_optional": 1,
+    "target_index_not_last_record": 27,
+    "target_response_not_last_record_output": 16
+  },
+  "parsed_auth_session_summary": {
+    "auth_row_rate": 0.0909,
+    "auth_rows": 4,
+    "auth_start_session_rate": 0.0777,
+    "auth_start_sessions": 8,
+    "rows": 44,
+    "start_sessions": 103
+  },
+  "parsed_bad_method_args_count": 0,
+  "parsed_bad_method_args_examples": [],
+  "parsed_input_null_count": 0,
+  "parsed_input_null_examples": [],
+  "public20_arg_leaf_avg": 2.1031,
+  "public20_auth_session_summary": {
+    "auth_row_rate": 0.8,
+    "auth_rows": 16,
+    "auth_start_session_rate": 0.7431,
+    "auth_start_sessions": 81,
+    "rows": 20,
+    "start_sessions": 109
+  },
+  "public20_exact_export_match_count": 0,
+  "public20_exact_export_matches": [],
+  "public20_final_status_rule_hits": 17,
+  "public20_final_status_rule_rate": 0.85,
+  "public20_final_status_rule_total": 20,
+  "public20_method_counts": {
+    "Activate": 12,
+    "EndSession": 93,
+    "GenKey": 4,
+    "Get": 68,
+    "Properties": 2,
+    "Read": 4,
+    "Set": 34,
+    "StartSession": 109,
+    "Write": 2
+  },
+  "public20_record_count_counts": {
+    "1": 2,
+    "10": 2,
+    "11": 1,
+    "2": 2,
+    "21": 4,
+    "26": 2,
+    "27": 2,
+    "39": 2,
+    "7": 2,
+    "9": 1
+  },
+  "qualitative_warnings": [
+    "export_rows_below_200:29",
+    "missing_public_record_counts:1,21,26,27,39",
+    "missing_public_methods:Write",
+    "args_richness_lower_than_public20:1.7385<2.1031",
+    "auth_session_row_rate_lower_than_public20:0.1034<0.8"
+  ],
+  "sample_id_alignment": true
+}

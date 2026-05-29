@@ -1,0 +1,94 @@
+{
+  "files": [
+    "gen_input.jsonl",
+    "gen_labels.local.jsonl"
+  ],
+  "forbidden_key_examples": [],
+  "forbidden_key_occurrences": 0,
+  "input_rows": 35,
+  "label_counts": {
+    "fail": 18,
+    "pass": 17
+  },
+  "label_rows": 35,
+  "method_counts_top": [
+    [
+      "StartSession",
+      204
+    ],
+    [
+      "EndSession",
+      127
+    ],
+    [
+      "Get",
+      99
+    ],
+    [
+      "Set",
+      50
+    ],
+    [
+      "Activate",
+      17
+    ],
+    [
+      "GenKey",
+      4
+    ],
+    [
+      "Read",
+      4
+    ],
+    [
+      "Authenticate",
+      3
+    ],
+    [
+      "Write",
+      2
+    ],
+    [
+      "Properties",
+      1
+    ],
+    [
+      "SyncSession",
+      1
+    ],
+    [
+      "RevertSP",
+      1
+    ]
+  ],
+  "record_count_counts": {
+    "1": 4,
+    "2": 4,
+    "7": 3,
+    "9": 2,
+    "10": 3,
+    "11": 3,
+    "21": 9,
+    "26": 3,
+    "27": 2,
+    "39": 2
+  },
+  "record_input_key_counts": {
+    "('invoking_id', 'method', 'status_codes')": 513
+  },
+  "record_outer_key_counts": {
+    "('index', 'input', 'output')": 513
+  },
+  "record_output_key_counts": {
+    "('return_values', 'status_codes')": 513
+  },
+  "sample_id_alignment": true,
+  "status_counts": {
+    "AUTHORITY_LOCKED_OUT": 1,
+    "FAIL": 9,
+    "INVALID_PARAMETER": 10,
+    "INVALID_PARAMETER (0x0C)": 1,
+    "NOT_AUTHORIZED": 3,
+    "SUCCESS": 489
+  }
+}

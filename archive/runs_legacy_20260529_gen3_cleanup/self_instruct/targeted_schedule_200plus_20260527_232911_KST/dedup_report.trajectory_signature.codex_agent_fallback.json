@@ -1,0 +1,16 @@
+{
+  "accepted_count": 25,
+  "input": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/parsed_candidates.codex_agent_fallback.jsonl",
+  "near_duplicate_mode": "trajectory_signature",
+  "near_duplicate_mode_default": "domain_text",
+  "public20_reference": null,
+  "reject_filter_stage_counts": {
+    "domain_adapted_rouge_l": 175
+  },
+  "reject_reason_counts": {
+    "near_duplicate_trajectory_signature": 175
+  },
+  "rejected_count": 175,
+  "rouge_l_threshold": 0.7,
+  "schema_version": "self_instruct.candidate_dedup.v1"
+}

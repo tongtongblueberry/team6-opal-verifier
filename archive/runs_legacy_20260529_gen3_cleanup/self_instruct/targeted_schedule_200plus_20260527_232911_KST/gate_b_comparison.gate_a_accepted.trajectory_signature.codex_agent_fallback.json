@@ -1,0 +1,188 @@
+{
+  "comparisons": {
+    "final_return_value_count_mean_difference": {
+      "absolute_difference": 2.05,
+      "generated_mean": 3.0,
+      "generated_minus_public": 2.05,
+      "public_mean": 0.95
+    },
+    "input_json_chars_mean_difference": {
+      "absolute_difference": 1154.0599999999995,
+      "generated_mean": 8065.36,
+      "generated_minus_public": 1154.0599999999995,
+      "public_mean": 6911.3
+    },
+    "method_sequence_length_mean_difference": {
+      "absolute_difference": 2.719999999999999,
+      "generated_mean": 13.68,
+      "generated_minus_public": -2.719999999999999,
+      "public_mean": 16.4
+    },
+    "record_count_mean_difference": {
+      "absolute_difference": 2.719999999999999,
+      "generated_mean": 13.68,
+      "generated_minus_public": -2.719999999999999,
+      "public_mean": 16.4
+    },
+    "row_count_difference": {
+      "generated": 25,
+      "generated_minus_public": 5,
+      "public": 20
+    },
+    "total_return_value_count_mean_difference": {
+      "absolute_difference": 4.809999999999999,
+      "generated_mean": 28.36,
+      "generated_minus_public": 4.809999999999999,
+      "public_mean": 23.55
+    }
+  },
+  "generated": {
+    "count": 25,
+    "declared_count": 25,
+    "final_method_blank_count": 0,
+    "final_method_counts": {
+      "Activate": 2,
+      "Authenticate": 2,
+      "Get": 7,
+      "Properties": 2,
+      "RevertSP": 1,
+      "Set": 5,
+      "StartSession": 6
+    },
+    "final_status_blank_count": 0,
+    "final_status_counts": {
+      "FAIL": 1,
+      "INVALID_PARAMETER": 5,
+      "NOT_AUTHORIZED": 4,
+      "NO_SESSIONS_AVAILABLE": 1,
+      "SP_BUSY": 1,
+      "SP_FROZEN": 1,
+      "SUCCESS": 12
+    },
+    "input": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/gate_a_accepted.trajectory_signature.codex_agent_fallback.jsonl",
+    "label_counts": {
+      "fail": 13,
+      "pass": 12
+    },
+    "numeric_stats": {
+      "final_return_value_count": {
+        "max": 3.0,
+        "mean": 3.0,
+        "min": 3.0
+      },
+      "input_json_chars": {
+        "max": 20940.0,
+        "mean": 8065.36,
+        "min": 1789.0
+      },
+      "method_sequence_length": {
+        "max": 39.0,
+        "mean": 13.68,
+        "min": 1.0
+      },
+      "record_count": {
+        "max": 39.0,
+        "mean": 13.68,
+        "min": 1.0
+      },
+      "total_return_value_count": {
+        "max": 79.0,
+        "mean": 28.36,
+        "min": 3.0
+      }
+    },
+    "record_count_bins": {
+      "1-32": 23,
+      "33-64": 2
+    },
+    "schema_version": "self_instruct.candidate_profile.v1",
+    "schema_warnings": [],
+    "unknown_method_count": 0,
+    "unknown_status_count": 0
+  },
+  "generated_profile_path": "runs/self_instruct/targeted_schedule_200plus_20260527_232911_KST/candidate_profile.gate_a_accepted.trajectory_signature.codex_agent_fallback.json",
+  "label_distribution": {
+    "generated": {
+      "fail": 13,
+      "pass": 12
+    },
+    "note": "public20 labels are local aggregate only and must not enter generation, judge, manifest, or training inputs.",
+    "public_local_eval_only": {
+      "fail": 10,
+      "pass": 10
+    }
+  },
+  "no_go_warnings": [
+    {
+      "code": "record_count_mean_difference",
+      "details": {
+        "absolute_difference": 2.719999999999999,
+        "generated_mean": 13.68,
+        "generated_minus_public": -2.719999999999999,
+        "public_mean": 16.4
+      },
+      "message": "public20와 generated의 평균 record_count가 다르므로 Gate B에서 질적 검토가 필요하다.",
+      "severity": "no_go_warning"
+    }
+  ],
+  "public": {
+    "count": 20,
+    "declared_count": 20,
+    "final_method_blank_count": 0,
+    "final_method_counts": {
+      "Activate": 1,
+      "Get": 6,
+      "Properties": 2,
+      "Read": 2,
+      "Set": 2,
+      "StartSession": 7
+    },
+    "final_status_blank_count": 0,
+    "final_status_counts": {
+      "8E": 1,
+      "FAIL": 1,
+      "INVALID_PARAMETER": 3,
+      "NOT_AUTHORIZED": 3,
+      "RANDOM DATA": 1,
+      "SUCCESS": 11
+    },
+    "input": "data/local/public20/public20_input.jsonl",
+    "numeric_stats": {
+      "final_return_value_count": {
+        "max": 2.0,
+        "mean": 0.95,
+        "min": 0.0
+      },
+      "input_json_chars": {
+        "max": 15256.0,
+        "mean": 6911.3,
+        "min": 429.0
+      },
+      "method_sequence_length": {
+        "max": 39.0,
+        "mean": 16.4,
+        "min": 1.0
+      },
+      "record_count": {
+        "max": 39.0,
+        "mean": 16.4,
+        "min": 1.0
+      },
+      "total_return_value_count": {
+        "max": 51.0,
+        "mean": 23.55,
+        "min": 0.0
+      }
+    },
+    "record_count_bins": {
+      "1-32": 18,
+      "33-64": 2
+    },
+    "schema_version": "self_instruct.seed_profile.v1",
+    "schema_warnings": [],
+    "unknown_method_count": 0,
+    "unknown_status_count": 0
+  },
+  "public_profile_path": "runs/self_instruct/public20_baseline/gate_b/public20.profile.json",
+  "schema_version": "self_instruct.gate_b_dimension_comparison.v1"
+}
