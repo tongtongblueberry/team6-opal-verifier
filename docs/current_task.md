@@ -1,137 +1,94 @@
 # Current Task
 
-<!-- Changed: 현재 task를 gen3.1 중단 후 문서 동기화 상태로 고정했다. -->
-<!-- Why: 서버 생성과 local watcher가 모두 멈췄으므로 다음 worker가 active generation을 찾으면 안 된다. -->
+- Updated: `2026-05-31 KST`.
 
-- Updated: `2026-05-29 14:13:39 KST`.
-- Local repo:
-  `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`.
-- Server repo: `/workspace/sinjeongmin_opal_verifier/repo`.
-- Current user request: gen3.1 generation과 watcher를 멈추고 모든 live docs/Markdown 기록을 최신 상태로 맞춘다.
+## 현재 상태: Training complete, epoch 4 best (70% val2)
 
-## 확인한 문서 구조
+### 학습 완료
+- **Run dir**: `ops/runs/20260530_gen_gflownet_v7_08b_fullft`
+- **모델**: Qwen/Qwen3.5-0.8B, full fine-tuning
+- **데이터**: gen_gflownet_v8_fixed (Gate A/B/C PASS) + public20 (20)
+  - Train: 1693 (pass 821 / fail 872)
+  - Val: 431 (pass 227 / fail 204)
+- **설정**: 30 epochs, lr=5e-5, batch=1, grad_accum=8
+- **GPU**: NVIDIA L40S 48GB, ~28GB used during full FT
+- **Best checkpoint**: epoch 4, checkpoint-928 = **70% (14/20)** on public20 (val2)
+  - Pass Recall: 7/10, Fail Recall: 7/10
+- **Overfit observed**: epoch 5+ accuracy drops to 60%
 
-<!-- Changed: 파일 분석 전에 확인한 구조를 기록했다. -->
-<!-- Why: file/document analysis는 skeleton을 먼저 확인해야 한다. -->
+### 다음 단계
+1. Best checkpoint (epoch 4, checkpoint-928)으로 leaderboard 제출
+2. Threshold 최적화 sweep
+3. 결과 분석 및 다음 사이클 계획
 
-- `README.md`: current status, operating rule, Self-Instruct fit, current pipeline, active files, runs layout, verification.
-- `PROGRESS.md`: current conclusion, Self-Instruct check, pipeline state, rejection evidence, runs cleanup, next work.
-- `docs/agent_handoff.md`: first read, current objective, Self-Instruct mapping, live pipeline, interpretation, runs policy, hard rules.
-- `docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`: decision, evidence, root cause, gen3 changes, restart plan.
+### 이전 제출 결과
+- Job 903: gen_sm e30 full FT → Score **53.00** (이전 best 54.00)
+- 모델: `/workspace/sinjeongmin_opal_verifier/ops/runs/20260530_gen_sm_09b_fullft/models/gen_sm_e30`
+- 패키지: `/workspace/sinjeongmin_opal_verifier/ops/submission_gen_sm_e30/submissions/submit-gen_sm_e30`
+- Previous killed runs: gen_sm_09b_fullft, gen_gflownet_v3_08b_fullft
 
-## 현재 서버 상태
+## 2026-05-30 진행 사항
 
-<!-- Changed: 서버와 로컬 watcher의 stopped factual state를 기록했다. -->
-<!-- Why: 후속 작업은 stopped run evidence를 기준으로 해야 한다. -->
+### 1. Self-Instruct 파이프라인 설계 + 실행 (gen_new)
 
-- Server run:
-  `runs/self_instruct/qwen_local_200_auth_statecheck_gen31_batch4_20260529_132800_KST`.
-- Server former parent PID: `120144`, stopped.
-- Server former generator PID: `120148`, stopped.
-- Server raw at stop: `72 / 1000`.
-- GPU state after stop: `0 %, 0 MiB / 46068 MiB`.
-- Local watcher screen `qwen_incremental_watch_gen31`: stopped.
-- Local mirror: `runs/self_instruct/server_qwen_prod_gen31`.
-- Local pending export: `data/local/gen3_pending`.
-- Canonical local final export: `data/local/gen3`, kept empty until server full pipeline export is synced.
-- Local counts at stop: raw `72`, parse rejects `51`, parsed candidates `21`,
-  rule-book accepted `1`, rule-book rejected `20`, pending exported rows `1`.
+- Self-Instruct 논문 (Wang et al. 2023 ACL) 기반 output-first 생성 파이프라인 설계
+- `runs/new/generate_server.py`: 서버에서 Qwen 0.8B/4B로 trajectory 생성
+- `runs/new/watch.sh`: 로컬 watcher (증분 pull + 7단계 필터링)
+- 7단계 필터링: parse → invariant → dedup → judge → adversarial gate → public20 비교 → audit
 
-## Self-Instruct 이해
+### 2. Self-Instruct 실패 분석
 
-<!-- Changed: Notion의 여섯 포인트와 현재 구현의 연결을 task 기준으로 압축했다. -->
-<!-- Why: 지금 해야 할 일은 원본 paper를 그대로 복제하는 것이 아니라 fixed Opal 판정 task에 맞춘 구현을 유지하는 것이다. -->
+gen_new (0.8B): 550 raw → 43 exported, mislabel 56%, state-building 3%
+gen_new_4b (4B): 100 raw → 39 exported, mislabel 18%, state-building 3%
 
-Notion이 지적한 원본 Self-Instruct 대비 적용/비적용 포인트:
+근본 원인:
+- LLM이 state-changing trajectory를 생성하지 못함 (Get 반복 95%)
+- EndSession 0%, multi-session flow 없음
+- Label을 LLM이 결정 → 56% 오류
+- Spec rule coverage 7% (6/86 rules)
 
-1. Instruction generation은 하지 않는다. fixed instruction을 사용한다.
-2. Input null은 허용하지 않는다. trajectory가 없으면 판정 불가다.
-3. Output-first를 사용한다. label은 final response에 붙는다.
-4. Few-shot type matching은 생략한다. task type이 하나다.
-5. Similarity filtering은 trajectory/domain/source-span 기준으로 바꾼다.
-6. Fine-tuning은 full FT 고정이 아니라 resource-constrained SFT로 다룬다.
+Agent 분석으로 확인:
+- Root cause 1: Seed truncation이 EndSession 숨김
+- Root cause 2: Shortest-seed 편향 → trivial trajectory만 생성
+- Root cause 3: 0.8B model capacity 부족 (mode collapse)
+- Root cause 4: Invariant checker의 label-status 검사 비활성화
 
-현재 pipeline 구현:
+수정 적용:
+- Fix 2: Seed 선택 → multi-session 우선
+- Fix 4: Deterministic label assignment (final_status vs rule expected_status)
+- Fix 6: 0.8B → 4B 모델 교체
+- Invariant checker: fail+all-SUCCESS hard reject 복원
 
-- fixed instruction과 `source_instruction_id`: `tools/datagen/run_self_instruct_generation.py`.
-- target schedule: `tools/datagen/run_qwen_local_200_pipeline.sh`.
-- raw parse/provenance 보존: `tools/datagen/parse_self_instruct_outputs.py`.
-- final-response target invariant: `tools/analysis/self_instruct_invariants.py`.
-- trajectory/domain dedup: `tools/analysis/dedup_self_instruct_candidates.py`.
-- adversarial judge request: `tools/analysis/filter_self_instruct_judge.py`.
-- rule-book export gate: `tools/analysis/adversarial_rulebook_quality_gate.py`.
-- public schema export: `tools/datagen/export_self_instruct_gen_public_schema.py`.
+### 3. OPAL State Machine Generator (gen_sm) — 새 접근법
 
-## gen3 전환 근거
+Self-Instruct의 근본적 한계를 인식하고 완전히 다른 접근법 채택:
+- Deterministic EFSM + Counterfactual Mutation
+- Public20의 Phase Progression (P0-P6) 구조를 코드로 재현
+- Pass trajectory를 state machine으로 생성, minimal mutation으로 fail 생성
 
-<!-- Changed: current run 설정의 근거를 archive 기록으로 연결했다. -->
-<!-- Why: `1000/batch4/8192/pass:fail=1:1`은 Notion과 충돌한 것이 아니라 gen2 실패 이후의 전환 결과다. -->
+`runs/new_v2/opal_state_machine.py` 구현:
+- 300건 생성 (pass 150, fail 150)
+- Label 정확도 100%, state-building 76%, 11 unique sequences
+- GenKey, Authority.Set, SP_BUSY/SP_FROZEN/NO_SESSIONS_AVAILABLE 커버
 
-`docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`에 따르면 gen2는 no-go다.
+### 4. FSM-GFlowNet 파이프라인 (gen_gflownet_v7) — 현재 활성
 
-- gen2 raw `208/1000` 이후 final-pair parser 기준 `accepted_count=0`, `rejected_count=200`.
-- `instruction_not_fixed=200`.
-- pre-update gen2 export 41 rows는 auth-session row rate `0.122`로 public20 `0.8` 대비 낮았다.
-- record counts `1,21,26,27,39`, `Write`, `Locking`, `MBRControl`, `LockingInfo` coverage가 부족했다.
-- 그래서 gen3는 final-pair fixed instruction, exact rule-book source text, required domains, auth-session evidence, long public20-like lengths를 강제한다.
-- `docs/archive/cycles/2026-05-29_gen3_zero_accept_gen31_restart.md`에 따르면 gen3는 raw `76/1000`까지 확인했지만 accepted `0`과 auth-session reject 반복으로 gen3.1로 재시작했다.
-- gen3.1은 prompt contract `opal_final_response_spec_grounded_output_first.v3`, delexicalized public20 auth skeleton, state-transition self-check, warm-up curriculum을 사용한다.
+FSM-GFlowNet: GFlowNet-inspired exploration으로 OPAL state machine trajectory 생성
+- gen_gflownet_v7: 2104 samples, Gate A/B/C 모두 PASS
+- 이전 gen_gflownet_v3 대비 대폭 개선된 데이터 품질 및 양
+- Gate A: parse + invariant validation
+- Gate B: distribution analysis (record count, label balance)
+- Gate C: adversarial rulebook quality gate
+- Full FT 학습 중 (PID 255383)
 
-## 현재 data flow
+### 5. 이전 학습 + 제출
 
-<!-- Changed: current data flow를 stopped gen3.1 evidence flow로 정리했다. -->
-<!-- Why: old run roots와 stopped pending artifacts를 현재 generated training data로 쓰면 안 된다. -->
+- gen_sm 300건으로 train/val split (240/80)
+- 0.9B full FT 30 epochs → eval acc 94.4% (epoch 12 peak)
+- 제출: Job 903, Score 53.00
 
-```text
-public20 input-only seed
-  -> gen3.1 target schedule with auth warm-up curriculum
-  -> Qwen2.5-7B-Instruct local generation on team6 [stopped at 72 raw]
-  -> local watcher pull [stopped]
-  -> parser
-  -> final-response invariant gate
-  -> dedup
-  -> adversarial judge payload
-  -> adversarial rule-book gate
-  -> data/local/gen3_pending export for monitoring
-  -> server canonical gen_export after full server pipeline
-  -> data/local/gen3 only after canonical sync
-```
+## Hard rules
 
-## 현재 blocker
-
-<!-- Changed: stopped gen3.1의 blocker를 낮은 yield와 반복 mismatch로 정리했다. -->
-<!-- Why: gate를 약화하거나 같은 pipeline을 재시작하면 gen2/gen3 실패가 반복된다. -->
-
-현재 export 상태:
-
-- gen3.1 raw `72`에서 rule-book accepted `1`이 나와 `data/local/gen3_pending` rows가 `1`이다.
-- `data/local/gen3`은 server canonical final export 전용이라 현재 0 rows다.
-- rejected rows는 `20`이며 주요 reject는 missing `Locking`, label mismatch, final status mismatch, auth-session evidence missing, record-count mismatch다.
-
-조치 방향:
-
-- gate를 약화하지 않는다.
-- gen3.1을 그대로 재시작하지 않는다.
-- 다음 시도 전 reject taxonomy/gate audit 또는 deterministic OPAL skeleton/value generator를 설계한다.
-
-## cleanup 작업
-
-<!-- Changed: 사용자 요청의 남은 작업을 stopped state 문서화로 남겼다. -->
-<!-- Why: 다음 agent가 멈춘 pipeline을 되살리거나 pending row를 training data로 쓰면 안 된다. -->
-
-1. gen3.1 run과 watcher는 멈춘 상태로 유지한다.
-2. 모든 live docs/Markdown은 stop counts와 no-training status를 반영한다.
-3. `runs/self_instruct/server_qwen_prod_gen31`은 active generation이 아니라 stopped evidence mirror다.
-4. legacy `runs` artifacts는 `archive/runs_legacy_20260529_gen3_cleanup/`에 둔다.
-
-## hard rules
-
-<!-- Changed: runtime/data safety rules를 현 task에 맞게 유지했다. -->
-<!-- Why: cleanup 중 old generated data나 runtime rule logic이 다시 들어오면 안 된다. -->
-
-- Runtime remains LLM-only.
-- Offline rule-book gates are data validation, not runtime inference.
-- `public20` labels are local-only and never enter synthetic generation or judge prompts.
-- `data/local/gen3_pending` rows are not training/sample eligible.
-- `data/local/gen3` rows are training/sample eligible only after server canonical export sync and all gates pass.
-- Secrets must not be copied into docs, commands, logs, or archives.
+- Runtime solver는 LLM-only
+- Rule engine 사용 금지
+- public20 labels는 train/val에만 사용, generation에 사용 안 함

@@ -1,164 +1,148 @@
 # Team 6 Opal Verifier
 
-<!-- Changed: 문서를 현재 gen3 Self-Instruct/Qwen 파이프라인 기준으로 다시 작성했다. -->
-<!-- Why: Notion의 이전 파이프라인 메모와 gen2 no-go 이후 gen3 전환 기록을 혼동하지 않도록 현재 권위 기준을 분리한다. -->
-
 SNU Introduction to Deep Learning (M2177.0043) Opal command-response trajectory
 pass/fail classification project.
 
-## 현재 기준
+## Current Status (2026-05-30 KST)
 
-<!-- Changed: 현재 작업의 권위 기록과 gen3.1 중단 상태를 명시했다. -->
-<!-- Why: stopped run을 active generation으로 오해하면 watcher나 training data를 다시 섞게 된다. -->
+- Architecture: **LLM-only** (Qwen3.5-0.8B full fine-tuning)
+- **Best leaderboard**: 54.00 (Job 687, 0.9B e30 public20-only)
+- **Latest submission**: 53.00 (Job 903, 0.9B e30 gen_sm state machine data)
 
-- 최신 확인 시각: `2026-05-29 14:13:39 KST`.
-- Notion `SELF-INSTRUCT` 페이지는 원본 Self-Instruct를 우리 문제에 어떻게 적용/비적용할지 정리한 메모다.
-- gen3 전환의 권위 기록은
-  `docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`다.
-- gen3.1 중단 기록은
-  `docs/archive/cycles/2026-05-29_gen3_zero_accept_gen31_restart.md`다.
-- Notion에 적힌 `480 / batch16 / max_new_tokens=4096 / pass:fail≈1:2`는 gen3 전환 전 파이프라인 스냅샷이다.
-- 마지막 gen3.1 run은 gen3 zero-accept 이후 재시작한 run이며, 실행값은 서버 프로세스 기준
-  `1000 / batch4 / max_new_tokens=8192 / pass:fail=1:1`이었다.
-- `2026-05-29 14:13 KST` 기준 gen3.1 generation과 local watcher는 모두 중단됐다.
+### Training In Progress
 
-## Self-Instruct 적용
+- Server PID: 255383
+- Model: Qwen/Qwen3.5-0.8B full FT
+- Data: gen_gflownet_v7 (2104 samples) + public20 (20 samples)
+- Train: 1693 (pass 821 / fail 872), Val: 431 (pass 227 / fail 204)
+- Settings: 30 epochs, lr=5e-5, batch=1, grad_accum=8, bf16
+- Run dir: `ops/runs/20260530_gen_gflownet_v7_08b_fullft`
+- Estimated: ~5.3 hours
 
-<!-- Changed: Notion 페이지에서 확인한 여섯 가지 적용/비적용 포인트를 현재 해석으로 고정했다. -->
-<!-- Why: 우리 문제는 단일 Opal final-response 판정 태스크라 원본 Self-Instruct를 그대로 복제하면 안 된다. -->
+## 과제 정의
 
-Notion이 정리한 원본 Self-Instruct 대비 우리 파이프라인의 핵심 차이는 여섯 가지다.
+- 입력: OPAL 프로토콜 command-response trajectory (records 배열)
+- 출력: 마지막 record (cN, rN)이 TCG/Opal 명세 + 이전 records로 구축된 상태에서 유효한지 pass/fail 판정
+- 핵심: records[0..N-2]는 항상 참 (정상적 state 전이), records[N-1]의 output만 판정
+- pass = 마지막 output이 spec상 예상되는 응답
+- fail = 마지막 output이 spec상 예상되지 않는 응답
 
-1. Instruction 생성: 원본은 instruction을 생성하지만, 우리는 Opal final-response 판정 instruction 하나를 고정한다.
-2. Input null: 원본은 null input이 가능하지만, 우리는 trajectory record가 없으면 판정 불가라 input이 필수다.
-3. 입력 우선 vs 출력 우선: 원본은 태스크별 선택이지만, 우리는 `records[-1].output`을 label target으로 삼는 output-first 생성만 사용한다.
-4. Few-shot 유형 매칭: 원본은 task type별 few-shot을 맞추지만, 우리는 task type이 하나라 별도 유형 매칭이 필요 없다.
-5. 유사도/중복 필터링: 원본의 ROUGE-L instruction 중복 필터 원칙은 유지하되, 고정 instruction 대신 trajectory/domain/source-span 기반으로 바꾼다.
-6. Fine-tuning: 원본은 full fine-tuning을 사용하지만, 우리는 resource에 따라 TRL SFT full FT/LoRA/QLoRA를 선택한다.
+## 데이터 생성 파이프라인 이력
 
-[EXTERNAL KNOWLEDGE] Wang, Y., Kordi, Y., Mishra, S., Liu, A., Smith, N. A.,
-Khashabi, D., & Hajishirzi, H. (2023). Self-Instruct: Aligning language models
-with self-generated instructions. In A. Rogers, J. Boyd-Graber, & N. Okazaki
-(Eds.), Proceedings of the 61st Annual Meeting of the Association for
-Computational Linguistics (Volume 1: Long Papers) (pp. 13484-13508).
-Association for Computational Linguistics. https://doi.org/10.18653/v1/2023.acl-long.754
+### 3. FSM-GFlowNet (gen_gflownet_v7) — 현재 사용
 
-## gen3 전환 근거
+Based on the paper "Structurally Valid Log Generation using FSM-GFlowNets" (Samanta, 2025, arXiv:2510.26197).
 
-<!-- Changed: gen2 no-go 원인을 README의 운영 기준으로 올렸다. -->
-<!-- Why: 현재 1000/batch4/8192 설정과 rule-book gate는 임의 변경이 아니라 gen2 실패 분석의 후속 조치다. -->
+Pipeline:
+1. **FSM**: 25 states, 89 actions, 180 transitions covering 86 TCG/Opal spec rules
+2. **GFlowNet**: 2-layer FF policy (hidden=128), REINFORCE loss with baseline + T_MAX penalty
+3. **Counterfactual labeling**: last record output flipped 50% → pass/fail
+4. **Gate A/B/C verification**: structural integrity, public20 dimension match, label quality
 
-`docs/archive/cycles/2026-05-29_gen2_no_go_gen3_restart.md`에 기록된 gen2 no-go 이유:
+- 데이터: gen_gflownet_v7 (2104건, pass 1048 / fail 1056)
+- Train: 1693 (pass 821 / fail 872), Val: 431 (pass 227 / fail 204)
+- Label: 100% 정확 (deterministic counterfactual + gate verification)
 
-- gen2 raw `208/1000` 중 parser를 final-pair instruction 기준으로 바꾼 뒤 `accepted_count=0`, `rejected_count=200`.
-- reject 핵심 이유는 `instruction_not_fixed=200`.
-- 마지막 usable gen2 export는 41 rows였지만 auth-session row rate가 `0.122`로 public20의 `0.8`보다 낮았다.
-- public-like record count `1,21,26,27,39`, `Write`, `Locking`, `MBRControl`, `LockingInfo` coverage가 부족했다.
-- root cause는 전체 trajectory를 읽되 최종 `(cN, rN)`만 판정한다는 contract와 rule-book grounded source text 강제가 약했던 것이다.
+Files:
+- `tools/datagen/opal_fsm.py` — FSM definition
+- `tools/datagen/opal_gflownet_env.py` — GFlowNet environment
+- `tools/datagen/opal_gflownet_train.py` — Training + generation
+- `tools/datagen/opal_record_builder.py` — FSM action → JSON record
+- `tools/datagen/opal_export_trajectories.py` — Export with counterfactual labeling
 
-따라서 gen3는 다음을 강제한다.
+### 2. OPAL State Machine (gen_sm) — FSM-GFlowNet으로 대체됨
 
-- Prompt contract: `opal_final_response_spec_grounded_output_first.v2`.
-- Fixed instruction:
-  `Given the full Opal command-response trajectory, judge only whether the final command-response pair (cN, rN) is valid under the cited rule-book.`
-- `docs/legacy_spec_rules.md`의 exact `source_text`를 prompt와 gate에서 사용한다.
-- target schedule에 `required_context_domains`, auth-session 요구, final method/status/count 요구를 넣는다.
-- Locking, MBRControl, LockingInfo, Authority, K_AES_256, C_PIN, SP와 long trajectory count `21,26,27,39`를 강제한다.
-- watcher는 export 전에 `adversarial_rulebook_quality_gate.py`를 실행한다.
+Deterministic EFSM (Extended Finite State Machine) + Counterfactual Mutation.
 
-gen3.1 추가 변경:
+- 생성기: `runs/new_v2/opal_state_machine.py`
+- 데이터: `data/local/gen_sm/` (300건, pass 150 / fail 150)
+- Label: 100% 정확 (deterministic counterfactual)
+- State-building: 76% meaningful (public20과 동등)
+- Phase Progression: P0(Properties) → P1(MSID Read) → P2(SID Auth) → P3(Activate) → P4(Locking Read) → P5(Config) → P6(GenKey/I/O)
+- Mutation Types:
+  - Type A: status code flip (SUCCESS ↔ NOT_AUTHORIZED/INVALID_PARAMETER/FAIL/SP_BUSY/SP_FROZEN)
+  - Type B: value corruption (fake HostChallenge, plaintext Read)
+  - Type C: structural (wrong SP UID, truncation)
 
-- Prompt contract: `opal_final_response_spec_grounded_output_first.v3`.
-- public20 input-only records에서 delexicalized auth skeleton을 추출해 prompt에 넣는다.
-- 생성 중 rule-book/source span을 기준으로 session/auth/object state self-check를 하도록 요구한다.
-- 첫 warm-up curriculum은 authenticated `Get`, `Set`, `Activate` 중심으로 시작한다.
+논문 근거:
+- [EXTERNAL KNOWLEDGE] Kalaji et al. (2021). EFSM based protocol test generation.
+- [EXTERNAL KNOWLEDGE] Kulkarni et al. (2024). SynthDST: template + schema generation (EACL 2024).
+- [EXTERNAL KNOWLEDGE] Kaushik et al. (2020). Counterfactual Data Augmentation (ICLR 2020).
 
-## 현재 파이프라인
+### 1. Self-Instruct (gen2/gen3/gen3.1/gen_new/gen_new_4b) — 폐기
 
-<!-- Changed: gen3.1 데이터 흐름을 stopped state 기준으로 남겼다. -->
-<!-- Why: legacy fallback, gen2, smoke, model-validation 산출물뿐 아니라 중단된 gen3.1 pending export도 training data로 오해하지 않게 한다. -->
+LLM(Qwen 0.8B/4B/7B)으로 trajectory를 직접 생성하는 방식.
 
-```text
-data/local/public20/public20_input.jsonl
-  -> tools/datagen/run_qwen_local_200_pipeline.sh
-  -> target_schedule.json
-  -> tools/datagen/run_self_instruct_generation.py
-  -> Qwen2.5-7B-Instruct local raw generation on team6
-  -> tools/datagen/watch_qwen_incremental_pull.sh [stopped]
-  -> tools/datagen/parse_self_instruct_outputs.py
-  -> tools/analysis/self_instruct_invariants.py
-  -> tools/analysis/dedup_self_instruct_candidates.py
-  -> tools/analysis/filter_self_instruct_judge.py request/audit payload
-  -> tools/analysis/adversarial_rulebook_quality_gate.py
-  -> tools/datagen/export_self_instruct_gen_public_schema.py
-  -> server canonical gen_export after full server pipeline
-  -> local data/local/gen3 only after canonical sync
-```
+실패 원인:
+- LLM이 구조적으로 유효한 OPAL trajectory를 생성하지 못함 (parse 37-43%)
+- State tracking 부재: EndSession 0%, multi-session flow 없음, Get 반복 95%
+- Label 오류: 18-56% mislabel (fail+all-SUCCESS, pass+error-status)
+- Spec rule coverage: 86 rules 중 6-8개만 (7-9%)
 
-Final gen3.1 state:
+논문 근거:
+- [EXTERNAL KNOWLEDGE] Wang et al. (2023). Self-Instruct. ACL 2023.
+- [EXTERNAL KNOWLEDGE] Kim et al. (2023). Ensemble-Instruct: sub-40B 모델은 adequate quality 불가.
+- [EXTERNAL KNOWLEDGE] Chen et al. (2024). AlpaGasus (ICLR 2024): Self-Instruct 83% 저품질.
 
-- Server repo: `/workspace/sinjeongmin_opal_verifier/repo`.
-- Local repo: `/Users/sinjeongmin/Desktop/SNU/26/26-1/DL/team-cycle1-runtime-package-recovery-20260526-kst`.
-- Server run:
-  `runs/self_instruct/qwen_local_200_auth_statecheck_gen31_batch4_20260529_132800_KST`.
-- Server process: stopped. Former parent `120144`, generator `120148`.
-- Server raw at stop: `72 / 1000`.
-- Server GPU after stop: `0 %, 0 MiB / 46068 MiB`.
-- Local watcher: stopped. Former screen `qwen_incremental_watch_gen31`.
-- Local mirror: `runs/self_instruct/server_qwen_prod_gen31`.
-- Canonical final export path: server `$RUN/gen_export`, then synced to `data/local/gen3`.
-- Local pending export path: `data/local/gen3_pending`.
-- Local mirror counts at stop: raw `72`, parse rejects `51`, parsed candidates `21`,
-  rule-book accepted `1`, rule-book rejected `20`, pending exported rows `1`.
+### Public20 구조 분석
 
-gen3.1은 gen3보다 나아져 pending accepted row `1`개를 만들었지만, yield가 낮고 reject reason이 구조적으로 반복되어 중단했다. `data/local/gen3_pending`의 1 row는 monitoring artifact일 뿐 training data가 아니다. `data/local/gen3`는 server canonical final export가 없으므로 0 row로 유지한다.
+Public20의 20건은 10개 pass/fail **paired counterfactual data**:
+- 8/10 쌍에서 method sequence 동일, 마지막 record만 다름
+- Fail type: 70% status code flip, 20% value corruption, 10% structural
 
-## 현재 도구
+| Phase | Session | 내용 | tc범위 |
+|-------|---------|------|--------|
+| P0 | 없음 | Properties | tc1/tc11 |
+| P1 | Admin SP, no auth | Read MSID | tc2/tc12 |
+| P2 | Admin SP, SID auth | Change SID password | tc3-4/tc13-14 |
+| P3 | Admin SP, SID auth | Activate Locking SP | tc5/tc15 |
+| P4 | Locking SP | Read initial state | tc6-8/tc16-18 |
+| P5 | Locking SP, Admin1 auth | Configure | tc9/tc19 |
+| P6 | I/O | Encryption verification | tc10/tc20 |
 
-<!-- Changed: 현재 pipeline에서 실제 사용하는 코드만 active tool로 정리했다. -->
-<!-- Why: runs cleanup 이후에도 어떤 파일이 active인지 명확해야 한다. -->
+## 학습
 
-- Generation/pipeline: `tools/datagen/run_qwen_local_200_pipeline.sh`.
-- Incremental watcher: `tools/datagen/watch_qwen_incremental_pull.sh`.
-- Request builder/local runner bridge: `tools/datagen/run_self_instruct_generation.py`.
-- Parser: `tools/datagen/parse_self_instruct_outputs.py`.
-- Candidate schema: `tools/datagen/self_instruct_candidate_schema.py`.
-- Final-response invariant gate: `tools/analysis/self_instruct_invariants.py`.
-- Dedup gate: `tools/analysis/dedup_self_instruct_candidates.py`.
-- Judge payload/filter tooling: `tools/analysis/filter_self_instruct_judge.py`.
-- Local judge runner: `tools/analysis/run_self_instruct_judge_local.py`.
-- Rule-book quality gate: `tools/analysis/adversarial_rulebook_quality_gate.py`.
-- Exporter: `tools/datagen/export_self_instruct_gen_public_schema.py`.
-- Rule-book source: `docs/legacy_spec_rules.md`.
+- 모델: Qwen3.5-0.8B (0.9B params), full fine-tuning
+- Framework: TRL SFTTrainer, completion_only_loss=True
+- 서버: 147.46.78.61:2227, NVIDIA L40S 46GB
 
-## runs 기준
+### 제출 이력
 
-<!-- Changed: runs/에는 current pipeline mirror만 남기는 기준을 명시했다. -->
-<!-- Why: 사용자가 runs/에서 현재 생성/검증/watcher 산출물만 남기라고 요청했다. -->
+| Job | 데이터 | Score | 날짜 |
+|-----|--------|-------|------|
+| 687 | public20 10 train / 10 val, e30 | **54** | 2026-05-28 |
+| 903 | gen_sm 240 train / 80 val, e30 | 53 | 2026-05-30 |
 
-- Stopped `runs/` path kept for evidence: `runs/self_instruct/server_qwen_prod_gen31`.
-- Local incremental export는 `data/local/gen3_pending`에 있다.
-- `data/local/gen3`는 server full pipeline canonical export를 sync할 때만 채운다.
-- Legacy run artifacts는 repo-local archive
-  `archive/runs_legacy_20260529_gen3_cleanup/`로 이동한다.
-- `server_qwen_prod`, `server_qwen_prod_gen2`, `server_qwen_smokes`, targeted schedules,
-  old model-validation, old figures, old public20 baseline run artifacts는 active `runs/`로 복원하지 않는다.
+## 파일 구조
 
-## 검증
+### 활성 도구
 
-<!-- Changed: 현재 data pipeline에 필요한 검증 명령만 남겼다. -->
-<!-- Why: cleanup turn에서 full training queue를 다시 시작하지 않는다. -->
+#### 데이터 생성 (FSM-GFlowNet)
+- `tools/datagen/opal_fsm.py`: FSM definition (25 states, 89 actions, 180 transitions)
+- `tools/datagen/opal_gflownet_env.py`: GFlowNet environment
+- `tools/datagen/opal_gflownet_train.py`: GFlowNet training + generation
+- `tools/datagen/opal_record_builder.py`: FSM action → JSON record converter
+- `tools/datagen/opal_export_trajectories.py`: Export with counterfactual labeling
 
-```bash
-python3 -m py_compile \
-  tools/datagen/run_self_instruct_generation.py \
-  tools/datagen/parse_self_instruct_outputs.py \
-  tools/datagen/export_self_instruct_gen_public_schema.py \
-  tools/analysis/adversarial_rulebook_quality_gate.py \
-  tools/analysis/filter_self_instruct_judge.py \
-  tools/analysis/dedup_self_instruct_candidates.py
+#### 학습 / 평가
+- `tools/training/run_trl_sft_public20.py`: TRL SFTTrainer launcher
+- `tools/training/prepare_public20_sft_dataset.py`: SFT dataset converter
+- `tools/eval/check_submit_package.py`: 제출 패키지 검증
+- `tools/eval/prepare_submit.sh`: 제출 패키지 빌드
 
-bash -n tools/datagen/run_qwen_local_200_pipeline.sh
-bash -n tools/datagen/watch_qwen_incremental_pull.sh
-git diff --check
-```
+### 데이터
+- `data/local/public20/`: 공개 20건 (reference)
+- `data/local/gen_gflownet_v7/`: FSM-GFlowNet 생성 2104건 (현재 사용)
+- `data/local/gen_sm/`: State Machine 생성 300건 (FSM-GFlowNet으로 대체)
+- `data/local/gen_new/`: Self-Instruct 생성 (폐기, 참고용)
+
+### 아카이브
+- `runs/new_v2/opal_state_machine.py`: State Machine generator (FSM-GFlowNet으로 대체)
+- `runs/new/`: Self-Instruct output-first pipeline (폐기)
+- `runs/self_instruct/`: gen2/gen3/gen3.1 artifacts (폐기)
+- `docs/archive/`: 과거 cycle 기록
+
+## Spec Rules
+
+`docs/legacy_spec_rules.md`에 86개 TCG/Opal spec rule 정의.
+18개 카테고리: status codes, session, Get, Set, Authenticate, C_PIN, authority, lifecycle, locking, access control 등.

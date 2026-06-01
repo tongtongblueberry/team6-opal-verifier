@@ -1,17 +1,14 @@
-# Changed: match skeleton dependencies so uv sync creates a working venv.
-# Why: uv sync uses this file to build .venv/; empty deps strips torch/transformers → import Error.
+# Changed: LLM 기반 solver — torch/transformers/accelerate 의존성 추가.
+# Why: Qwen3.5-0.8B full FT merged model 로드에 필요.
 [project]
 name = "team6-opal-verifier"
-version = "0.1.0"
-description = "LLM-only SSD TCG/Opal command-response trajectory verifier for Team 6"
-# Changed: match skeleton requires-python exactly.
-# Why: eval server is Python 3.12.3; skeleton uses ==3.12.3.
+version = "0.3.0"
+description = "LLM-based SSD TCG/Opal command-response trajectory verifier for Team 6"
 requires-python = "==3.12.3"
 dependencies = [
-    "accelerate>=1.13.0",
-    "torch>=2.11.0",
-    "transformers>=5.7.0",
-    "peft>=0.15.0",
+    "torch",
+    "transformers",
+    "accelerate",
 ]
 
 [tool.ruff]

@@ -1,8 +1,35 @@
 # 현재 서버 운영 절차
 
-- 최종 갱신: 2026-05-29 14:13:39 KST
-<!-- Changed: record the current stopped gen3.1 server state before older model-validation history. -->
-<!-- Why: server operators must not keep polling or restart the stopped Qwen Self-Instruct job by default. -->
+- 최종 갱신: 2026-05-30 21:00 KST
+<!-- Changed: update to reflect active gen_gflownet_v7 0.8B full FT training run. -->
+<!-- Why: server operators must monitor the current training PID and know previous runs are killed. -->
+
+## Active Run: gen_gflownet_v7 0.8B Full FT
+
+- **Run dir**: `ops/runs/20260530_gen_gflownet_v7_08b_fullft`
+- **Server PID**: 255383
+- **Model**: Qwen/Qwen3.5-0.8B, full fine-tuning
+- **GPU**: NVIDIA L40S 48GB, ~28GB used during full FT
+- **Data**: gen_gflownet_v7 (2104 samples) + public20 (20)
+  - Train: 1693 (pass 821 / fail 872)
+  - Val: 431 (pass 227 / fail 204)
+- **Settings**: 30 epochs, lr=5e-5, batch=1, grad_accum=8
+- **Expected completion**: ~2026-05-30 21:00 KST
+- **Previous runs killed**: gen_sm_09b_fullft, gen_gflownet_v3_08b_fullft
+
+### Monitor Command
+
+```bash
+ssh team6 'cd /workspace/sinjeongmin_opal_verifier && PID=$(cat ops/runs/20260530_gen_gflownet_v7_08b_fullft/train_pid.txt) && ps -p $PID --no-headers | wc -l && tail -5 ops/runs/20260530_gen_gflownet_v7_08b_fullft/train.log && nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader'
+```
+
+### Data Paths
+
+- `/workspace/sinjeongmin_opal_verifier/data/gen_gflownet_v7/`
+- `/workspace/sinjeongmin_opal_verifier/data/public20/`
+
+## Previous Self-Instruct State (stopped)
+
 - Current Self-Instruct generation state: stopped.
 - Stopped server run:
   `runs/self_instruct/qwen_local_200_auth_statecheck_gen31_batch4_20260529_132800_KST`.
