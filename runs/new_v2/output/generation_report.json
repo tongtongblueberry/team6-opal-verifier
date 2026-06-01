@@ -1,0 +1,18 @@
+{
+  "total": 340,
+  "label_distribution": {
+    "pass": 120,
+    "fail": 220
+  },
+  "record_count_distribution": {
+    "1": 40,
+    "2": 40,
+    "7": 60,
+    "9": 20,
+    "11": 60,
+    "18": 60,
+    "27": 60
+  },
+  "generator": "opal_state_machine_v1",
+  "label_method": "deterministic_counterfactual"
+}

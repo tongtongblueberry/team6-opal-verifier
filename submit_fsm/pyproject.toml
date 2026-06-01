@@ -1,0 +1,12 @@
+# Changed: FSM 기반 solver — 최소 의존성.
+# Why: torch/transformers/peft가 필요 없으므로 제거. uv sync 시간 단축.
+[project]
+name = "team6-opal-verifier"
+version = "0.2.0"
+description = "FSM-based SSD TCG/Opal command-response trajectory verifier for Team 6"
+requires-python = "==3.12.3"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

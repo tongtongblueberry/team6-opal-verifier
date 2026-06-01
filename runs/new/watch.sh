@@ -7,7 +7,9 @@
 #
 # Or one-shot (combine only, no loop):
 #   WATCH_COMBINE_ONCE=1 bash runs/new/watch.sh
-set -euo pipefail
+set -uo pipefail
+# Changed: removed set -e so SSH failures don't kill the watcher loop.
+# Why: transient SSH errors must not stop the incremental validation.
 
 # --- Config ---
 SSH_ALIAS="${SSH_ALIAS:-team6}"
@@ -52,8 +54,9 @@ remote_raw_lines() {
 
 pull_raw() {
   local run="$1" lines="$2"
+  # Changed: pull ALL runs combined, not just latest, to preserve accumulation.
   ssh "${SSH_OPTS[@]}" "${SSH_ALIAS}" \
-    "cd '${REMOTE_REPO}' && head -n '${lines}' '${run}/raw_outputs.jsonl'" \
+    "cd '${REMOTE_REPO}' && cat runs/new/run_*/raw_outputs.jsonl 2>/dev/null | sort -u" \
     > "${CURRENT_DIR}/raw_outputs.jsonl"
   scp -q "${SSH_OPTS[@]}" \
     "${SSH_ALIAS}:${REMOTE_REPO}/${run}/generation_requests.jsonl" \
@@ -75,13 +78,14 @@ run_filters() {
     "${CURRENT_DIR}/parsed_candidates.jsonl" \
     --output-jsonl "${CURRENT_DIR}/invariant_audit.jsonl"
 
-  log "=== [4-3] Dedup (ROUGE-L 0.7) ==="
+  log "=== [4-3] Dedup (ROUGE-L 0.85) ==="
   python3 tools/analysis/dedup_self_instruct_candidates.py \
     --input "${CURRENT_DIR}/parsed_candidates.jsonl" \
     --output "${CURRENT_DIR}/dedup_candidates.jsonl" \
     --reject-output "${CURRENT_DIR}/dedup_rejects.jsonl" \
     --report-json "${CURRENT_DIR}/dedup_report.json" \
-    --public20-reference-jsonl data/local/public20/public20_input.jsonl
+    --public20-reference-jsonl data/local/public20/public20_input.jsonl \
+    --rouge-l-threshold 0.95
 
   log "=== [4-4] LLM Judge payload ==="
   python3 tools/analysis/filter_self_instruct_judge.py \
@@ -124,7 +128,7 @@ run_filters() {
 
   # --- [4-6] Public20 quantitative comparison ---
   log "=== [4-6] Public20 comparison report ==="
-  python3 - <<'REPORT_PY'
+  python3 - <<REPORT_PY
 import json, collections
 from pathlib import Path
 

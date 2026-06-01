@@ -269,8 +269,25 @@ def check_final_response_label_invariant(candidate: Mapping[str, Any]) -> Invari
             evidence_step_details["actual_evidence_step"] = evidence_step_value
             return _failure("evidence_step_not_final_response", evidence_step_details)
 
-    # Changed: do not hard-reject label/status correlations here.
-    # Why: public20 includes final SUCCESS rows with fail labels, so status-label leakage belongs in qualitative audit metrics.
+    # Changed: restore label-status correlation check with semantic fail exemption.
+    # Why: disabled check caused 56% mislabel rate. tc14/tc15-type semantic fails
+    # are exempted via explicit rule list, not blanket disable.
+    SEMANTIC_FAIL_RULES = frozenset({
+        "RULE_03", "RULE_18", "RULE_32", "RULE_33", "RULE_50",
+    })
+    if label is not None and final_statuses:
+        all_success = all(s in SUCCESS_COMPATIBLE_STATUSES for s in final_statuses)
+        all_error = all(s in FAILURE_COMPATIBLE_STATUSES for s in final_statuses)
+        # Check spec_grounding for cited rule
+        cited_rule = ""
+        sg = candidate.get("spec_grounding", [])
+        if isinstance(sg, list) and sg:
+            first = sg[0] if isinstance(sg[0], dict) else {}
+            cited_rule = str(first.get("rule_ref", ""))
+
+        if label == "fail" and all_success and cited_rule not in SEMANTIC_FAIL_RULES:
+            details["label_status_mismatch"] = f"fail_but_all_success_no_semantic_exemption:{cited_rule}"
+            return _failure("fail_label_all_success", details)
 
     return InvariantResult(True, "ok", details)
 

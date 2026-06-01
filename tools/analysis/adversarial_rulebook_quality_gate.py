@@ -256,8 +256,10 @@ def _rulebook_decision(
     for forbidden in FORBIDDEN_ID_PATTERNS:
         if forbidden in record_text:
             reasons.append(f"forbidden_placeholder_id:{forbidden}")
+    # Changed: downgrade repeated SPSessionID from reject to warning.
+    # Why: seed-copied session IDs are cosmetic, not a semantic error.
     if record_text.count("000065ab") > 1:
-        reasons.append("repeated_placeholder_spsessionid:000065ab")
+        evidence["warning_repeated_spsessionid"] = "000065ab"
 
     request_id = _request_id(normalized)
     target = generation_targets.get(request_id or "")
@@ -302,7 +304,10 @@ def _rulebook_decision(
             reasons.append(f"{rule_ref or 'unknown_rule'}:{error}")
         else:
             resolved["source_text"] = source_text
-            if rule_ref and rule_ref not in source_text:
+            # Changed: match rule_ref with both underscore and space format.
+            # Why: candidates use RULE_02, rulebook uses "RULE 02".
+            rule_ref_space = rule_ref.replace("_", " ")
+            if rule_ref and rule_ref not in source_text and rule_ref_space not in source_text:
                 reasons.append(f"{rule_ref}:source_span_does_not_contain_rule_header")
             tokens = _expected_status_tokens(str(grounding.get("expected_status") or ""), source_text or "")
             expected_tokens.extend(token for token in tokens if token not in expected_tokens)

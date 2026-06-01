@@ -1,0 +1,17 @@
+{
+  "accepted_count": 459,
+  "input": "runs/new/local_mirror/current/raw_outputs.jsonl",
+  "official_counterpart": "prepare_for_finetuning.py outputs",
+  "official_stage": "candidate_preparation",
+  "prepared_candidate_artifact_schema_version": "self_instruct.prepare_for_finetuning_candidate.v1",
+  "reject_reason_counts": {
+    "fail_label_all_success": 163,
+    "instruction_not_fixed": 210,
+    "item_0_not_object": 6,
+    "json_payload_not_found": 5,
+    "record_2_input_contains_null:records.2.input.invoking_id": 3,
+    "records_not_list": 43
+  },
+  "rejected_count": 430,
+  "schema_version": "self_instruct.raw_output_parser.v1"
+}

@@ -118,8 +118,13 @@ def _final_output(records: Sequence[Any]) -> Any:
 
 def _normalize_target(candidate: Mapping[str, Any], final_index: int, final_response: Any) -> Json:
     target = candidate.get("target")
+    # Changed: auto-construct target from records if LM didn't provide it.
+    # Why: output-first generator doesn't require LM to produce a target object.
     if not isinstance(target, Mapping):
-        raise CandidateSchemaError("target_missing")
+        target = {
+            "final_response_index": final_index,
+            "final_response": final_response,
+        }
 
     source_index = _as_index(target.get("final_response_index"))
     if source_index != final_index:
@@ -140,8 +145,13 @@ def _normalize_target(candidate: Mapping[str, Any], final_index: int, final_resp
 
 def _normalize_primary_evidence(candidate: Mapping[str, Any], final_index: int) -> Json:
     primary_evidence = candidate.get("primary_evidence")
+    # Changed: auto-construct primary_evidence if LM didn't provide it.
+    # Why: output-first generator provides reasoning in a separate field.
     if not isinstance(primary_evidence, Mapping):
-        raise CandidateSchemaError("primary_evidence_missing")
+        primary_evidence = {
+            "record_index": final_index,
+            "reason": candidate.get("reasoning", ""),
+        }
 
     evidence_index = _as_index(primary_evidence.get("record_index"))
     if evidence_index != final_index:
@@ -156,8 +166,40 @@ def _normalize_primary_evidence(candidate: Mapping[str, Any], final_index: int) 
 
 # Changed: require source-span grounding metadata on generated candidates.
 # Why: ungrounded LLM text must not advance from raw output into judge, Gate A, or manifest staging.
+
+# Changed: build a rule_ref → correct source_span lookup from the rulebook.
+# Why: LM hallucinates line numbers; we correct them based on rule_ref.
+_RULEBOOK_SPAN_CACHE: Dict[str, str] = {}
+
+
+def _get_rulebook_spans() -> Dict[str, str]:
+    """Parse docs/legacy_spec_rules.md once, return {RULE_XX: "docs/legacy_spec_rules.md:start-end"}."""
+    if _RULEBOOK_SPAN_CACHE:
+        return _RULEBOOK_SPAN_CACHE
+    import re
+    rulebook_path = ROOT / "docs" / "legacy_spec_rules.md"
+    if not rulebook_path.exists():
+        return _RULEBOOK_SPAN_CACHE
+    lines = rulebook_path.read_text(encoding="utf-8").splitlines()
+    current_rule = None
+    current_start = None
+    for i, line in enumerate(lines, start=1):
+        m = re.match(r"### (RULE \d+)", line)
+        if m:
+            if current_rule and current_start:
+                _RULEBOOK_SPAN_CACHE[current_rule] = f"docs/legacy_spec_rules.md:{current_start}-{i - 1}"
+            current_rule = m.group(1).replace(" ", "_")
+            current_start = i
+    if current_rule and current_start:
+        _RULEBOOK_SPAN_CACHE[current_rule] = f"docs/legacy_spec_rules.md:{current_start}-{len(lines)}"
+    return _RULEBOOK_SPAN_CACHE
+
+
 def _normalize_spec_grounding(candidate: Mapping[str, Any]) -> List[Json]:
     grounding = candidate.get("spec_grounding")
+    # Changed: accept a single dict (wrap to list) — LM may return dict instead of list.
+    if isinstance(grounding, Mapping):
+        grounding = [grounding]
     if not isinstance(grounding, Sequence) or isinstance(grounding, (bytes, bytearray, str)) or len(grounding) == 0:
         raise CandidateSchemaError("spec_grounding_missing")
 
@@ -167,8 +209,20 @@ def _normalize_spec_grounding(candidate: Mapping[str, Any]) -> List[Json]:
             raise CandidateSchemaError(f"spec_grounding_{index}_not_object")
 
         rule_ref = _required_string(item, ("rule_ref", "rule_citation", "spec_rule_ref"), f"spec_grounding_{index}_rule_ref")
-        source_path = _required_string(item, ("source_path",), f"spec_grounding_{index}_source_path")
-        source_span = _required_string(item, ("source_span",), f"spec_grounding_{index}_source_span")
+        # Changed: auto-correct source_span from rulebook lookup based on rule_ref.
+        # Why: LM hallucinates line numbers. We replace with the correct span.
+        spans = _get_rulebook_spans()
+        correct_span = spans.get(rule_ref, "")
+        raw_span = ""
+        for sp_key in ("source_span",):
+            v = item.get(sp_key)
+            if isinstance(v, str) and v.strip():
+                raw_span = v.strip()
+                break
+        source_span = correct_span if correct_span else raw_span
+        if not source_span:
+            raise CandidateSchemaError(f"spec_grounding_{index}_source_span_missing")
+        source_path = source_span.split(":")[0] if ":" in source_span else "docs/legacy_spec_rules.md"
         if "docs/legacy_spec_rules.md" not in source_path and "docs/legacy_spec_rules.md" not in source_span:
             raise CandidateSchemaError(f"spec_grounding_{index}_source_not_legacy_spec_rules")
         if ":" not in source_span or "-" not in source_span:

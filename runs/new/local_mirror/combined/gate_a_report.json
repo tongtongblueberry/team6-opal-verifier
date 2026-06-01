@@ -1,0 +1,1841 @@
+{
+  "accepted_label_distribution": {
+    "fail": 70,
+    "pass": 143
+  },
+  "artifact_note": "이 입력은 generated synthetic candidate pool이며 state-transition audit decision을 채워야 한다.",
+  "audit_targets": [
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "label": "fail",
+      "line_number": 52,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 4,
+      "sample_id": "req_RULE_03_fail_003_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 178,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 23,
+      "sample_id": "req_RULE_22_pass_002_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 19,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_01_pass_002_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 137,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Get",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 6,
+      "sample_id": "req_RULE_15_pass_001_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_FROZEN",
+      "label": "pass",
+      "line_number": 95,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "StartSession",
+          "status": "SP_FROZEN"
+        }
+      ],
+      "record_count": 6,
+      "sample_id": "req_RULE_05_pass_001_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NO_SESSIONS_AVAILABLE",
+      "label": "pass",
+      "line_number": 104,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "StartSession",
+          "status": "NO_SESSIONS_AVAILABLE"
+        }
+      ],
+      "record_count": 16,
+      "sample_id": "req_RULE_06_pass_000_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "FAIL",
+      "label": "pass",
+      "line_number": 148,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "FAIL"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_17_pass_002_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 195,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_26_pass_002_c0"
+    },
+    {
+      "final_method": "EndSession",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 172,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 3,
+      "sample_id": "req_RULE_20_pass_001_c0"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 121,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Properties",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "Properties",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 15,
+      "sample_id": "req_RULE_09_pass_001_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "pass",
+      "line_number": 37,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_02_pass_003_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_BUSY",
+      "label": "pass",
+      "line_number": 81,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SP_BUSY"
+        }
+      ],
+      "record_count": 4,
+      "sample_id": "req_RULE_04_pass_000_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "pass",
+      "line_number": 62,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "req_RULE_03_pass_001_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 177,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 6,
+      "sample_id": "req_RULE_22_pass_001_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "pass",
+      "line_number": 30,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_02_pass_000_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 16,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_01_pass_000_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_BUSY",
+      "label": "pass",
+      "line_number": 83,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "StartSession",
+          "status": "SP_BUSY"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "req_RULE_04_pass_001_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 116,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_08_pass_001_c0"
+    },
+    {
+      "final_method": "Properties",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 200,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 1,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 2,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 3,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 4,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 5,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 6,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 7,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 8,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 9,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 10,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 11,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 12,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 13,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        },
+        {
+          "index": 14,
+          "method": "Properties",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 15,
+      "sample_id": "req_RULE_30_pass_000_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 110,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "req_RULE_07_pass_002_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 120,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "req_RULE_08_pass_006_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 192,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "Activate",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 6,
+      "sample_id": "req_RULE_25_pass_003_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 191,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_25_pass_002_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 135,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "req_RULE_13_pass_000_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "pass",
+      "line_number": 70,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "",
+          "status": ""
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_03_pass_003_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "NOT_AUTHORIZED",
+      "label": "pass",
+      "line_number": 71,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "NOT_AUTHORIZED"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_03_pass_003_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 179,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_22_pass_003_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 20,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 8,
+      "sample_id": "req_RULE_01_pass_002_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "FAIL",
+      "label": "pass",
+      "line_number": 138,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "FAIL"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_15_pass_002_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 169,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "",
+          "status": ""
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 6,
+      "sample_id": "req_RULE_19_pass_004_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 159,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 2,
+      "sample_id": "req_RULE_18_pass_002_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 124,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Set",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Set",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_11_pass_001_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_FROZEN",
+      "label": "pass",
+      "line_number": 100,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "",
+          "status": ""
+        },
+        {
+          "index": 4,
+          "method": "StartSession",
+          "status": "SP_FROZEN"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_05_pass_004_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_BUSY",
+      "label": "pass",
+      "line_number": 84,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SP_BUSY"
+        }
+      ],
+      "record_count": 7,
+      "sample_id": "req_RULE_04_pass_002_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 207,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "Get",
+          "status": "NOT_AUTHORIZED"
+        },
+        {
+          "index": 3,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "Get",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 9,
+      "sample_id": "req_RULE_38_pass_001_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "FAIL",
+      "label": "pass",
+      "line_number": 141,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "FAIL"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_16_pass_001_c0"
+    },
+    {
+      "final_method": "StartSession",
+      "final_status": "SP_BUSY",
+      "label": "pass",
+      "line_number": 86,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SP_BUSY"
+        }
+      ],
+      "record_count": 4,
+      "sample_id": "req_RULE_04_pass_003_c0"
+    },
+    {
+      "final_method": "EndSession",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 174,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 6,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 7,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 8,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 9,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 10,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 11,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 12,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 13,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 14,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 15,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 16,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 17,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 18,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 19,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 20,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 21,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 22,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 23,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 24,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 25,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 26,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 27,
+      "sample_id": "req_RULE_20_pass_003_c0"
+    },
+    {
+      "final_method": "Get",
+      "final_status": "INVALID_PARAMETER",
+      "label": "pass",
+      "line_number": 139,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "FAIL"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "INVALID_PARAMETER"
+        }
+      ],
+      "record_count": 5,
+      "sample_id": "req_RULE_15_pass_004_c0"
+    },
+    {
+      "final_method": "Set",
+      "final_status": "SUCCESS",
+      "label": "pass",
+      "line_number": 22,
+      "method_status_sequence": [
+        {
+          "index": 0,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 1,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 2,
+          "method": "EndSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 3,
+          "method": "StartSession",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 4,
+          "method": "Get",
+          "status": "SUCCESS"
+        },
+        {
+          "index": 5,
+          "method": "Set",
+          "status": "SUCCESS"
+        }
+      ],
+      "record_count": 6,
+      "sample_id": "req_RULE_01_pass_003_c0"
+    }
+  ],
+  "generated_at_kst": "2026-05-30T07:50:53+09:00",
+  "hard_invariant_fail_count": 0,
+  "hard_invariant_pass_count": 213,
+  "input": "runs/new/local_mirror/combined/accepted.jsonl",
+  "invariant_failures": [],
+  "sample_label_distribution": {
+    "fail": 1,
+    "pass": 39
+  },
+  "sample_md_policy": "create-only-after-gate-a-b-c-pass",
+  "sample_size_actual": 40,
+  "sample_size_requested": 40,
+  "schema_version": "self_instruct.gate_a_quality_audit.v1",
+  "seed": 20260529,
+  "status": "pending-qualitative-state-transition-audit",
+  "total_candidates": 213,
+  "training_use": "pending-gate-a-human-or-llm-judge-review"
+}

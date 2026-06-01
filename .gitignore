@@ -17,3 +17,13 @@ artifacts/data_audit/
 artifacts/manifests/
 artifacts/server_sync/
 data_audit_outputs/
+
+# Large files — do not push to GitHub
+artifacts/checkpoint/
+archive/gflownet_runs/
+runs/gflownet_v8/
+*.safetensors
+*.pt
+refs/LogLLM/
+2411.08561v5.pdf
+2510.26197v1-2.pdf

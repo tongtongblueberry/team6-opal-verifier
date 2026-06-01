@@ -112,21 +112,38 @@ def load_seeds(public20_input: Path, public20_labels: Path) -> Dict[str, Any]:
 
         if method not in seeds[label]:
             seeds[label][method] = row
-        # Prefer shorter examples (fewer records) for prompt brevity
-        elif len(recs) < len(seeds[label][method]["_parsed"]["records"]):
+        # Changed: prefer seeds with EndSession + multi-session pattern, medium length.
+        # Why: shortest-seed bias causes EndSession=0 and Get-only mode collapse.
+        elif _seed_quality(row) > _seed_quality(seeds[label][method]):
             seeds[label][method] = row
 
     return seeds
 
 
+def _seed_quality(row: Dict) -> tuple:
+    """Score seed: prefer EndSession, multi-session, medium length (5-15)."""
+    recs = row["_parsed"]["records"]
+    methods = []
+    for r in recs:
+        inp = r.get("input", {})
+        if isinstance(inp, dict) and "method" in inp:
+            methods.append(inp["method"]["name"])
+        elif isinstance(inp, dict) and "command" in inp:
+            methods.append(inp["command"])
+    has_endsession = "EndSession" in methods
+    n_sessions = methods.count("EndSession")
+    length_score = -abs(len(recs) - 10)  # prefer ~10 records
+    return (has_endsession, n_sessions, length_score)
+
+
 def select_seed(seeds: Dict, label: str, method_hint: str) -> Optional[Dict]:
-    """Select a seed example matching the method hint, fall back to any."""
+    """Select a seed example matching the method hint, fall back to multi-session."""
     pool = seeds.get(label, {})
     if method_hint in pool:
         return pool[method_hint]
-    # Fall back to shortest available
+    # Changed: fall back to best quality (multi-session), not shortest.
     if pool:
-        return min(pool.values(), key=lambda r: len(r["_parsed"]["records"]))
+        return max(pool.values(), key=_seed_quality)
     return None
 
 
@@ -135,14 +152,37 @@ def select_seed(seeds: Dict, label: str, method_hint: str) -> Optional[Dict]:
 # ========================================================================
 
 def format_seed_compact(row: Dict) -> str:
-    """Format a public20 row as a compact JSON string for the prompt."""
+    """Format a public20 row showing the method skeleton and session structure."""
     recs = row["_parsed"]["records"]
-    # Truncate if very long — show first 2 records and last 2 records
-    if len(recs) > 6:
-        shown = recs[:2] + [{"...": f"({len(recs) - 4} more records)"}] + recs[-2:]
+    # Changed: always show full method skeleton so EndSession pattern is visible.
+    methods = []
+    for r in recs:
+        inp = r.get("input", {})
+        if isinstance(inp, dict) and "method" in inp:
+            methods.append(inp["method"]["name"])
+        elif isinstance(inp, dict) and "command" in inp:
+            cmd = inp["command"]
+            methods.append(cmd if isinstance(cmd, str) else str(cmd))
+        else:
+            methods.append("?")
+    skeleton = " -> ".join(methods)
+
+    # Show first session block + last session block, preserving EndSession
+    if len(recs) > 8:
+        end_positions = [i for i, m in enumerate(methods) if m == "EndSession"]
+        if end_positions:
+            first_block_end = end_positions[0] + 1
+            first_block = recs[:first_block_end]
+            last_start = max((i for i, m in enumerate(methods) if m == "StartSession"), default=0)
+            last_block = recs[last_start:]
+            shown = first_block + [{"_session_gap": f"({len(end_positions)-1} more session blocks)"}] + last_block
+        else:
+            shown = recs[:3] + [{"_gap": f"({len(recs)-6} more records)"}] + recs[-3:]
     else:
         shown = recs
-    return json.dumps({"records": shown}, ensure_ascii=False, indent=2)
+
+    header = f"// Trajectory: {len(recs)} records, skeleton: {skeleton}\n"
+    return header + json.dumps({"records": shown}, ensure_ascii=False, indent=2)
 
 
 def build_prompt(rule: Dict, label: str, seed_pass: Optional[Dict],
@@ -171,20 +211,42 @@ def build_prompt(rule: Dict, label: str, seed_pass: Optional[Dict],
         f"If Violated: {rule['if_violated']}\n"
     )
 
-    # Target label
+    # Target label — clarify semantics based on rule's expected_status
+    expected = rule["expected_status"].upper()
+    is_error_rule = any(e in expected for e in
+        ["NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL", "SP_BUSY", "SP_FROZEN",
+         "NO_SESSIONS_AVAILABLE", "AUTHORITY_LOCKED_OUT"])
+
     if label == "pass":
-        prompt_parts.append(
-            f"## Target: PASS\n"
-            f"Generate a trajectory where the final response CORRECTLY follows this rule.\n"
-            f"The final record should demonstrate VALID behavior.\n"
-        )
+        if is_error_rule:
+            prompt_parts.append(
+                f"## Target: PASS\n"
+                f"The rule says expected status is: {status}\n"
+                f"Generate a trajectory where the TPer CORRECTLY returns {status}.\n"
+                f"The final record's output status_codes MUST be \"{expected.split('(')[0].strip()}\".\n"
+                f"This is PASS because the TPer correctly enforced the rule.\n"
+            )
+        else:
+            prompt_parts.append(
+                f"## Target: PASS\n"
+                f"Generate a trajectory where the final response is SUCCESS and VALID.\n"
+                f"The TPer correctly processed the method. Final status_codes = \"SUCCESS\".\n"
+            )
     else:
-        prompt_parts.append(
-            f"## Target: FAIL\n"
-            f"Generate a trajectory where the final response VIOLATES this rule.\n"
-            f"The final record should demonstrate INVALID behavior "
-            f"(wrong status code, wrong data, or missing requirement).\n"
-        )
+        if is_error_rule:
+            prompt_parts.append(
+                f"## Target: FAIL\n"
+                f"The rule says expected status is: {status}\n"
+                f"Generate a trajectory where the TPer INCORRECTLY returns SUCCESS instead.\n"
+                f"The final record's output status_codes MUST be \"SUCCESS\".\n"
+                f"This is FAIL because the TPer should have returned {expected.split('(')[0].strip()} but didn't.\n"
+            )
+        else:
+            prompt_parts.append(
+                f"## Target: FAIL\n"
+                f"Generate a trajectory where the final response VIOLATES this rule.\n"
+                f"The final record should have a non-SUCCESS status code or wrong return values.\n"
+            )
 
     # Generation order instruction
     prompt_parts.append(
@@ -211,6 +273,15 @@ def build_prompt(rule: Dict, label: str, seed_pass: Optional[Dict],
             f"## Seed Example (fail):\n"
             f"```json\n{format_seed_compact(seed_fail)}\n```\n"
         )
+
+    # Diversity requirement
+    prompt_parts.append(
+        "## IMPORTANT: Diversity\n"
+        "- Use DIFFERENT UID values, session IDs, PIN values, and hex strings from the seed examples.\n"
+        "- Use DIFFERENT record counts than the seed (vary between 2-15 records).\n"
+        "- Do NOT copy the seed trajectory verbatim. Create a NEW scenario for this rule.\n"
+        "- Generate realistic but UNIQUE hex values (e.g., different from 00 00 00 0B 00 00 84 02).\n"
+    )
 
     # Output format
     prompt_parts.append(
@@ -266,14 +337,22 @@ def generate_one(model, tokenizer, prompt: str, max_new_tokens: int,
     import torch
 
     # Use chat template if available, otherwise raw completion
+    # Changed: disable thinking mode for Qwen3.5 to get direct JSON output.
     try:
         messages = [
-            {"role": "system", "content": "You generate Opal SSD protocol training data in JSON format."},
+            {"role": "system", "content": "You generate Opal SSD protocol training data in JSON format. Output ONLY valid JSON, no thinking or explanation."},
             {"role": "user", "content": prompt},
         ]
-        input_text = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+        # Try to disable thinking mode (Qwen3.5 feature)
+        try:
+            input_text = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+                enable_thinking=False
+            )
+        except TypeError:
+            input_text = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
     except Exception:
         # Fallback: raw completion
         input_text = prompt + "\n```json\n{"
@@ -296,17 +375,82 @@ def generate_one(model, tokenizer, prompt: str, max_new_tokens: int,
 # Raw output writer — compatible with parse_self_instruct_outputs.py
 # ========================================================================
 
+def _deterministic_label(raw_text: str, rule: Dict) -> Optional[str]:
+    """Determine label from actual final status vs rule expected_status.
+
+    Changed: don't trust LM's label. Derive it deterministically.
+    Why: Qwen 0.8B mislabels 56% of samples (Agent 2 analysis).
+    """
+    import re as _re
+    clean = _re.sub(r"```json\s*", "", raw_text)
+    clean = _re.sub(r"```\s*$", "", clean).strip()
+    try:
+        obj = json.loads(clean)
+    except json.JSONDecodeError:
+        decoder = json.JSONDecoder()
+        obj = None
+        for start, char in enumerate(raw_text):
+            if char != "{":
+                continue
+            try:
+                obj, _ = decoder.raw_decode(raw_text[start:])
+                break
+            except json.JSONDecodeError:
+                continue
+        if obj is None:
+            return None
+
+    records = obj.get("records", [])
+    if not records:
+        return None
+
+    last = records[-1]
+    out = last.get("output", {})
+    if not isinstance(out, dict):
+        return None
+    final_status = str(out.get("status_codes", "")).upper()
+
+    expected = rule["expected_status"].upper()
+    # Extract status tokens from expected (e.g., "NOT_AUTHORIZED (0x01)" → "NOT_AUTHORIZED")
+    expected_tokens = []
+    for tok in ["SUCCESS", "NOT_AUTHORIZED", "INVALID_PARAMETER", "FAIL",
+                "SP_BUSY", "SP_FROZEN", "NO_SESSIONS_AVAILABLE", "AUTHORITY_LOCKED_OUT"]:
+        if tok in expected:
+            expected_tokens.append(tok)
+
+    if not expected_tokens:
+        return None
+
+    # If final_status matches expected → pass (TPer behaved correctly)
+    # If final_status doesn't match expected → fail (TPer violated rule)
+    if final_status in expected_tokens:
+        return "pass"
+    else:
+        return "fail"
+
+
 def make_raw_row(request_id: str, rule_ref: str, label: str,
-                 raw_text: str, prompt: str) -> Dict:
-    """Wrap LM output into a raw row for the parser."""
+                 raw_text: str, prompt: str, rule: Optional[Dict] = None) -> Dict:
+    """Wrap LM output into a raw row for the parser.
+
+    Changed: apply deterministic label correction based on final status vs rule.
+    """
+    corrected_label = label
+    if rule is not None:
+        det = _deterministic_label(raw_text, rule)
+        if det is not None:
+            corrected_label = det
+
     return {
         "request_id": request_id,
-        "source_instruction_id": f"output_first_v2:{rule_ref}:{label}",
+        "source_instruction_id": f"output_first_v3:{rule_ref}:{corrected_label}",
         "raw_output": raw_text,
         "generation_provenance": {
-            "pipeline": "self_instruct_output_first_v2",
+            "pipeline": "self_instruct_output_first_v3",
             "rule_ref": rule_ref,
             "target_label": label,
+            "corrected_label": corrected_label,
+            "deterministic_correction": corrected_label != label,
             "prompt_length": len(prompt),
         },
     }
@@ -318,7 +462,9 @@ def make_raw_row(request_id: str, rule_ref: str, label: str,
 
 def main():
     ap = argparse.ArgumentParser(description="Self-Instruct Output-First Generator")
-    ap.add_argument("--model", type=str, default="Qwen/Qwen3.5-0.8B")
+    # Changed: default to 4B for better generation quality.
+    # Why: 0.8B has 56% mislabel rate and 7% rule coverage. 4B fits in 43GB free GPU.
+    ap.add_argument("--model", type=str, default="Qwen/Qwen3.5-4B")
     ap.add_argument("--num-per-rule", type=int, default=5,
                     help="Generations per (rule, label) combination")
     ap.add_argument("--max-new-tokens", type=int, default=4096)
@@ -435,7 +581,7 @@ def main():
             generated += 1
 
             # Save raw output
-            raw_row = make_raw_row(request_id, rule["rule_ref"], label, raw_text, prompt)
+            raw_row = make_raw_row(request_id, rule["rule_ref"], label, raw_text, prompt, rule=rule)
             f_raw.write(json.dumps(raw_row, ensure_ascii=False) + "\n")
             f_raw.flush()
 

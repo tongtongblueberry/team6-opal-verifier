@@ -1,0 +1,19 @@
+{
+  "accepted_count": 308,
+  "input": "runs/new/local_mirror/current/parsed_candidates.jsonl",
+  "near_duplicate_mode": "domain_text",
+  "near_duplicate_mode_default": "domain_text",
+  "public20_reference": "data/local/public20/public20_input.jsonl",
+  "reject_filter_stage_counts": {
+    "public20_reference_overlap": 137,
+    "trajectory_level_duplicate": 14
+  },
+  "reject_reason_counts": {
+    "exact_duplicate": 13,
+    "public20_near_duplicate": 137,
+    "same_input_conflicting_label": 1
+  },
+  "rejected_count": 151,
+  "rouge_l_threshold": 0.95,
+  "schema_version": "self_instruct.candidate_dedup.v1"
+}
