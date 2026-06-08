@@ -1,0 +1,12 @@
+# Changed: define a minimal package with no network-time dependencies.
+# Why: the evaluation phase has no network access and the deterministic solver uses stdlib only.
+[project]
+name = "team6-opal-verifier"
+version = "0.1.0"
+description = "Deterministic SSD TCG/Opal command-response trajectory verifier for Team 6"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
