@@ -21,6 +21,7 @@ Json = dict[str, Any]
 RULE_SPEC_QUERIES: dict[str, list[str]] = {
     "OBSERVE_ERROR": ["status code error response"],
     "STARTSESSION_EFFECT": ["StartSession HostSessionID SPSessionID HostChallenge"],
+    "STARTSESSION_CHALLENGE": ["StartSession HostChallenge C_PIN NOT_AUTHORIZED"],
     "ENDSESSION_EFFECT": ["EndSession session close"],
     "SET_CPIN_SECRET": ["C_PIN Set PIN credential"],
     "ACTIVATE_SP_EFFECT": ["Activate SP"],
@@ -828,7 +829,7 @@ class StatefulOpalVerifier:
             return inconsistent
 
         if method == "startsession":
-            inconsistent = self._start_session_inconsistent(state, command, output, status)
+            inconsistent = self._start_session_inconsistent(state, command, output, status, step_index)
             self._add_trace(
                 state,
                 step_index,
@@ -878,6 +879,97 @@ class StatefulOpalVerifier:
                     detail=f"expected={expected_error}, actual={status}",
                 )
                 return status != expected_error
+            # Changed: check success payload/semantic consistency before generic error-status handling.
+            # Why: hidden cases can keep SUCCESS while corrupting return_values/result payloads
+            # (public tc20 is the visible stale-read example).
+            if status == self.success_status:
+                if method == "activate":
+                    inconsistent = self._activate_target_invalid(invoking, invoking_uid)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "ACTIVATE_TARGET",
+                        reads=["invoking_name", "invoking_uid"],
+                        detail=f"uid={invoking_uid}, inconsistent={inconsistent}",
+                    )
+                    if inconsistent:
+                        return True
+                    payload_inconsistent = self._empty_result_inconsistent(output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "ACTIVATE_PAYLOAD",
+                        reads=["return_values"],
+                        detail=f"inconsistent={payload_inconsistent}",
+                    )
+                    return payload_inconsistent
+
+                if method == "endsession":
+                    inconsistent = self._empty_result_inconsistent(output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "ENDSESSION_PAYLOAD",
+                        reads=["active_sessions", "return_values"],
+                        detail=f"inconsistent={inconsistent}",
+                    )
+                    return inconsistent
+
+                if method == "set":
+                    inconsistent = self._empty_result_inconsistent(output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "SET_PAYLOAD",
+                        reads=["return_values"],
+                        detail=f"inconsistent={inconsistent}",
+                    )
+                    return inconsistent
+
+                if method == "read":
+                    inconsistent = self._read_payload_inconsistent(state, command, output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "READ_PAYLOAD",
+                        reads=["written_payloads", "generated_key_after_write", "result"],
+                        detail=f"inconsistent={inconsistent}",
+                    )
+                    return inconsistent
+
+                if method == "write":
+                    inconsistent = self._write_response_inconsistent(command, output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "WRITE_RESPONSE",
+                        reads=["payload", "command"],
+                        detail=f"inconsistent={inconsistent}",
+                    )
+                    return inconsistent
+
+                if method == "genkey":
+                    inconsistent = self._genkey_payload_inconsistent(output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "GENKEY_PAYLOAD",
+                        reads=["return_values"],
+                        detail=f"inconsistent={inconsistent}",
+                    )
+                    return inconsistent
+
+                if method == "get":
+                    inconsistent = self._get_payload_inconsistent(state, command, output)
+                    self._add_trace(
+                        state,
+                        step_index,
+                        "GET_PAYLOAD",
+                        reads=["Cellblock", "object_fields", "return_values"],
+                        detail=f"inconsistent={inconsistent}",
+                    )
+                    return inconsistent
+
             if status != self.success_status:
                 expected_success = _known_field_access_expected_success(method, command)
                 if expected_success:
@@ -897,93 +989,6 @@ class StatefulOpalVerifier:
                     detail=status,
                 )
                 return True
-
-        if method == "activate":
-            inconsistent = self._activate_target_invalid(invoking, invoking_uid)
-            self._add_trace(
-                state,
-                step_index,
-                "ACTIVATE_TARGET",
-                reads=["invoking_name", "invoking_uid"],
-                detail=f"uid={invoking_uid}, inconsistent={inconsistent}",
-            )
-            if inconsistent:
-                return True
-            payload_inconsistent = self._empty_result_inconsistent(output)
-            self._add_trace(
-                state,
-                step_index,
-                "ACTIVATE_PAYLOAD",
-                reads=["return_values"],
-                detail=f"inconsistent={payload_inconsistent}",
-            )
-            return payload_inconsistent
-
-        if method == "endsession" and status == self.success_status:
-            inconsistent = self._empty_result_inconsistent(output)
-            self._add_trace(
-                state,
-                step_index,
-                "ENDSESSION_PAYLOAD",
-                reads=["active_sessions", "return_values"],
-                detail=f"inconsistent={inconsistent}",
-            )
-            return inconsistent
-
-        if method == "set" and status == self.success_status:
-            inconsistent = self._empty_result_inconsistent(output)
-            self._add_trace(
-                state,
-                step_index,
-                "SET_PAYLOAD",
-                reads=["return_values"],
-                detail=f"inconsistent={inconsistent}",
-            )
-            return inconsistent
-
-        if method == "read" and status == self.success_status:
-            inconsistent = self._read_payload_inconsistent(state, command, output)
-            self._add_trace(
-                state,
-                step_index,
-                "READ_PAYLOAD",
-                reads=["written_payloads", "generated_key_after_write", "result"],
-                detail=f"inconsistent={inconsistent}",
-            )
-            return inconsistent
-
-        if method == "write" and status == self.success_status:
-            inconsistent = self._write_response_inconsistent(command, output)
-            self._add_trace(
-                state,
-                step_index,
-                "WRITE_RESPONSE",
-                reads=["payload", "command"],
-                detail=f"inconsistent={inconsistent}",
-            )
-            return inconsistent
-
-        if method == "genkey" and status == self.success_status:
-            inconsistent = self._genkey_payload_inconsistent(output)
-            self._add_trace(
-                state,
-                step_index,
-                "GENKEY_PAYLOAD",
-                reads=["return_values"],
-                detail=f"inconsistent={inconsistent}",
-            )
-            return inconsistent
-
-        if method == "get" and status == self.success_status:
-            inconsistent = self._get_payload_inconsistent(state, command, output)
-            self._add_trace(
-                state,
-                step_index,
-                "GET_PAYLOAD",
-                reads=["Cellblock", "object_fields", "return_values"],
-                detail=f"inconsistent={inconsistent}",
-            )
-            return inconsistent
 
         # Changed: add Authenticate method handling per Core 5.3.4.1.14.1.
         # Why: Authenticate with session required; error status codes are mostly valid
@@ -1072,17 +1077,46 @@ class StatefulOpalVerifier:
         command: Json,
         output: Json,
         status: str,
+        step_index: int = -1,
     ) -> bool:
         # Changed: validate password-style HostChallenge against known C_PIN values when available.
         # Why: NOT_AUTHORIZED is the correct response when StartSession supplies the wrong PIN.
         challenge = _host_challenge(command)
         if _challenge_malformed(command):
+            self._add_trace(
+                state,
+                step_index,
+                "STARTSESSION_CHALLENGE",
+                reads=["HostChallenge", "status"],
+                detail=f"malformed_challenge expected=error, actual={status}",
+            )
             return status == self.success_status
         if challenge and state.known_secrets:
             if challenge in state.known_secrets and status != self.success_status:
+                self._add_trace(
+                    state,
+                    step_index,
+                    "STARTSESSION_CHALLENGE",
+                    reads=["HostChallenge", "known_secrets", "status"],
+                    detail=f"known_secret expected=success, actual={status}",
+                )
                 return True
             if challenge not in state.known_secrets:
+                self._add_trace(
+                    state,
+                    step_index,
+                    "STARTSESSION_CHALLENGE",
+                    reads=["HostChallenge", "known_secrets", "status"],
+                    detail=f"unknown_secret expected=notauthorized, actual={status}",
+                )
                 return status != "notauthorized"
+            self._add_trace(
+                state,
+                step_index,
+                "STARTSESSION_CHALLENGE",
+                reads=["HostChallenge", "known_secrets", "status"],
+                detail=f"known_secret expected=success, actual={status}",
+            )
         if status != self.success_status:
             return True
         output_method = _compact(_method_name(output))
