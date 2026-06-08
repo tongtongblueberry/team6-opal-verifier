@@ -823,3 +823,223 @@ tc20: GenKey 이후 Read가 old written payload를 그대로 반환.
 
 -> [Exact Interpretation] fail 10개는 대부분 prefix가 실패해서 fail이 아니라, prefix가 만든 state와 final response가 충돌해서 fail이다.
 -> [Detailed Explanation/Example] 현재 알고리즘의 핵심은 `records[:-1]`로 `ProtocolState`를 만들고 `records[-1]`이 그 state에서 허용되는 response인지 보는 것이다. FSM shadow는 이 결론을 expected-status 관점에서 보조 확인하되, low-confidence이면 개입하지 않는다.
+
+## Record별 상세 부록
+
+[Original Text/Data] 아래 표는 각 record가 verifier 내부에서 어떤 역할을 하는지 record 단위로 다시 펼친 것이다.
+
+-> [Exact Interpretation] `prefix` record는 `_advance_state()`와 `FsmShadow.advance()`를 통과한다. `final` record는 `_final_is_inconsistent()`와 `FsmShadow.check_final()`을 통과한다.
+-> [Detailed Explanation/Example] `StartSession SUCCESS` prefix는 세션/auth/write 상태를 만들고, `Set SUCCESS` prefix는 C_PIN secret이나 object field를 저장한다. final record는 그 누적 state와 자기 output status/payload가 맞는지 검사된다.
+
+### tc11 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | final `Properties INVALID_PARAMETER`, Session Manager UID, `return_values=[]` | `_final_is_inconsistent()`가 `PROPERTIES_TARGET`은 정상으로 보지만 `PROPERTIES_PAYLOAD`에서 `SUCCESS + properties payload`가 없다고 판단한다. FSM은 `PROPERTIES -> SUCCESS`를 기대하므로 둘 다 `fail`. |
+
+### tc12 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP, `Write=1`, HostChallenge 없음 | `_advance_state()`가 `active_sessions={00000001}`, `authenticated=False`, `session_write=True`를 만든다. FSM은 unauthenticated Admin RW session 쪽으로 전진한다. |
+| 2 | final `Get C_PIN NOT_AUTHORIZED`, uid `00 00 00 0B 00 00 84 02`, Cellblock `3..3` | expected state error는 없다. `_known_field_access_expected_success()`가 `cpin:3`을 반환하므로 `NOT_AUTHORIZED`는 unexpected error다. FSM도 `GET_MSID_PIN -> SUCCESS`를 기대한다. 최종 `fail`. |
+
+### tc13 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP, HostChallenge 없음 | active session을 만들고 `authenticated=False`, `session_write=True`가 된다. |
+| 2 | prefix `Get C_PIN SUCCESS`, uid `84 02`, Cellblock `3..3`, MSID-like value 반환 | 기존 `ProtocolState`는 `Get` 성공을 저장하지 않는다. FSM shadow는 `GET_MSID_PIN` 성공 path로 상태 후보를 좁힌다. |
+| 3 | prefix `EndSession SUCCESS` | `_advance_state()`가 active session을 clear하고 auth를 false 쪽으로 정리한다. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge `3P5ADJ...`, HSA `0000000900000006` | HostChallenge가 있으므로 `_advance_state()`는 인증 시도로 보고 `authenticated=True`를 만든다. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`a5a1c7fc...` | `_advance_state()`가 `known_secrets`에 `a5a1c7fc...`를 넣고, `object_fields`에도 C_PIN column 3을 저장한다. |
+| 6 | prefix `EndSession SUCCESS` | session은 닫히지만 `known_secrets`는 유지된다. |
+| 7 | final `StartSession NOT_AUTHORIZED`, HostChallenge=`a5a1c7fc...` | final challenge가 known secret과 같으므로 expected status는 `SUCCESS`다. `_start_session_inconsistent()`가 `challenge in known_secrets and status != success`로 `fail`. FSM도 `START_RW_ADMIN_SID -> SUCCESS` mismatch로 `fail`. |
+
+### tc14 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP, HostChallenge 없음 | active session 생성, `authenticated=False`, `session_write=True`. |
+| 2 | prefix `Get C_PIN SUCCESS`, uid `84 02`, Cellblock `3..3` | ProtocolState에는 저장하지 않는다. FSM은 MSID/C_PIN read success path를 따라간다. |
+| 3 | prefix `EndSession SUCCESS` | session clear. secret state는 아직 없음. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...`, HSA=SID | 인증된 Admin session으로 보고 `authenticated=True`. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`3e06061d...` | `_advance_state()`가 `known_secrets`에 `3e06061d...`를 넣고 C_PIN object field도 저장한다. |
+| 6 | prefix `EndSession SUCCESS` | session clear. `known_secrets`는 유지. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | known secret과 맞는 challenge라 인증 성공 prefix로 state가 이어진다. |
+| 8 | prefix `Set C_PIN SUCCESS`, Values[3]=`f620e538...` | 두 번째 C_PIN secret을 `known_secrets`와 `object_fields`에 저장한다. |
+| 9 | prefix `EndSession SUCCESS` | session clear. known secret 집합은 유지된다. |
+| 10 | final `StartSession SUCCESS`, HostChallenge=`aaaaaaaa...` | final challenge가 known secret 집합에 없으므로 expected status는 `NOT_AUTHORIZED`다. 실제 `SUCCESS`라 `_start_session_inconsistent()`가 `fail`. FSM도 `START_RW_ADMIN_SID_WRONG_PW -> NOT_AUTHORIZED` mismatch로 `fail`. |
+
+### tc15 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP, HostChallenge 없음 | active session 생성, `authenticated=False`, `session_write=True`. |
+| 2 | prefix `Get C_PIN SUCCESS`, uid `84 02`, Cellblock `3..3` | ProtocolState 저장 없음. FSM은 C_PIN read success path를 따라간다. |
+| 3 | prefix `EndSession SUCCESS` | session clear. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...`, HSA=SID | 인증된 Admin session으로 갱신. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`3e06061d...` | `known_secrets`와 C_PIN object field 저장. |
+| 6 | prefix `EndSession SUCCESS` | session clear, secret 유지. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | known secret 기반 authenticated session이 된다. |
+| 8 | prefix `Get SP SUCCESS`, valid-looking SP uid `00 00 02 05 00 00 00 02`, column 6 -> 8 | ProtocolState에는 별도 저장하지 않는다. FSM은 SP/activation 준비 path의 evidence로 사용한다. |
+| 9 | final `Activate SUCCESS`, SP uid `00 00 01 05 00 00 00 04` | `_activate_target_invalid()`가 uid가 `00000205`로 시작하지 않는다고 판단한다. expected `INVALID_PARAMETER`, actual `SUCCESS`; `PRECONDITION_EXPECTED_ERROR`로 `fail`. FSM은 low-confidence unknown이라 base `fail` 유지. |
+
+### tc16 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP, no HostChallenge | active session 생성, unauthenticated. |
+| 2 | prefix `Get C_PIN SUCCESS`, uid `84 02`, column 3 | ProtocolState 저장 없음. FSM C_PIN read path. |
+| 3 | prefix `EndSession SUCCESS` | session clear. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...` | authenticated Admin session. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`3e06061d...` | `known_secrets`와 C_PIN field 저장. |
+| 6 | prefix `EndSession SUCCESS` | session clear, secret 유지. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | authenticated Admin session. |
+| 8 | prefix `Get SP SUCCESS`, SP column 6 -> 8 | ProtocolState 저장 없음. FSM activation 관련 success path. |
+| 9 | prefix `Activate SUCCESS`, SP uid `00 00 02 05 00 00 00 02` | `_advance_state()`가 `activated_sps`에 compact invoking을 추가한다. FSM도 Locking SP activated path로 전진한다. |
+| 10 | prefix `EndSession SUCCESS` | session clear. |
+| 11 | prefix `StartSession SUCCESS`, Locking SP, no HostChallenge | active session 생성, no challenge라 `authenticated=False`. |
+| 12 | prefix `Get LockingInfo SUCCESS`, column 4 -> `00000008` | ProtocolState 저장 없음. FSM은 LockingInfo read success를 본다. |
+| 13 | prefix `EndSession SUCCESS` | session clear. |
+| 14 | prefix `StartSession SUCCESS`, Locking SP, HostChallenge=`3e06061d...`, HSA=Admin1 | authenticated Locking session으로 갱신. |
+| 15 | prefix `Get MBRControl SUCCESS`, columns 1..2 -> 0,0 | ProtocolState 저장 없음. final과 직접 충돌하지는 않지만 known object read path를 형성한다. |
+| 16 | prefix `EndSession SUCCESS` | session clear. |
+| 17 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 18 | prefix `Get Locking SUCCESS`, columns 3..8 -> zeros | ProtocolState 저장 없음. Locking object가 정상 read 가능한 shape임을 보여준다. |
+| 19 | prefix `EndSession SUCCESS` | session clear. |
+| 20 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | final Set 직전 active/authenticated session을 만든다. |
+| 21 | final `Set Authority INVALID_PARAMETER`, uid `00 00 00 09 00 03 00 01`, Values[5]=1 | expected state error는 없다. `_known_field_access_expected_success()`가 `authority:5`를 반환한다. 성공해야 하는 Authority enable이 `INVALID_PARAMETER`라 `fail`. FSM은 possible success action을 보지만 confidence가 낮아 override하지 않는다. |
+
+### tc17 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP, no HostChallenge | active session 생성, unauthenticated. |
+| 2 | prefix `Get C_PIN SUCCESS`, uid `84 02`, column 3 | ProtocolState 저장 없음. FSM C_PIN read path. |
+| 3 | prefix `EndSession SUCCESS` | session clear. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...` | authenticated Admin session. |
+| 5 | prefix `Set C_PIN SUCCESS`, SID C_PIN Values[3]=`3e06061d...` | `known_secrets`와 C_PIN field 저장. |
+| 6 | prefix `EndSession SUCCESS` | session clear, secret 유지. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | authenticated Admin session. |
+| 8 | prefix `Get SP SUCCESS`, SP column 6 -> 8 | ProtocolState 저장 없음. FSM activation context. |
+| 9 | prefix `Activate SUCCESS`, SP uid `00 00 02 05 00 00 00 02` | `activated_sps` 갱신. |
+| 10 | prefix `EndSession SUCCESS` | session clear. |
+| 11 | prefix `StartSession SUCCESS`, Locking SP, no HostChallenge | active session, unauthenticated. |
+| 12 | prefix `Get LockingInfo SUCCESS`, column 4 -> `00000008` | ProtocolState 저장 없음. FSM LockingInfo read path. |
+| 13 | prefix `EndSession SUCCESS` | session clear. |
+| 14 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 15 | prefix `Get MBRControl SUCCESS`, columns 1..2 -> 0,0 | ProtocolState 저장 없음. |
+| 16 | prefix `EndSession SUCCESS` | session clear. |
+| 17 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 18 | prefix `Get Locking SUCCESS`, columns 3..8 | ProtocolState 저장 없음. |
+| 19 | prefix `EndSession SUCCESS` | session clear. |
+| 20 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 21 | prefix `Set Authority SUCCESS`, Values[5]=1 | `_advance_state()`가 Authority object field column 5를 저장한다. |
+| 22 | prefix `EndSession SUCCESS` | session clear. |
+| 23 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 24 | prefix `Set C_PIN SUCCESS`, User/Admin C_PIN Values[3]=`9dd74dd6...` | `_advance_state()`가 final challenge와 같은 secret을 `known_secrets`에 저장한다. |
+| 25 | prefix `EndSession SUCCESS` | session clear, known secret 유지. |
+| 26 | final `StartSession NOT_AUTHORIZED`, Locking SP, HSA=`0000000900030001`, HostChallenge=`9dd74dd6...` | final challenge가 record 24의 known secret과 같다. `_start_session_inconsistent()`가 known credential non-success로 `fail`. FSM은 low-confidence unknown이라 base `fail` 유지. |
+
+### tc18 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP | active session 생성. |
+| 2 | prefix `Get C_PIN SUCCESS`, column 3 | ProtocolState 저장 없음. |
+| 3 | prefix `EndSession SUCCESS` | session clear. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...` | authenticated Admin session. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`3e06061d...` | `known_secrets`와 C_PIN field 저장. |
+| 6 | prefix `EndSession SUCCESS` | session clear. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | authenticated Admin session. |
+| 8 | prefix `Get SP SUCCESS`, column 6 -> 8 | ProtocolState 저장 없음. |
+| 9 | prefix `Activate SUCCESS`, valid Locking SP uid | `activated_sps` 갱신. |
+| 10 | prefix `EndSession SUCCESS` | session clear. |
+| 11 | prefix `StartSession SUCCESS`, Locking SP, no HostChallenge | active session, unauthenticated. |
+| 12 | prefix `Get LockingInfo SUCCESS`, column 4 -> `00000008` | ProtocolState 저장 없음. |
+| 13 | prefix `EndSession SUCCESS` | session clear. |
+| 14 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 15 | prefix `Get MBRControl SUCCESS`, columns 1..2 -> 0,0 | ProtocolState 저장 없음. |
+| 16 | prefix `EndSession SUCCESS` | session clear. |
+| 17 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 18 | prefix `Get Locking SUCCESS`, columns 3..8 -> values returned | 같은 object/columns가 정상 read 가능한 shape임을 보여준다. |
+| 19 | prefix `EndSession SUCCESS` | session clear. |
+| 20 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | final Get 직전 active/authenticated session. |
+| 21 | final `Get Locking INVALID_PARAMETER`, columns 3..8 | `_known_field_access_expected_success()`가 `locking:3,4,5,6,7,8`을 반환한다. 성공해야 하는 read가 `INVALID_PARAMETER`라 `fail`. FSM은 low-confidence unknown이라 override 없음. |
+
+### tc19 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP | active session 생성. |
+| 2 | prefix `Get C_PIN SUCCESS`, column 3 | ProtocolState 저장 없음. |
+| 3 | prefix `EndSession SUCCESS` | session clear. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...` | authenticated Admin session. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`3e06061d...` | `known_secrets`와 C_PIN field 저장. |
+| 6 | prefix `EndSession SUCCESS` | session clear. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | authenticated Admin session. |
+| 8 | prefix `Get SP SUCCESS`, column 6 -> 8 | ProtocolState 저장 없음. |
+| 9 | prefix `Activate SUCCESS`, valid Locking SP uid | `activated_sps` 갱신. |
+| 10 | prefix `EndSession SUCCESS` | session clear. |
+| 11 | prefix `StartSession SUCCESS`, Locking SP, no HostChallenge | active Locking session. |
+| 12 | prefix `Get LockingInfo SUCCESS`, column 4 -> `00000008` | ProtocolState 저장 없음. |
+| 13 | prefix `EndSession SUCCESS` | session clear. |
+| 14 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 15 | prefix `Get MBRControl SUCCESS`, columns 1..2 -> 0,0 | MBRControl columns 1,2가 정상 read 가능한 context다. |
+| 16 | prefix `EndSession SUCCESS` | session clear. |
+| 17 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 18 | prefix `Get Locking SUCCESS`, columns 3..8 | ProtocolState 저장 없음. |
+| 19 | prefix `EndSession SUCCESS` | session clear. |
+| 20 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 21 | prefix `Set MBRControl SUCCESS`, Values[2]=1 | `_advance_state()`가 MBRControl column 2를 `object_fields`에 저장한다. |
+| 22 | prefix `EndSession SUCCESS` | session clear. |
+| 23 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 24 | prefix `Set MBRControl SUCCESS`, Values[1]=1 | `_advance_state()`가 MBRControl column 1을 `object_fields`에 저장한다. |
+| 25 | prefix `EndSession SUCCESS` | session clear. |
+| 26 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | final Get 직전 active/authenticated session. |
+| 27 | final `Get MBRControl FAIL`, columns 1..2 | `_known_field_access_expected_success()`가 `mbrcontrol:1,2`를 반환한다. 성공해야 하는 read가 `FAIL`이라 `fail`. FSM은 expected status를 만들지 못해 unknown. |
+
+### tc20 Record별
+
+| record | 원문 요약 | verifier effect |
+|---:|---|---|
+| 1 | prefix `StartSession SUCCESS`, Admin SP | active session 생성. |
+| 2 | prefix `Get C_PIN SUCCESS`, column 3 | ProtocolState 저장 없음. |
+| 3 | prefix `EndSession SUCCESS` | session clear. |
+| 4 | prefix `StartSession SUCCESS`, HostChallenge=`3P5ADJ...` | authenticated Admin session. |
+| 5 | prefix `Set C_PIN SUCCESS`, Values[3]=`3e06061d...` | `known_secrets`와 C_PIN field 저장. |
+| 6 | prefix `EndSession SUCCESS` | session clear. |
+| 7 | prefix `StartSession SUCCESS`, HostChallenge=`3e06061d...` | authenticated Admin session. |
+| 8 | prefix `Get SP SUCCESS`, column 6 -> 8 | ProtocolState 저장 없음. |
+| 9 | prefix `Activate SUCCESS`, valid Locking SP uid | `activated_sps` 갱신. |
+| 10 | prefix `EndSession SUCCESS` | session clear. |
+| 11 | prefix `StartSession SUCCESS`, Locking SP, no HostChallenge | active Locking session. |
+| 12 | prefix `Get LockingInfo SUCCESS`, column 4 -> `00000008` | ProtocolState 저장 없음. |
+| 13 | prefix `EndSession SUCCESS` | session clear. |
+| 14 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 15 | prefix `Get MBRControl SUCCESS`, columns 1..2 -> 0,0 | ProtocolState 저장 없음. |
+| 16 | prefix `EndSession SUCCESS` | session clear. |
+| 17 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 18 | prefix `Get Locking SUCCESS`, columns 3..8 | ProtocolState 저장 없음. |
+| 19 | prefix `EndSession SUCCESS` | session clear. |
+| 20 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 21 | prefix `Set Locking SUCCESS`, Values[3,4,5,6,7,8]=initial range fields | `_advance_state()`가 Locking object fields 3,4,5,6,7,8을 저장한다. |
+| 22 | prefix `EndSession SUCCESS` | session clear. |
+| 23 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 24 | prefix `Get Locking SUCCESS`, column 10 -> key object UID | ProtocolState 저장 없음. FSM/key path context. |
+| 25 | prefix `GenKey SUCCESS`, K_AES_256 | `_advance_state()`가 `generated_key_after_write=False`를 기록한다. 아직 write payload가 없기 때문이다. |
+| 26 | prefix `EndSession SUCCESS` | session clear. |
+| 27 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 28 | prefix `Set Locking SUCCESS`, Values[5]=1, Values[6]=1 | Locking object fields 5,6을 저장한다. |
+| 29 | prefix `EndSession SUCCESS` | session clear. |
+| 30 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 31 | prefix `Set Locking SUCCESS`, Values[7]=0, Values[8]=0 | Locking object fields 7,8을 저장한다. |
+| 32 | prefix `EndSession SUCCESS` | session clear. |
+| 33 | prefix data `Write`, LBA `80 ~ 87`, pattern `8E`, result `pass` | `_advance_state()`가 `written_payloads["80 ~ 87"]="8E"`를 저장하고 `generated_key_after_write=False`로 둔다. |
+| 34 | prefix data `Read`, LBA `80 ~ 87`, result `Pattern 8E` | 기존 rulebase는 prefix Read payload를 상태 갱신에 쓰지 않는다. final stale 판단의 기준은 record 33 write payload다. |
+| 35 | prefix `StartSession SUCCESS`, Locking SP, HSA=Admin1 | authenticated Locking session. |
+| 36 | prefix `Get Locking SUCCESS`, column 10 -> key object UID | ProtocolState 저장 없음. |
+| 37 | prefix `GenKey SUCCESS`, K_AES_256 | `written_payloads`가 이미 있으므로 `_advance_state()`가 `generated_key_after_write=True`를 만든다. |
+| 38 | prefix `EndSession SUCCESS` | session clear. `written_payloads`와 `generated_key_after_write=True`는 유지된다. |
+| 39 | final data `Read`, LBA `80 ~ 87`, result `8E` | `_read_payload_inconsistent()`가 final result가 stored write payload `8E`와 같고 `generated_key_after_write=True`임을 확인한다. GenKey 이후 old payload가 그대로 보여 stale read로 `fail`. |
